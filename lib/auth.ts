@@ -229,9 +229,11 @@ export async function requestLoginCode(email: string): Promise<CodeRequestResult
       return {
         status: "code-sent",
         session: result.Session,
-        destination:
-          result.ChallengeParameters?.CODE_DELIVERY_DESTINATION ??
-          maskEmail(address),
+        // Our own masking rather than Cognito's CODE_DELIVERY_DESTINATION.
+        // Cognito returns "d***@1***", which hides the domain and so fails at
+        // the one job this string has: letting someone confirm the code went to
+        // the right mailbox. Ours keeps the domain and masks the local part.
+        destination: maskEmail(address),
       };
     }
 

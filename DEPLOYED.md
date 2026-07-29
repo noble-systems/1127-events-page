@@ -10,10 +10,10 @@ recorded in the repo.
 
 ## Two regions, and why
 
-| What                                       | Region        |
-| ------------------------------------------ | ------------- |
-| Amplify Hosting app `1127-events-page`     | **us-west-1** |
-| DynamoDB, Cognito, SES, IAM policy         | **us-west-2** |
+| What                                   | Region        |
+| -------------------------------------- | ------------- |
+| Amplify Hosting app `1127-events-page` | **us-west-1** |
+| DynamoDB, Cognito, SES, IAM policy     | **us-west-2** |
 
 The backend went to us-west-2 first; the Amplify app was later created in
 us-west-1. We kept it that way deliberately rather than rebuilding, because
@@ -49,22 +49,22 @@ not an edit.
 | Output                    | Value                                                   |
 | ------------------------- | ------------------------------------------------------- |
 | EventsTableName           | `1127-events-events`                                    |
-| SubmissionsTableName      | `1127-events-submissions`                                |
+| SubmissionsTableName      | `1127-events-submissions`                               |
 | CognitoUserPoolId         | `us-west-2_Jee1pVz4Z`                                   |
 | CognitoClientId           | `3iekhqghjkeujbpt6e28ui5uhh`                            |
 | EmailConfigurationSetName | `1127-events-email`                                     |
-| AppDataPolicyArn          | `arn:aws:iam::769194516210:policy/1127-events-app-data`  |
+| AppDataPolicyArn          | `arn:aws:iam::769194516210:policy/1127-events-app-data` |
 
 ## Amplify app (us-west-1)
 
-| Field           | Value                                            |
-| --------------- | ------------------------------------------------ |
-| App name        | `1127-events-page`                               |
-| App ID          | `d25r2jramweewa`                                 |
-| Default domain  | `d25r2jramweewa.amplifyapp.com`                  |
-| Platform        | `WEB_COMPUTE` (SSR, correct for this app)         |
-| Repository      | `github.com/noble-systems/1127-events-page`      |
-| Branch          | `main`, auto-build enabled                       |
+| Field          | Value                                       |
+| -------------- | ------------------------------------------- |
+| App name       | `1127-events-page`                          |
+| App ID         | `d25r2jramweewa`                            |
+| Default domain | `d25r2jramweewa.amplifyapp.com`             |
+| Platform       | `WEB_COMPUTE` (SSR, correct for this app)   |
+| Repository     | `github.com/noble-systems/1127-events-page` |
+| Branch         | `main`, auto-build enabled                  |
 
 ## Amplify environment variables
 
@@ -84,13 +84,13 @@ APP_SECRET=<32+ random characters, generated, never committed>
 
 Do not re-enter these. They are in place and SES has verified against them.
 
-| Type  | Host                                         | Value                                                 |
-| ----- | -------------------------------------------- | ----------------------------------------------------- |
-| CNAME | `lwb3jhpcn3ul6awf6yq466klxgr67jac._domainkey` | `lwb3jhpcn3ul6awf6yq466klxgr67jac.dkim.amazonses.com`  |
-| CNAME | `dpaf7cvwb7v4yxjnp3ef3rdq4bpjdrmg._domainkey` | `dpaf7cvwb7v4yxjnp3ef3rdq4bpjdrmg.dkim.amazonses.com`  |
-| CNAME | `ynuim7udmmipvao5t25iwel25gnqcuph._domainkey` | `ynuim7udmmipvao5t25iwel25gnqcuph.dkim.amazonses.com`  |
-| MX    | `mail`                                       | `feedback-smtp.us-west-2.amazonses.com` (priority 10)  |
-| TXT   | `mail`                                       | `v=spf1 include:amazonses.com ~all`                    |
+| Type  | Host                                          | Value                                                 |
+| ----- | --------------------------------------------- | ----------------------------------------------------- |
+| CNAME | `lwb3jhpcn3ul6awf6yq466klxgr67jac._domainkey` | `lwb3jhpcn3ul6awf6yq466klxgr67jac.dkim.amazonses.com` |
+| CNAME | `dpaf7cvwb7v4yxjnp3ef3rdq4bpjdrmg._domainkey` | `dpaf7cvwb7v4yxjnp3ef3rdq4bpjdrmg.dkim.amazonses.com` |
+| CNAME | `ynuim7udmmipvao5t25iwel25gnqcuph._domainkey` | `ynuim7udmmipvao5t25iwel25gnqcuph.dkim.amazonses.com` |
+| MX    | `mail`                                        | `feedback-smtp.us-west-2.amazonses.com` (priority 10) |
+| TXT   | `mail`                                        | `v=spf1 include:amazonses.com ~all`                   |
 
 Note the MAIL FROM MX points at **us-west-2**, because that is where the SES
 identity lives. This is the clearest example of why the region split cannot be
@@ -100,13 +100,13 @@ text-edited away.
 
 `1127.events` must keep these five, or nothing at `@1127.events` receives mail:
 
-| Type | Host | Value                              | Priority |
-| ---- | ---- | ---------------------------------- | -------- |
-| MX   | `@`  | `eforward1.registrar-servers.com`  | 10       |
-| MX   | `@`  | `eforward2.registrar-servers.com`  | 10       |
-| MX   | `@`  | `eforward3.registrar-servers.com`  | 10       |
-| MX   | `@`  | `eforward4.registrar-servers.com`  | 15       |
-| MX   | `@`  | `eforward5.registrar-servers.com`  | 20       |
+| Type | Host | Value                             | Priority |
+| ---- | ---- | --------------------------------- | -------- |
+| MX   | `@`  | `eforward1.registrar-servers.com` | 10       |
+| MX   | `@`  | `eforward2.registrar-servers.com` | 10       |
+| MX   | `@`  | `eforward3.registrar-servers.com` | 10       |
+| MX   | `@`  | `eforward4.registrar-servers.com` | 15       |
+| MX   | `@`  | `eforward5.registrar-servers.com` | 20       |
 
 Switching Mail Settings to "Custom MX" to add the `mail` subdomain record
 removes these automatically. That is what broke `hello@1127.events` once.
@@ -127,16 +127,89 @@ verified identity, sandbox permits any recipient at `@1127.events`. So internal
 notifications to daniel@, taylor@ and ethan@ work **today**. Only confirmations
 to outside addresses (gmail and so on) are blocked until production access.
 
+## Signing in to the dashboard
+
+There is no password. Go to `/admin`, enter your address, and a six-digit code
+arrives by email. Accounts exist for:
+
+- daniel@1127.events
+- ethan@1127.events
+- taylor@1127.events
+
+All three are CONFIRMED with verified email addresses.
+
+Codes send through SES from `hello@1127.events`. This works today despite the
+SES sandbox, because every admin address is at the verified domain.
+
+**Adding somebody.** Create the user, then set a throwaway permanent password to
+move them out of `FORCE_CHANGE_PASSWORD`, which Cognito requires before
+`EMAIL_OTP` will work. Nobody needs to know that password and it should not be
+recorded:
+
+```
+aws cognito-idp admin-create-user --user-pool-id us-west-2_Jee1pVz4Z \
+  --region us-west-2 --username new@1127.events --message-action SUPPRESS \
+  --user-attributes Name=email,Value=new@1127.events Name=email_verified,Value=true
+aws cognito-idp admin-set-user-password --user-pool-id us-west-2_Jee1pVz4Z \
+  --region us-west-2 --username new@1127.events --permanent \
+  --password "$(openssl rand -base64 24)Aa1!"
+```
+
+`--message-action SUPPRESS` matters: without it Cognito emails a temporary
+password nobody will use, which is exactly the sort of message that trains
+people to click on credential emails.
+
+## Swapping a photograph
+
+Event photos live in `1127-events-images-769194516210`, which grants
+`GetObject` to the public and nothing else. No listing, no public write.
+
+The dashboard is the intended route: open an event, choose a file, and it uploads
+straight to S3 via a presigned PUT and fills in the reference. Photographs never
+pass through the app, which matters because a Lambda request body is capped well
+below the size of a photo off a real camera.
+
+References are stored as **keys**, not URLs: `s3:events/sun-club/hero.jpg`. That
+means moving bucket or region later is a config change rather than a data
+migration, and the validator never has to decide whether some hostname is
+acceptable. Objects are cached for five minutes, so a swap appears almost at once.
+
+Two rules worth knowing:
+
+- The key is derived from the event id and the file's content type, never from
+  the uploaded filename. Filenames are attacker-controlled.
+- SVG is refused. These are photographs, and SVG can carry script.
+
+## Rate limits
+
+A sliding window log in `1127-events-ratelimit`, with TTL so expired windows
+clean themselves up.
+
+| What                    | Limit                                      |
+| ----------------------- | ------------------------------------------ |
+| Public form submissions | 6 per 10 minutes per IP                    |
+| Requesting a login code | 4 per 15 minutes, per IP **and** per email |
+| Submitting a login code | 8 per 15 minutes, per IP **and** per email |
+
+Login is limited harder than the public forms because each request emails a real
+person, and because the number of guesses at six digits is the whole security
+margin. Both keys are applied: IP alone lets one attacker spread guesses across
+accounts, email alone lets a botnet concentrate on one.
+
+If DynamoDB is unreachable the limiter **allows** the request and logs. A storage
+blip should not take the RSVP form down, and the honeypot, validation and
+Cognito's own throttling still apply.
+
 ## Still to do
 
-1. Set the environment variables above on the Amplify app.
-2. Attach `1127-events-app-data` to the Amplify SSR compute role, or the app
-   deploys green and then cannot read its own tables.
-3. Request SES production access. Roughly a day.
-4. Create the first Cognito staff user for dashboard sign-in.
-5. Point `1127.events` at Amplify, replacing the parking record at
-   `162.255.119.24`. This is the moment the site becomes public.
-6. A2P 10DLC registration for texting. Weeks, entirely external.
+1. Request SES production access. Roughly a day. Until then, RSVP confirmations
+   only reach `@1127.events` addresses, so a member of the public who signs up
+   gets nothing.
+2. A2P 10DLC registration for texting. Weeks, entirely external.
+3. Real photographs. The bucket and the upload flow are ready; there are no
+   photos in it yet, so every image is still a designed gradient placeholder.
+4. Optional: a DMARC record. SPF and DKIM are both in place and aligned, so this
+   is the remaining piece that would stop someone spoofing `@1127.events`.
 
 ## Build note
 
