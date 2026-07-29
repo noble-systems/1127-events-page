@@ -23,6 +23,22 @@ frontend:
         - npm install --no-audit --no-fund
     build:
       commands:
+        # Amplify exposes environment variables to the BUILD, but does not inject
+        # them into the Next.js SSR runtime. Without this step every server-side
+        # read of process.env.EVENTS_TABLE is undefined at request time, the store
+        # throws, the homepage silently falls back to launch content, and every
+        # form returns 502. Redeploying does not help: the variables are simply
+        # not in the compute environment.
+        #
+        # So write them into .env.production, which Next.js loads on the server.
+        #
+        # `env | grep` rather than a loop echoing "$var=${!var}" on purpose: the
+        # values never appear in a command line, so APP_SECRET cannot leak into
+        # the build log. Keep it that way.
+        #
+        # Adding a new server-side variable means adding it here too. It is not
+        # enough to set it in the Amplify console.
+        - env | grep -E '^(EVENTS_TABLE|SUBMISSIONS_TABLE|COGNITO_USER_POOL_ID|COGNITO_CLIENT_ID|APP_AWS_REGION|SES_CONFIGURATION_SET|SES_FROM_ADDRESS|SES_REPLY_TO|SITE_URL|APP_SECRET|SMS_ORIGINATION_IDENTITY|SMS_OPT_OUT_LIST|SMS_CONFIGURATION_SET|RSVP_NOTIFY_ADDRESS|AMBASSADOR_NOTIFY_ADDRESS|TALENT_NOTIFY_ADDRESS|PARTNER_NOTIFY_ADDRESS)=' >> .env.production || true
         - npm run build
   artifacts:
     # Amplify detects the Next.js SSR (WEB_COMPUTE) output from .next
