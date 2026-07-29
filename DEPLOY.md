@@ -16,7 +16,7 @@ One CloudFormation command, no CDK toolchain, no bootstrap.
 ```bash
 aws cloudformation deploy \
   --template-file infra/1127-infra.yaml \
-  --stack-name 1127-events \
+  --stack-name events-1127 \
   --capabilities CAPABILITY_NAMED_IAM \
   --region us-west-2 \
   --parameter-overrides AdminEmail=you@yourdomain.com
@@ -30,7 +30,7 @@ Read the outputs, you need all of them in step 3:
 
 ```bash
 aws cloudformation describe-stacks \
-  --stack-name 1127-events \
+  --stack-name events-1127 \
   --region us-west-2 \
   --query 'Stacks[0].Outputs' \
   --output table
@@ -161,7 +161,7 @@ Redeploy the stack with a domain:
 ```bash
 aws cloudformation deploy \
   --template-file infra/1127-infra.yaml \
-  --stack-name 1127-events \
+  --stack-name events-1127 \
   --capabilities CAPABILITY_NAMED_IAM \
   --region us-west-2 \
   --parameter-overrides SendingDomain=1127.events
@@ -170,7 +170,7 @@ aws cloudformation deploy \
 Read the DNS records back out and add them at your registrar:
 
 ```bash
-aws cloudformation describe-stacks --stack-name 1127-events \
+aws cloudformation describe-stacks --stack-name events-1127 \
   --region us-west-2 --query 'Stacks[0].Outputs' --output table
 ```
 

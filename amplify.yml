@@ -3,7 +3,24 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci --no-audit --no-fund
+        # `npm install`, not `npm ci`, and deliberately so.
+        #
+        # npm ci refuses to run when package.json and the lockfile disagree, which
+        # is normally exactly what you want in CI. It is unusable here because of
+        # an upstream packaging fault: @unrs/resolver-binding-wasm32-wasi (pulled
+        # in transitively by ESLint) pins an exact @emnapi/core version, but it is
+        # a wasm32-wasi optional package, so npm filters it out on Windows and
+        # never writes its dependencies into the lockfile. The lockfile is
+        # therefore incomplete for Linux no matter how often it is regenerated on
+        # a developer machine, and npm ci aborts on Amplify.
+        #
+        # npm install still honours the lockfile for everything it can resolve; it
+        # just fills that gap instead of failing. Revisit if the upstream package
+        # is fixed or ESLint stops pulling it in.
+        #
+        # Do not switch this to --omit=dev: typescript, tailwindcss and the
+        # Tailwind PostCSS plugin are all devDependencies that the build needs.
+        - npm install --no-audit --no-fund
     build:
       commands:
         - npm run build

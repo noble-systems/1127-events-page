@@ -4,10 +4,14 @@ Description: >
   Creates two DynamoDB tables, a Cognito user pool for staff sign-in, and an
   IAM policy to attach to the Amplify Hosting compute role.
 
+  The stack name must begin with a letter (CloudFormation constraint), which
+  is why it is events-1127 rather than 1127-events. ProjectName below is
+  unconstrained, so the resources themselves keep the 1127-events prefix.
+
   Deploy with:
     aws cloudformation deploy \
       --template-file infra/1127-infra.yaml \
-      --stack-name 1127-events \
+      --stack-name events-1127 \
       --capabilities CAPABILITY_IAM \
       --region us-west-2
 
