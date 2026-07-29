@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { resolveImageSrc } from "@/lib/images";
 import type { ReactNode } from "react";
 import type { MediaTone } from "@/lib/types";
 
@@ -232,14 +233,18 @@ export function Media({
   hideNote = false,
   children,
 }: MediaProps) {
+  // Every image on the site funnels through here, so s3: references are
+  // resolved in one place. An unresolvable reference becomes null and the
+  // designed gradient shows instead of a broken image.
+  const resolved = resolveImageSrc(src);
   const spec = TONES[tone];
   const overlayImage = OVERLAYS[overlay];
-  const noteOnLight = (spec.caption ?? spec.ink) === "dark" && !src;
+  const noteOnLight = (spec.caption ?? spec.ink) === "dark" && !resolved;
 
   return (
     <div
       className={`grain relative isolate overflow-hidden ${className}`}
-      style={src ? undefined : { backgroundImage: spec.background }}
+      style={resolved ? undefined : { backgroundImage: spec.background }}
     >
       {src ? (
         <Image

@@ -28,6 +28,13 @@ Parameters:
       Optional. If set, this email is created as the first admin user and AWS
       emails them a temporary password. Leave blank to create users by hand.
 
+  SiteDomain:
+    Type: String
+    Default: 1127.events
+    Description: >
+      Public site domain, without a scheme. Used for the CORS allow-list on the
+      images bucket so the dashboard can upload directly to S3.
+
   SendingDomain:
     Type: String
     Default: ""
@@ -99,6 +106,89 @@ Resources:
           Value: !Ref ProjectName
 
   # ---------------------------------------------------------------------------
+  # Rate limiting
+  # ---------------------------------------------------------------------------
+
+  RateLimitTable:
+    Type: AWS::DynamoDB::Table
+    # Deliberately NOT Retain. This table holds only short-lived counters, and a
+    # stale one left behind after a stack delete would be worse than useless.
+    DeletionPolicy: Delete
+    Properties:
+      TableName: !Sub "${ProjectName}-ratelimit"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      # DynamoDB deletes expired rows for us, so old windows cost nothing and
+      # need no sweeper. Expiry is best-effort (up to ~48h late), which is fine:
+      # the window logic ignores timestamps outside the window regardless.
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # ---------------------------------------------------------------------------
+  # Images — event photography, swappable without a deploy
+  # ---------------------------------------------------------------------------
+
+  ImagesBucket:
+    Type: AWS::S3::Bucket
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Properties:
+      # Bucket names are globally unique, so the account id keeps this from
+      # colliding with someone else's.
+      BucketName: !Sub "${ProjectName}-images-${AWS::AccountId}"
+      OwnershipControls:
+        # ACLs disabled. Access is granted by bucket policy only, which is one
+        # mechanism to reason about instead of two.
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        # Public *reads* are the point: these are marketing photographs.
+        # Everything else stays blocked, so nobody can make the bucket writable
+        # or listable by accident.
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        # Needed so the dashboard can PUT straight to S3 with a presigned URL
+        # rather than routing image bytes through the app.
+        CorsRules:
+          - AllowedMethods: [PUT]
+            AllowedOrigins:
+              - !Sub "https://${SiteDomain}"
+              - !Sub "https://www.${SiteDomain}"
+              - http://localhost:3000
+            AllowedHeaders: ["*"]
+            MaxAge: 3000
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  ImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ImagesBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # Read-only, and only for objects. Listing the bucket is not granted,
+          # so the set of filenames is not enumerable by the public.
+          - Sid: PublicReadObjects
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${ImagesBucket.Arn}/*"
+
+  # ---------------------------------------------------------------------------
   # Identity — staff sign-in for /admin
   # ---------------------------------------------------------------------------
 
@@ -121,7 +211,47 @@ Resources:
         - email
       AutoVerifiedAttributes:
         - email
+      # Send login codes through SES rather than Cognito's built-in sender.
+      #
+      # Two reasons this matters more than it looks. Cognito's default sender is
+      # capped at 50 emails per day across the whole pool, and a login code that
+      # silently does not arrive is indistinguishable from a broken dashboard.
+      # It also sends from an amazonaws.com address, which lands in spam more
+      # often than a DKIM-signed message from our own verified domain.
+      #
+      # Note this keeps working while SES is in the sandbox: every admin address
+      # is at the verified domain, so codes are deliverable today.
+      EmailConfiguration: !If
+        - CreateEmailIdentity
+        - EmailSendingAccount: DEVELOPER
+          From: !Sub "1127 Events <hello@${SendingDomain}>"
+          SourceArn: !Sub "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SendingDomain}"
+        - !Ref AWS::NoValue
+      # Passwordless. Staff sign in with a code emailed to them, so there is no
+      # admin password to phish, reuse, or leak. Requires the ESSENTIALS feature
+      # plan, which this pool is on.
+      #
+      # PASSWORD is listed because Cognito refuses the pool otherwise:
+      #   "PASSWORD should be configured as one of the allowed first auth
+      #    factors."
+      # It cannot be removed. So passwordless is enforced in two other layers
+      # instead, and both matter:
+      #
+      #   1. The app client below does NOT grant ALLOW_USER_PASSWORD_AUTH, so
+      #      there is no API path that accepts a password directly.
+      #   2. Accounts are created with a random permanent password that is
+      #      generated, used once to move the account to CONFIRMED, and then
+      #      discarded unrecorded. Nobody knows it, so nobody can present it.
+      #
+      # Neither layer alone would be enough. Together, the emailed code is the
+      # only usable way in.
       Policies:
+        SignInPolicy:
+          AllowedFirstAuthFactors:
+            - PASSWORD
+            - EMAIL_OTP
+        # Still declared because Cognito requires a password on user creation
+        # even when passwords are never used to sign in.
         PasswordPolicy:
           MinimumLength: 12
           RequireUppercase: true
@@ -129,9 +259,9 @@ Resources:
           RequireNumbers: true
           RequireSymbols: true
           TemporaryPasswordValidityDays: 7
-      MfaConfiguration: "OPTIONAL"
-      EnabledMfas:
-        - SOFTWARE_TOKEN_MFA
+      # MFA off by design: the emailed code IS the factor. Requiring a second
+      # one on top would be theatre for a three-person dashboard.
+      MfaConfiguration: "OFF"
       AccountRecoverySetting:
         RecoveryMechanisms:
           - Name: verified_email
@@ -148,7 +278,11 @@ Resources:
       # resulting access token in an HTTP-only cookie.
       GenerateSecret: false
       ExplicitAuthFlows:
-        - ALLOW_USER_PASSWORD_AUTH
+        # ALLOW_USER_AUTH is the choice-based flow that carries EMAIL_OTP.
+        # ALLOW_USER_PASSWORD_AUTH is deliberately absent: with it enabled, a
+        # caller could bypass the emailed code entirely and sign in with a
+        # password, which would quietly undo the passwordless decision.
+        - ALLOW_USER_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
       AccessTokenValidity: 8
       IdTokenValidity: 8
@@ -228,6 +362,16 @@ Resources:
               - !GetAtt EventsTable.Arn
               - !GetAtt SubmissionsTable.Arn
               - !Sub "${SubmissionsTable.Arn}/index/*"
+              - !GetAtt RateLimitTable.Arn
+          - Sid: UploadImages
+            Effect: Allow
+            Action:
+              # PutObject so the dashboard can hand out presigned upload URLs.
+              # No DeleteObject: replacing a photograph means overwriting a key,
+              # and not granting deletion means a misdirected call cannot wipe
+              # the gallery.
+              - s3:PutObject
+            Resource: !Sub "${ImagesBucket.Arn}/*"
           - Sid: SendSms
             Effect: Allow
             Action:
@@ -258,6 +402,20 @@ Outputs:
   SubmissionsTableName:
     Description: Set as SUBMISSIONS_TABLE in Amplify.
     Value: !Ref SubmissionsTable
+
+  RateLimitTableName:
+    Description: Set as RATELIMIT_TABLE in Amplify.
+    Value: !Ref RateLimitTable
+
+  ImagesBucketName:
+    Description: Set as IMAGES_BUCKET in Amplify.
+    Value: !Ref ImagesBucket
+
+  ImagesBaseUrl:
+    Description: >
+      Set as IMAGES_BASE_URL in Amplify, and add this host to
+      next.config.ts images.remotePatterns or Next will refuse to render them.
+    Value: !Sub "https://${ImagesBucket}.s3.${AWS::Region}.amazonaws.com"
 
   CognitoUserPoolId:
     Description: Set as COGNITO_USER_POOL_ID in Amplify.

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useId } from "react";
 import { smsProgram } from "@/content/site";
 import type {
-  InputHTMLAttributes,
+  ComponentPropsWithRef,
   ReactNode,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
@@ -86,12 +86,16 @@ function describedBy({ id, error, hint }: Described) {
   return undefined;
 }
 
+// ComponentPropsWithRef rather than InputHTMLAttributes so callers can pass a
+// ref. React 19 treats ref as an ordinary prop on function components, so it
+// arrives in `rest` and spreads straight onto the input with no forwardRef.
+// The login form needs this to move focus to the code field.
 export function TextInput({
   id,
   error,
   hint,
   ...rest
-}: Described & InputHTMLAttributes<HTMLInputElement>) {
+}: Described & ComponentPropsWithRef<"input">) {
   return (
     <input
       id={id}

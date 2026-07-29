@@ -5,6 +5,7 @@ import {
   notifyRsvp,
   notifyTalent,
 } from "@/lib/email";
+import { consume } from "@/lib/rate-limit";
 import { buildRequestMeta, clientIp } from "@/lib/request-meta";
 import { notifySmsOptIn } from "@/lib/sms";
 import { listPublicEvents, listSubmissions, recordSubmission } from "@/lib/store";
@@ -28,37 +29,26 @@ type Payload = {
   context?: { page?: unknown; referrer?: unknown };
 };
 
-/**
- * Best-effort throttle. This is per-instance memory, so it is a speed bump for
- * casual abuse rather than a guarantee, put a real rate limiter or a WAF in
- * front of the route if the form starts attracting traffic.
- */
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 6;
-const hits = new Map<string, number[]>();
-
-function rateLimited(key: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(key) ?? []).filter((time) => now - time < WINDOW_MS);
-  recent.push(now);
-  hits.set(key, recent);
-
-  if (hits.size > 5000) hits.clear(); // crude memory ceiling
-
-  return recent.length > MAX_PER_WINDOW;
-}
-
 export async function POST(request: Request) {
   const ip = clientIp(request.headers) ?? "unknown";
 
-  if (rateLimited(ip)) {
+  // Sliding window in DynamoDB, so the limit is shared across Lambda instances
+  // and survives cold starts. See lib/rate-limit.ts for why the previous
+  // in-process version was not really a limit at all.
+  const throttle = await consume("form", ip);
+  if (!throttle.allowed) {
     return NextResponse.json(
       {
         ok: false,
         message:
           "That's a lot of submissions. Give it a few minutes and try again.",
       },
-      { status: 429 },
+      {
+        status: 429,
+        // Tells well-behaved clients exactly how long to wait instead of
+        // making them guess, and it is what the spec expects on a 429.
+        headers: { "Retry-After": String(throttle.retryAfterSeconds) },
+      },
     );
   }
 

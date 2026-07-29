@@ -6,20 +6,32 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { cookies } from "next/headers";
+import { authMode, maskEmail, type AuthMode } from "./auth-policy.ts";
+
+// Re-exported so callers can keep importing from "@/lib/auth".
+export { authMode, maskEmail };
+export type { AuthMode };
 
 /**
  * Admin authentication
  * ====================
  *
- * Production  → Amazon Cognito user pool. Sign-in exchanges email + password
- *               for an access token, which is stored in an HTTP-only cookie
- *               and verified against the pool's JWKS on every admin request.
+ * Passwordless. Staff enter an email address, Cognito emails a six-digit code,
+ * and the code is exchanged for an access token stored in an HTTP-only cookie
+ * and verified against the pool's JWKS on every admin request.
+ *
+ * There is no admin password anywhere in this system. That removes a whole
+ * category of problem: nothing to phish, reuse across sites, leak in a paste,
+ * or rotate. The tradeoff is that sign-in depends on email delivery working,
+ * which is why the pool sends through SES on our own verified domain rather
+ * than Cognito's default sender.
+ *
+ * Production  → Cognito USER_AUTH flow with EMAIL_OTP.
  *
  * Development → if no Cognito pool is configured AND NODE_ENV is not
- *               "production", a local HMAC-signed cookie is issued instead so
- *               the dashboard can be built and reviewed before any AWS
- *               resources exist. This path is impossible in production: see
- *               `authMode()` below.
+ *               "production", the code is printed to the server console instead
+ *               of emailed, and a local HMAC-signed cookie is issued. This path
+ *               is impossible in production: see `authMode()` below.
  */
 
 export const SESSION_COOKIE = "1127_admin";
@@ -30,21 +42,17 @@ const CLIENT_ID = () => process.env.COGNITO_CLIENT_ID;
 const REGION = () =>
   process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-2";
 
-export type AuthMode = "cognito" | "dev" | "unconfigured";
-
-export function authMode(): AuthMode {
-  if (USER_POOL_ID() && CLIENT_ID()) return "cognito";
-  // Never fall back to dev auth in a deployed environment.
-  if (process.env.NODE_ENV !== "production") return "dev";
-  return "unconfigured";
-}
-
 export type AdminUser = { email: string; via: AuthMode };
 
-export type SignInResult =
-  | { status: "ok"; token: string }
-  | { status: "new-password-required"; session: string }
+/** Result of asking for a login code. */
+export type CodeRequestResult =
+  | { status: "code-sent"; session: string; destination?: string }
   | { status: "error"; message: string };
+
+/** Result of submitting a login code. */
+export type CodeVerifyResult =
+  | { status: "ok"; token: string }
+  | { status: "error"; message: string; retryable: boolean };
 
 /* -------------------------------------------------------------------------- */
 /* Cognito                                                                     */
@@ -96,6 +104,55 @@ function devIssue(email: string): string {
   return `${payload}.${devSign(payload)}`;
 }
 
+/**
+ * Development stand-in for Cognito's emailed code.
+ *
+ * No email is sent locally; the code is printed to the server console instead.
+ * Single process, in-memory, five minute expiry, one attempt tracked per
+ * session, all of which is fine because `authMode()` cannot return "dev" in a
+ * production build.
+ */
+const devCodes = new Map<
+  string,
+  { code: string; expires: number; valid: boolean }
+>();
+
+function devNewCodeSession(email: string, valid: boolean): string {
+  const session = `dev-${createHmac("sha256", devSecret()).update(`${email}:${Date.now()}`).digest("base64url").slice(0, 24)}`;
+  const code = String(Math.floor(100000 + (Date.now() % 900000))).slice(0, 6);
+  devCodes.set(session, { code, expires: Date.now() + 5 * 60 * 1000, valid });
+
+  // Prune so a long dev session does not accumulate entries.
+  for (const [key, entry] of devCodes) {
+    if (entry.expires < Date.now()) devCodes.delete(key);
+  }
+
+  console.info(
+    valid
+      ? `[1127] dev login code for ${email}: ${code}`
+      : `[1127] dev login code issued for unknown address ${email} (will not work): ${code}`,
+  );
+  return session;
+}
+
+function devCheckCode(session: string, code: string): boolean {
+  const entry = devCodes.get(session);
+  if (!entry) return false;
+  if (entry.expires < Date.now()) {
+    devCodes.delete(session);
+    return false;
+  }
+  if (!entry.valid) return false;
+
+  const a = Buffer.from(entry.code);
+  const b = Buffer.from(code);
+  const ok = a.length === b.length && timingSafeEqual(a, b);
+  // One shot, matching Cognito: a used or wrong code does not get a second try
+  // on the same session.
+  if (ok) devCodes.delete(session);
+  return ok;
+}
+
 function devVerify(token: string): string | null {
   const split = token.lastIndexOf(".");
   if (split <= 0) return null;
@@ -123,11 +180,17 @@ function devVerify(token: string): string | null {
 /* Public API                                                                  */
 /* -------------------------------------------------------------------------- */
 
-export async function signIn(
-  email: string,
-  password: string,
-): Promise<SignInResult> {
+/**
+ * Step one: ask Cognito to email a six-digit code.
+ *
+ * Deliberately returns the same shape whether or not the address belongs to a
+ * real account. Saying "no such user" here would turn this endpoint into a way
+ * to enumerate who works here, and Cognito's PreventUserExistenceErrors exists
+ * for the same reason. The caller is told a code was sent either way.
+ */
+export async function requestLoginCode(email: string): Promise<CodeRequestResult> {
   const mode = authMode();
+  const address = email.trim().toLowerCase();
 
   if (mode === "unconfigured") {
     return {
@@ -138,55 +201,62 @@ export async function signIn(
   }
 
   if (mode === "dev") {
-    const expectedEmail = process.env.DEV_ADMIN_EMAIL ?? "admin@1127.local";
-    const expectedPassword = process.env.DEV_ADMIN_PASSWORD ?? "1127-dev";
-
-    if (email.trim().toLowerCase() !== expectedEmail.toLowerCase()) {
-      return { status: "error", message: "Email or password is incorrect." };
-    }
-    const a = Buffer.from(password);
-    const b = Buffer.from(expectedPassword);
-    if (a.length !== b.length || !timingSafeEqual(a, b)) {
-      return { status: "error", message: "Email or password is incorrect." };
-    }
-
-    return { status: "ok", token: devIssue(expectedEmail) };
+    const allowed = (
+      process.env.DEV_ADMIN_EMAIL ?? "admin@1127.local"
+    ).toLowerCase();
+    // Still issue a session for an unknown address so local behaviour matches
+    // production, but only a code for the configured one will work.
+    const session = devNewCodeSession(address, address === allowed);
+    return { status: "code-sent", session, destination: maskEmail(address) };
   }
 
   try {
     const result = await cognitoClient().send(
       new InitiateAuthCommand({
-        AuthFlow: "USER_PASSWORD_AUTH",
+        // The choice-based flow. EMAIL_OTP is requested explicitly so Cognito
+        // sends the code immediately rather than replying with a list of
+        // available factors and waiting to be asked again.
+        AuthFlow: "USER_AUTH",
         ClientId: CLIENT_ID(),
-        AuthParameters: { USERNAME: email.trim(), PASSWORD: password },
+        AuthParameters: {
+          USERNAME: address,
+          PREFERRED_CHALLENGE: "EMAIL_OTP",
+        },
       }),
     );
 
-    if (result.ChallengeName === "NEW_PASSWORD_REQUIRED") {
+    if (result.Session) {
       return {
-        status: "new-password-required",
-        session: result.Session as string,
+        status: "code-sent",
+        session: result.Session,
+        destination:
+          result.ChallengeParameters?.CODE_DELIVERY_DESTINATION ??
+          maskEmail(address),
       };
     }
 
-    const token = result.AuthenticationResult?.AccessToken;
-    if (!token) {
-      return { status: "error", message: "Sign-in failed. Please try again." };
-    }
-
-    return { status: "ok", token };
+    // No session and no challenge means Cognito would not start the flow. Most
+    // often the account does not exist, which we do not disclose.
+    console.warn("[1127] USER_AUTH returned no session", result.ChallengeName);
+    return { status: "error", message: "Could not start sign-in. Try again." };
   } catch (error) {
     const name = (error as { name?: string }).name;
-    if (name === "NotAuthorizedException" || name === "UserNotFoundException") {
-      return { status: "error", message: "Email or password is incorrect." };
-    }
-    if (name === "PasswordResetRequiredException") {
+    if (name === "UserNotFoundException" || name === "NotAuthorizedException") {
+      // Same non-answer as the success path, so timing aside, the response does
+      // not reveal whether the address is real.
       return {
-        status: "error",
-        message: "This account needs a password reset in the Cognito console.",
+        status: "code-sent",
+        session: "",
+        destination: maskEmail(address),
       };
     }
-    console.error("[1127] cognito sign-in failed", error);
+    if (name === "TooManyRequestsException" || name === "LimitExceededException") {
+      return {
+        status: "error",
+        message: "Too many attempts. Wait a few minutes and try again.",
+      };
+    }
+    console.error("[1127] could not send login code", error);
     return {
       status: "error",
       message: "Could not reach the sign-in service. Please try again.",
@@ -194,42 +264,91 @@ export async function signIn(
   }
 }
 
-/** Completes the forced password change Cognito requires for new users. */
-export async function completeNewPassword(
+/** Step two: exchange the emailed code for a session. */
+export async function verifyLoginCode(
   email: string,
-  newPassword: string,
+  code: string,
   session: string,
-): Promise<SignInResult> {
-  if (authMode() !== "cognito") {
-    return { status: "error", message: "Not available in this environment." };
+): Promise<CodeVerifyResult> {
+  const mode = authMode();
+  const address = email.trim().toLowerCase();
+  const digits = code.replace(/\s/g, "");
+
+  if (mode === "unconfigured") {
+    return {
+      status: "error",
+      message: "Admin sign-in is not configured.",
+      retryable: false,
+    };
+  }
+
+  if (mode === "dev") {
+    const ok = devCheckCode(session, digits);
+    return ok
+      ? { status: "ok", token: devIssue(address) }
+      : {
+          status: "error",
+          message: "That code is not right, or it has expired.",
+          retryable: true,
+        };
+  }
+
+  if (!session) {
+    // The request step declined to say the account was unknown, so the failure
+    // surfaces here instead, still without confirming anything.
+    return {
+      status: "error",
+      message: "That code is not right, or it has expired.",
+      retryable: true,
+    };
   }
 
   try {
     const result = await cognitoClient().send(
       new RespondToAuthChallengeCommand({
-        ChallengeName: "NEW_PASSWORD_REQUIRED",
+        ChallengeName: "EMAIL_OTP",
         ClientId: CLIENT_ID(),
         Session: session,
-        ChallengeResponses: { USERNAME: email.trim(), NEW_PASSWORD: newPassword },
+        ChallengeResponses: {
+          USERNAME: address,
+          EMAIL_OTP_CODE: digits,
+        },
       }),
     );
 
     const token = result.AuthenticationResult?.AccessToken;
     if (!token) {
-      return { status: "error", message: "Could not set that password." };
+      return {
+        status: "error",
+        message: "That code is not right, or it has expired.",
+        retryable: true,
+      };
     }
     return { status: "ok", token };
   } catch (error) {
     const name = (error as { name?: string }).name;
-    if (name === "InvalidPasswordException") {
+    if (name === "CodeMismatchException") {
       return {
         status: "error",
-        message:
-          "That password doesn't meet the policy: at least 12 characters, with upper and lower case, a number and a symbol.",
+        message: "That code is not right. Check the email and try again.",
+        retryable: true,
       };
     }
-    console.error("[1127] new password challenge failed", error);
-    return { status: "error", message: "Could not set that password." };
+    if (name === "ExpiredCodeException" || name === "NotAuthorizedException") {
+      // Cognito invalidates the session after too many wrong guesses, so the
+      // honest instruction is to start over rather than keep typing.
+      return {
+        status: "error",
+        message: "That code has expired. Request a new one.",
+        retryable: false,
+      };
+    }
+    console.error("[1127] could not verify login code", error);
+    return {
+      status: "error",
+      message: "Could not reach the sign-in service. Please try again.",
+      retryable: true,
+    };
   }
 }
 

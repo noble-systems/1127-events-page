@@ -1,3 +1,4 @@
+import { isValidImageRef } from "./images.ts";
 import {
   MEDIA_TONES,
   type CtaAction,
@@ -121,12 +122,12 @@ export function validateEvent(values: EventFormValues): FormErrors {
     errors.order = "Order must be a number between 0 and 999.";
   }
 
-  // Must be a single-slash local path. Rejecting a leading "//" matters:
-  // "//evil.example/x.jpg" is a protocol-relative URL, not a local file. ".."
-  // is refused so the path can't climb out of /public.
-  const image = values.image.trim();
-  if (image && (!/^\/(?!\/)[\w\-./]+$/.test(image) || image.includes(".."))) {
-    errors.image = "Use a path inside /public, e.g. /media/sun-club-01.jpg";
+  // Either a file under /public or an "s3:" key in the images bucket. The rule
+  // lives in lib/images.ts because the upload route needs exactly the same one,
+  // and two copies of a security check drift apart.
+  if (!isValidImageRef(values.image)) {
+    errors.image =
+      "Upload a photo, or use a path inside /public such as /media/sun-club-01.jpg";
   }
 
   return errors;

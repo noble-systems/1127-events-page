@@ -72,6 +72,63 @@ export function EventForm({
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [touched, setTouched] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  /**
+   * Two steps: ask the server to presign a PUT, then send the bytes straight to
+   * S3. The file never goes through the app, which is what keeps a large
+   * photograph from hitting the Lambda request body limit.
+   */
+  const upload = async (file: File) => {
+    setUploadError(null);
+    setUploading(true);
+
+    try {
+      const signed = await fetch("/api/admin/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId,
+          filename: file.name,
+          contentType: file.type,
+        }),
+      });
+
+      const data = (await signed.json().catch(() => null)) as {
+        ok?: boolean;
+        url?: string;
+        ref?: string;
+        message?: string;
+      } | null;
+
+      if (!signed.ok || !data?.ok || !data.url || !data.ref) {
+        setUploadError(data?.message ?? "Could not start that upload.");
+        return;
+      }
+
+      const put = await fetch(data.url, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+
+      if (!put.ok) {
+        // Most often a CORS or expiry problem, and the browser will not say
+        // which, so point at the thing that is actually checkable.
+        setUploadError(
+          `S3 rejected the upload (${put.status}). Check the bucket CORS rules allow PUT from this origin.`,
+        );
+        return;
+      }
+
+      set("image", data.ref);
+    } catch {
+      setUploadError("Upload failed. Check your connection and try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const set = <K extends keyof EventFormValues>(
     key: K,
@@ -323,20 +380,57 @@ export function EventForm({
 
           <Field
             id="ev-image"
-            label="Photo path"
+            label="Photograph"
             optional
-            error={errors.image}
-            hint="Upload to /public/media and reference it, e.g. /media/sun-club-01.jpg"
+            error={errors.image ?? uploadError ?? undefined}
+            hint={
+              eventId
+                ? "Upload a JPEG, PNG, WebP or AVIF. Uploading again replaces this event's photo everywhere."
+                : "Save the event first, then you can upload a photograph."
+            }
           >
-            <TextInput
-              id="ev-image"
-              name="image"
-              placeholder="/media/sun-club-01.jpg"
-              value={values.image}
-              error={errors.image}
-              disabled={busy}
-              onChange={(e) => set("image", e.target.value)}
-            />
+            <div className="space-y-3">
+              {eventId ? (
+                <input
+                  id="ev-image-file"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  disabled={busy || uploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    // Reset so selecting the same file twice still fires.
+                    e.target.value = "";
+                    if (file) void upload(file);
+                  }}
+                  className="border-ink/15 bg-bone-soft file:bg-ink file:text-bone hover:border-ink/30 w-full rounded-xl border px-4 py-3 text-[0.9375rem] file:mr-4 file:rounded-full file:border-0 file:px-4 file:py-2 file:text-[0.8125rem] disabled:opacity-60"
+                />
+              ) : null}
+
+              {uploading ? (
+                <p className="text-ink/65 flex items-center gap-2 text-[0.8125rem]">
+                  <Spinner />
+                  Uploading…
+                </p>
+              ) : null}
+
+              <TextInput
+                id="ev-image"
+                name="image"
+                placeholder="s3:events/sun-club/hero.jpg or /media/sun-club-01.jpg"
+                value={values.image}
+                error={errors.image}
+                disabled={busy || uploading}
+                onChange={(e) => set("image", e.target.value)}
+              />
+
+              {values.image ? (
+                <p className="text-ink/65 text-[0.75rem]">
+                  {values.image.startsWith("s3:")
+                    ? "Stored in the images bucket. Swap it by uploading again."
+                    : "A file committed under /public."}
+                </p>
+              ) : null}
+            </div>
           </Field>
 
           <Field
