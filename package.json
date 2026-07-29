@@ -1,0 +1,43 @@
+{
+  "name": "1127-events",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test \"lib/**/*.test.ts\"",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1097.0",
+    "@aws-sdk/client-dynamodb": "^3.1097.0",
+    "@aws-sdk/client-pinpoint-sms-voice-v2": "^3.1097.0",
+    "@aws-sdk/client-sesv2": "^3.1097.0",
+    "@aws-sdk/lib-dynamodb": "^3.1097.0",
+    "aws-jwt-verify": "^5.2.1",
+    "next": "16.2.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.12",
+    "prettier": "^3.9.6",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

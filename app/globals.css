@@ -1,0 +1,271 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   1127 EVENTS - DESIGN TOKENS
+   Mediterranean beach-club restraint + Arizona desert warmth.
+   ========================================================================== */
+
+@theme {
+  /* Warm neutrals */
+  --color-bone: #f7f2e9;
+  --color-bone-soft: #fbf8f2;
+  --color-sand: #ece1cf;
+  --color-sand-deep: #ddcdb2;
+
+  /* Ink - warm charcoal, never pure black */
+  --color-ink: #191713;
+  --color-ink-800: #24211c;
+  --color-ink-600: #4b453b;
+  --color-ink-400: #7d7465;
+
+  /* Sun - faded, not neon */
+  --color-sun: #e0a63c;
+  --color-sun-soft: #f0d49a;
+  --color-sun-deep: #b77c23;
+
+  /* Mediterranean blues */
+  --color-cobalt: #1b3fcb;
+  --color-cobalt-soft: #3f63e4;
+  --color-sea: #10265c;
+  --color-deep: #07142f;
+
+  /* Terracotta - sparingly */
+  --color-terracotta: #bf5b3c;
+  --color-terracotta-soft: #d98a63;
+  /* Darkened for error text so it clears 4.5:1 on bone */
+  --color-terracotta-deep: #9a3f24;
+
+  --font-display: var(--font-fraunces), ui-serif, Georgia, "Times New Roman", serif;
+  --font-sans:
+    var(--font-inter-tight), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
+
+@layer base {
+  :root {
+    --focus-ring: var(--color-cobalt);
+    --header-offset: 5.5rem;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: var(--header-offset);
+    -webkit-text-size-adjust: 100%;
+    /* Reserve the scrollbar gutter so opening a modal doesn't shift the page. */
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--color-bone);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    /* Guard against any accidental horizontal overflow on small screens. */
+    overflow-x: clip;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Visible, high-contrast focus on every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  /* Dark surfaces flip the ring so it stays legible. */
+  .on-dark {
+    --focus-ring: var(--color-sun-soft);
+  }
+
+  ::selection {
+    background-color: var(--color-sun-soft);
+    color: var(--color-ink);
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Native dialog backdrop */
+  dialog::backdrop {
+    background: color-mix(in srgb, var(--color-deep) 72%, transparent);
+    backdrop-filter: blur(6px);
+  }
+}
+
+/* ==========================================================================
+   UTILITIES
+   ========================================================================== */
+
+/* Film grain - keeps gradient placeholders reading as photographic, not neon */
+@utility grain {
+  position: relative;
+  isolation: isolate;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0.13;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  }
+}
+
+/* Small uppercase label voice used for eyebrows, meta and nav */
+@utility label-xs {
+  font-size: 0.75rem;
+  line-height: 1.15;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+@utility label-sm {
+  font-size: 0.8125rem;
+  line-height: 1.15;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Page gutter, consistent everywhere */
+@utility shell {
+  width: 100%;
+  max-width: 84rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+
+  @media (min-width: 768px) {
+    padding-inline: 2.5rem;
+  }
+
+  @media (min-width: 1280px) {
+    padding-inline: 3.5rem;
+  }
+}
+
+/* Hairline rule that reads on both light and dark surfaces */
+@utility rule {
+  border-top: 1px solid currentColor;
+  opacity: 0.14;
+}
+
+/* ==========================================================================
+   MOTION - restrained, and fully disabled under reduced-motion
+   ========================================================================== */
+
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 20px, 0);
+  transition:
+    opacity 0.85s var(--ease-soft),
+    transform 0.85s var(--ease-soft);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal[data-visible="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    transform: translate3d(-2%, 0, 0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate3d(2%, 0, 0);
+    opacity: 0.8;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 14s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 9s ease-in-out infinite;
+}
+
+.animate-rise {
+  animation: rise 0.9s var(--ease-soft) both;
+  animation-delay: var(--rise-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .animate-shimmer,
+  .animate-glow,
+  .animate-rise {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

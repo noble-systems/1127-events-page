@@ -1,0 +1,302 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  1127 Events — data and identity for the marketing site and admin dashboard.
+  Creates two DynamoDB tables, a Cognito user pool for staff sign-in, and an
+  IAM policy to attach to the Amplify Hosting compute role.
+
+  Deploy with:
+    aws cloudformation deploy \
+      --template-file infra/1127-infra.yaml \
+      --stack-name 1127-events \
+      --capabilities CAPABILITY_IAM \
+      --region us-west-2
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 1127-events
+    Description: Prefix for all resource names.
+
+  AdminEmail:
+    Type: String
+    Default: ""
+    Description: >
+      Optional. If set, this email is created as the first admin user and AWS
+      emails them a temporary password. Leave blank to create users by hand.
+
+  SendingDomain:
+    Type: String
+    Default: ""
+    Description: >
+      Optional. Domain SES will send RSVP email from, e.g. 1127events.com.
+      Creates a verified identity with DKIM; you then add the three CNAME
+      records from the stack outputs to DNS. Leave blank to skip email setup.
+
+Conditions:
+  CreateAdminUser: !Not [!Equals [!Ref AdminEmail, ""]]
+  CreateEmailIdentity: !Not [!Equals [!Ref SendingDomain, ""]]
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # Data
+  # ---------------------------------------------------------------------------
+
+  EventsTable:
+    Type: AWS::DynamoDB::Table
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub "${ProjectName}-events"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  SubmissionsTable:
+    Type: AWS::DynamoDB::Table
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub "${ProjectName}-submissions"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: type
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        # Lets the dashboard read one submission type newest-first without
+        # scanning the whole table.
+        - IndexName: byType
+          KeySchema:
+            - AttributeName: type
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # ---------------------------------------------------------------------------
+  # Identity — staff sign-in for /admin
+  # ---------------------------------------------------------------------------
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${ProjectName}-admins"
+      # Staff accounts are created by an administrator; there is no public
+      # sign-up for the dashboard.
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+        InviteMessageTemplate:
+          EmailSubject: "Your 1127 Events admin account"
+          EmailMessage: >
+            You have been added to the 1127 Events dashboard.
+            Username: {username}
+            Temporary password: {####}
+            You'll be asked to choose a new password when you first sign in.
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          TemporaryPasswordValidityDays: 7
+      MfaConfiguration: "OPTIONAL"
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      UserPoolTags:
+        Project: !Ref ProjectName
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "${ProjectName}-admin-web"
+      UserPoolId: !Ref UserPool
+      # No client secret: the app authenticates server-side and stores the
+      # resulting access token in an HTTP-only cookie.
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      AccessTokenValidity: 8
+      IdTokenValidity: 8
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      PreventUserExistenceErrors: ENABLED
+
+  FirstAdminUser:
+    Type: AWS::Cognito::UserPoolUser
+    Condition: CreateAdminUser
+    Properties:
+      UserPoolId: !Ref UserPool
+      Username: !Ref AdminEmail
+      DesiredDeliveryMediums:
+        - EMAIL
+      UserAttributes:
+        - Name: email
+          Value: !Ref AdminEmail
+        - Name: email_verified
+          Value: "true"
+
+  # ---------------------------------------------------------------------------
+  # Email — RSVP confirmations and internal notifications
+  # ---------------------------------------------------------------------------
+
+  EmailIdentity:
+    Type: AWS::SES::EmailIdentity
+    Condition: CreateEmailIdentity
+    Properties:
+      EmailIdentity: !Ref SendingDomain
+      DkimAttributes:
+        SigningEnabled: true
+      MailFromAttributes:
+        # A custom MAIL FROM domain aligns SPF with the From: address, which
+        # materially improves inbox placement.
+        MailFromDomain: !Sub "mail.${SendingDomain}"
+        BehaviorOnMxFailure: USE_DEFAULT_VALUE
+
+  EmailConfigurationSet:
+    Type: AWS::SES::ConfigurationSet
+    Properties:
+      Name: !Sub "${ProjectName}-email"
+      ReputationOptions:
+        ReputationMetricsEnabled: true
+      SendingOptions:
+        SendingEnabled: true
+      SuppressionOptions:
+        # Stop sending to addresses that hard-bounce or report spam.
+        SuppressedReasons:
+          - BOUNCE
+          - COMPLAINT
+
+  # ---------------------------------------------------------------------------
+  # Permissions for the Amplify Hosting compute role
+  # ---------------------------------------------------------------------------
+
+  AppDataPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${ProjectName}-app-data"
+      Description: Read/write access to the 1127 Events tables, plus SES and SMS send.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EventsAndSubmissions
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:DeleteItem
+              - dynamodb:Query
+              - dynamodb:Scan
+            Resource:
+              - !GetAtt EventsTable.Arn
+              - !GetAtt SubmissionsTable.Arn
+              - !Sub "${SubmissionsTable.Arn}/index/*"
+          - Sid: SendSms
+            Effect: Allow
+            Action:
+              - sms-voice:SendTextMessage
+            # Scoped to the account's own origination identities. Phone numbers
+            # are provisioned through the console because A2P registration is a
+            # manual review process, so there is no ARN to reference here.
+            Resource: !Sub "arn:${AWS::Partition}:sms-voice:${AWS::Region}:${AWS::AccountId}:*"
+
+          # Only added when a sending domain was supplied, and scoped to that
+          # identity so this role can't send as anything else.
+          - !If
+            - CreateEmailIdentity
+            - Sid: SendRsvpEmail
+              Effect: Allow
+              Action:
+                - ses:SendEmail
+              Resource:
+                - !Sub "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SendingDomain}"
+                - !Sub "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:configuration-set/${ProjectName}-email"
+            - !Ref AWS::NoValue
+
+Outputs:
+  EventsTableName:
+    Description: Set as EVENTS_TABLE in Amplify.
+    Value: !Ref EventsTable
+
+  SubmissionsTableName:
+    Description: Set as SUBMISSIONS_TABLE in Amplify.
+    Value: !Ref SubmissionsTable
+
+  CognitoUserPoolId:
+    Description: Set as COGNITO_USER_POOL_ID in Amplify.
+    Value: !Ref UserPool
+
+  CognitoClientId:
+    Description: Set as COGNITO_CLIENT_ID in Amplify.
+    Value: !Ref UserPoolClient
+
+  AppDataPolicyArn:
+    Description: Attach this policy to the Amplify app's compute (SSR) IAM role.
+    Value: !Ref AppDataPolicy
+
+  Region:
+    Description: Set as APP_AWS_REGION in Amplify.
+    Value: !Ref AWS::Region
+
+  EmailConfigurationSetName:
+    Description: Set as SES_CONFIGURATION_SET in Amplify.
+    Value: !Ref EmailConfigurationSet
+
+  DkimRecord1:
+    Condition: CreateEmailIdentity
+    Description: Add as a CNAME record in DNS (name -> value).
+    Value: !Sub "${EmailIdentity.DkimDNSTokenName1} -> ${EmailIdentity.DkimDNSTokenValue1}"
+
+  DkimRecord2:
+    Condition: CreateEmailIdentity
+    Description: Add as a CNAME record in DNS (name -> value).
+    Value: !Sub "${EmailIdentity.DkimDNSTokenName2} -> ${EmailIdentity.DkimDNSTokenValue2}"
+
+  DkimRecord3:
+    Condition: CreateEmailIdentity
+    Description: Add as a CNAME record in DNS (name -> value).
+    Value: !Sub "${EmailIdentity.DkimDNSTokenName3} -> ${EmailIdentity.DkimDNSTokenValue3}"
+
+  MailFromMxRecord:
+    Condition: CreateEmailIdentity
+    Description: >
+      Add as an MX record on the MAIL FROM subdomain, priority 10.
+    Value: !Sub "mail.${SendingDomain} -> feedback-smtp.${AWS::Region}.amazonses.com"
+
+  MailFromTxtRecord:
+    Condition: CreateEmailIdentity
+    Description: Add as a TXT record on the MAIL FROM subdomain.
+    Value: !Sub 'mail.${SendingDomain} -> "v=spf1 include:amazonses.com ~all"'

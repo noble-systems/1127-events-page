@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Lets you re-run checks by hand from the Actions tab.
+  workflow_dispatch:
+
+concurrency:
+  # A new push to the same branch cancels the previous run.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck · Lint · Test · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Unit tests
+        run: npm run test
+
+      # Builds with no AWS variables on purpose: the app must survive a
+      # missing store by falling back to the launch content, and the admin
+      # must refuse to sign anyone in rather than using the dev fallback.
+      - name: Build
+        run: npm run build
+
+  infrastructure:
+    name: Validate CloudFormation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Lint the template
+        # cfn-lint catches bad resource properties and intrinsics that a plain
+        # YAML parse would happily accept.
+        run: |
+          python -m pip install --quiet cfn-lint
+          cfn-lint infra/1127-infra.yaml

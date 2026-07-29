@@ -1,0 +1,69 @@
+name: Deploy infrastructure
+
+# Manual only. The Amplify pipeline deploys the app on every push to main;
+# the DynamoDB tables, Cognito pool and SES identity change rarely and are
+# deployed deliberately from here.
+on:
+  workflow_dispatch:
+    inputs:
+      stack_name:
+        description: CloudFormation stack name
+        default: 1127-events
+        required: true
+      region:
+        description: AWS region
+        default: us-west-2
+        required: true
+      sending_domain:
+        description: SES sending domain (blank to skip email setup)
+        default: ""
+        required: false
+
+permissions:
+  id-token: write # for OIDC
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # Uses OIDC — no long-lived AWS keys in GitHub secrets. Create the role
+      # with a trust policy for token.actions.githubusercontent.com and store
+      # its ARN as the AWS_DEPLOY_ROLE_ARN secret.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ inputs.region }}
+
+      - name: Show the change set before applying
+        run: |
+          aws cloudformation deploy \
+            --template-file infra/1127-infra.yaml \
+            --stack-name "${{ inputs.stack_name }}" \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --region "${{ inputs.region }}" \
+            --no-execute-changeset \
+            --parameter-overrides SendingDomain="${{ inputs.sending_domain }}" \
+            || echo "No changes to deploy"
+
+      - name: Deploy
+        run: |
+          aws cloudformation deploy \
+            --template-file infra/1127-infra.yaml \
+            --stack-name "${{ inputs.stack_name }}" \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --region "${{ inputs.region }}" \
+            --parameter-overrides SendingDomain="${{ inputs.sending_domain }}"
+
+      - name: Outputs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name "${{ inputs.stack_name }}" \
+            --region "${{ inputs.region }}" \
+            --query 'Stacks[0].Outputs' --output table

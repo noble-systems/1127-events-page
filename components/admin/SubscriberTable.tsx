@@ -1,0 +1,323 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { StatusBadge } from "@/components/admin/StatusBadge";
+import { toUrlId } from "@/lib/ids";
+import { describeSource } from "@/lib/request-meta";
+import {
+  STATUS_LABELS,
+  APPLICATION_STATUSES,
+  LIST_STATUSES,
+  normaliseStatus,
+  type SubmissionRecord,
+  type SubmissionStatus,
+  type SubmissionType,
+} from "@/lib/types";
+
+type TabValue = SubmissionType | "all";
+
+const TABS: Array<{ value: TabValue; label: string }> = [
+  { value: "all", label: "Everyone" },
+  { value: "rsvp", label: "RSVP list" },
+  { value: "talent", label: "Talent" },
+  { value: "ambassador", label: "Ambassadors" },
+  { value: "partner", label: "Partner inquiries" },
+];
+
+function formatDate(iso: string) {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? iso
+    : date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+}
+
+/** The most useful third column differs per submission type. */
+function detailFor(row: SubmissionRecord): string {
+  return row.role || row.community || row.company || row.inquiryType || "Not given";
+}
+
+export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
+  const router = useRouter();
+  const [tab, setTab] = useState<TabValue>("all");
+  const [statusFilter, setStatusFilter] = useState<SubmissionStatus | "open">(
+    "open",
+  );
+  const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const counts = useMemo(() => {
+    const base: Record<TabValue, number> = {
+      all: rows.length,
+      rsvp: 0,
+      talent: 0,
+      ambassador: 0,
+      partner: 0,
+    };
+    for (const row of rows) base[row.type] += 1;
+    return base;
+  }, [rows]);
+
+  const newCount = useMemo(
+    () =>
+      rows.filter((row) => normaliseStatus(row.type, row.status) === "new").length,
+    [rows],
+  );
+
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return rows
+      .filter((row) => tab === "all" || row.type === tab)
+      .filter((row) => {
+        const status = normaliseStatus(row.type, row.status);
+        // "Open" is the working queue: everything not yet closed out.
+        if (statusFilter === "open") {
+          // Still needing attention: not closed out, not unsubscribed.
+          return !["archived", "declined", "unsubscribed", "bounced"].includes(
+            status,
+          );
+        }
+        return status === statusFilter;
+      })
+      .filter((row) =>
+        needle
+          ? [
+              row.name,
+              row.email,
+              row.company,
+              row.community,
+              row.role,
+              row.social,
+              row.message,
+              row.notes,
+            ]
+              .filter(Boolean)
+              .some((field) => (field as string).toLowerCase().includes(needle))
+          : true,
+      );
+  }, [rows, tab, statusFilter, query]);
+
+  const remove = async (row: SubmissionRecord) => {
+    if (!window.confirm(`Remove ${row.email} completely? This can't be undone.`))
+      return;
+    setBusy(row.pk);
+    await fetch(`/api/admin/subscribers/${toUrlId(row.pk)}`, {
+      method: "DELETE",
+    });
+    setBusy(null);
+    router.refresh();
+  };
+
+  // Showing "Declined" while the RSVP tab is active would be nonsense.
+  const statusOptions: Array<SubmissionStatus | "open"> = [
+    "open",
+    ...(tab === "rsvp"
+      ? LIST_STATUSES
+      : tab === "all"
+        ? [...APPLICATION_STATUSES, ...LIST_STATUSES]
+        : APPLICATION_STATUSES),
+  ];
+
+  const exportHref =
+    tab === "all"
+      ? "/api/admin/subscribers?format=csv"
+      : `/api/admin/subscribers?type=${tab}&format=csv`;
+
+  return (
+    <div>
+      {/* Type */}
+      <div className="flex flex-wrap items-center gap-2">
+        {TABS.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            onClick={() => setTab(item.value)}
+            aria-pressed={tab === item.value}
+            className={`rounded-full px-4 py-2 text-[0.875rem] transition-colors duration-200 ${
+              tab === item.value
+                ? "bg-ink text-bone"
+                : "border-ink/20 text-ink/70 hover:border-ink/45 hover:text-ink border"
+            }`}
+          >
+            {item.label}
+            <span className="ml-2 opacity-65">{counts[item.value]}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Status */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="label-xs text-ink/65 mr-1">Status</span>
+        {statusOptions.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => setStatusFilter(option)}
+            aria-pressed={statusFilter === option}
+            className={`rounded-full px-3 py-1.5 text-[0.8125rem] transition-colors duration-200 ${
+              statusFilter === option
+                ? "bg-cobalt/12 text-cobalt ring-cobalt/30 ring-1"
+                : "text-ink/65 hover:text-ink"
+            }`}
+          >
+            {option === "open" ? "Open" : STATUS_LABELS[option]}
+            {option === "new" && newCount > 0 ? (
+              <span className="bg-sun/30 text-sun-deep ml-1.5 rounded-full px-1.5 py-0.5 text-[0.6875rem]">
+                {newCount}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <label htmlFor="sub-search" className="sr-only">
+            Search
+          </label>
+          <input
+            id="sub-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search names, emails, messages, notes…"
+            className="border-ink/15 bg-bone placeholder:text-ink/50 hover:border-ink/30 w-full rounded-xl border px-4 py-3 text-[0.9375rem]"
+          />
+        </div>
+        <a
+          href={exportHref}
+          className="bg-ink text-bone hover:bg-cobalt rounded-full px-5 py-3 text-[0.9375rem] transition-colors duration-200"
+        >
+          Export CSV
+        </a>
+      </div>
+
+      {visible.length === 0 ? (
+        <div className="border-ink/25 bg-bone/60 mt-8 rounded-2xl border border-dashed p-10 text-center">
+          <p className="font-display text-xl">
+            {query ? "Nothing matches that search." : "Nothing here yet."}
+          </p>
+          <p className="text-ink/65 mx-auto mt-3 max-w-sm text-[0.9375rem] leading-relaxed">
+            {query
+              ? "Try a different term, or widen the status filter."
+              : "RSVPs, talent applications, ambassador applications and partner inquiries all land here."}
+          </p>
+        </div>
+      ) : (
+        <div className="border-ink/12 bg-bone mt-8 overflow-x-auto rounded-2xl border">
+          <table className="w-full min-w-[66rem] border-collapse text-left">
+            <thead>
+              <tr className="border-ink/12 border-b">
+                {[
+                  "Name",
+                  "Type",
+                  "Detail",
+                  "Email list",
+                  "Source",
+                  "Status",
+                  "Added",
+                  "",
+                ].map((heading) => (
+                  <th
+                    key={heading || "actions"}
+                    scope="col"
+                    className="label-xs text-ink/65 px-5 py-4"
+                  >
+                    {heading || <span className="sr-only">Actions</span>}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((row) => {
+                const href = `/admin/list/${toUrlId(row.pk)}`;
+                return (
+                  <tr
+                    key={row.pk}
+                    className="border-ink/8 hover:bg-ink/[0.02] border-b align-top last:border-b-0"
+                  >
+                    <td className="px-5 py-4">
+                      <Link
+                        href={href}
+                        className="text-[0.9375rem] font-medium underline-offset-4 hover:underline"
+                      >
+                        {row.name || row.email}
+                      </Link>
+                      <p className="text-ink/65 mt-1 text-[0.8125rem]">
+                        {row.email}
+                      </p>
+                    </td>
+                    <td className="text-ink/70 px-5 py-4 text-[0.875rem] capitalize">
+                      {row.type}
+                    </td>
+                    <td className="text-ink/70 px-5 py-4 text-[0.875rem]">
+                      {detailFor(row)}
+                      {row.notes ? (
+                        <span
+                          title="Has notes"
+                          className="text-ink/45 ml-2 text-[0.75rem]"
+                        >
+                          ✎
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="px-5 py-4">
+                      {row.marketingOptIn ? (
+                        <span className="text-[0.9375rem] text-emerald-700">
+                          <span aria-hidden="true">✓</span>
+                          <span className="sr-only">Opted in to event email</span>
+                        </span>
+                      ) : (
+                        <span className="sr-only">Not opted in</span>
+                      )}
+                    </td>
+                    <td className="text-ink/70 px-5 py-4 text-[0.875rem]">
+                      {describeSource(row.meta)}
+                      {row.meta?.device ? (
+                        <p className="text-ink/45 mt-1 text-[0.75rem]">
+                          {row.meta.device}
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="px-5 py-4">
+                      <StatusBadge status={normaliseStatus(row.type, row.status)} />
+                    </td>
+                    <td className="text-ink/70 px-5 py-4 text-[0.875rem] whitespace-nowrap">
+                      {formatDate(row.createdAt)}
+                    </td>
+                    <td className="px-5 py-4 text-right whitespace-nowrap">
+                      <Link
+                        href={href}
+                        className="text-cobalt text-[0.8125rem] underline-offset-4 hover:underline"
+                      >
+                        Open
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => remove(row)}
+                        disabled={busy === row.pk}
+                        className="text-terracotta-deep ml-4 text-[0.8125rem] underline-offset-4 hover:underline disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="text-ink/65 mt-5 text-[0.8125rem] leading-relaxed">
+        Showing {visible.length} of {counts[tab]}. Export gives you a UTF-8 CSV
+        including status and notes.
+      </p>
+    </div>
+  );
+}
