@@ -110,7 +110,7 @@ export default function PartnerPage() {
                 id="brings-title"
                 className="mt-5 text-[2rem] leading-[1.05] sm:text-4xl lg:text-[3rem]"
               >
-                More than a lineup. A complete event operation.
+                What you get.
               </h2>
             </Reveal>
             <Reveal delay={120}>

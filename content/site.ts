@@ -389,9 +389,7 @@ export const capabilities: readonly Capability[] = [
 
 export const capabilitiesSection = {
   eyebrow: "What 1127 Brings",
-  title: "More than a lineup. A complete event operation.",
-  intro:
-    "1127 does not simply book talent. We bring the audience, the marketing, the media, the people and the production it takes to make an event work.",
+  title: "What we do.",
 } as const;
 
 /* -------------------------------------------------------------------------- */
@@ -604,7 +602,7 @@ export const partner = {
 
 export const about = {
   eyebrow: "About 1127",
-  title: "An Arizona event-production collective.",
+  title: "Who we are.",
   paragraphs: [
     "1127 Events is a production company and event platform built by an Arizona-based team with roughly 30 years of combined event-production experience across planning, live production, audio, artist management and marketing.",
     "We create and produce our own event concepts rather than promoting other people's. Sun Club is our featured series, and we partner with venues who want a complete operation instead of a booking.",

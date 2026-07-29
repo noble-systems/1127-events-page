@@ -28,7 +28,6 @@ export function Capabilities() {
           id="what-we-do-title"
           eyebrow={capabilitiesSection.eyebrow}
           title={capabilitiesSection.title}
-          intro={capabilitiesSection.intro}
         />
 
         <ol className="border-bone/15 mt-16 border-t">
