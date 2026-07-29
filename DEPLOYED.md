@@ -71,6 +71,10 @@ not an edit.
 ```
 EVENTS_TABLE=1127-events-events
 SUBMISSIONS_TABLE=1127-events-submissions
+RATELIMIT_TABLE=1127-events-ratelimit
+IMAGES_BUCKET=1127-events-images-769194516210
+IMAGES_BASE_URL=https://1127-events-images-769194516210.s3.us-west-2.amazonaws.com
+NEXT_PUBLIC_IMAGES_BASE_URL=https://1127-events-images-769194516210.s3.us-west-2.amazonaws.com
 COGNITO_USER_POOL_ID=us-west-2_Jee1pVz4Z
 COGNITO_CLIENT_ID=3iekhqghjkeujbpt6e28ui5uhh
 APP_AWS_REGION=us-west-2
@@ -79,6 +83,16 @@ SES_FROM_ADDRESS=hello@1127.events
 SITE_URL=https://1127.events
 APP_SECRET=<32+ random characters, generated, never committed>
 ```
+
+**Setting a variable in the Amplify console is not enough.** Amplify exposes
+environment variables to the build but does not inject them into the Next.js SSR
+runtime, so a new one must also be added to the `env | grep -E` allow-list in
+`amplify.yml`. Skipping that produces a site that deploys green, serves every
+page, and fails every write.
+
+`NEXT_PUBLIC_IMAGES_BASE_URL` duplicates `IMAGES_BASE_URL` because the dashboard
+resolves image previews in the browser. It is not a secret: the bucket serves
+those objects publicly by design.
 
 ## DNS at Namecheap: current, verified state
 
@@ -96,20 +110,37 @@ Note the MAIL FROM MX points at **us-west-2**, because that is where the SES
 identity lives. This is the clearest example of why the region split cannot be
 text-edited away.
 
-### The root MX records are load-bearing
+### Root records: Google Workspace and the apex
 
-`1127.events` must keep these five, or nothing at `@1127.events` receives mail:
+Email moved to Google Workspace, which replaced the old Namecheap
+email-forwarding records. Current state:
 
-| Type | Host | Value                             | Priority |
-| ---- | ---- | --------------------------------- | -------- |
-| MX   | `@`  | `eforward1.registrar-servers.com` | 10       |
-| MX   | `@`  | `eforward2.registrar-servers.com` | 10       |
-| MX   | `@`  | `eforward3.registrar-servers.com` | 10       |
-| MX   | `@`  | `eforward4.registrar-servers.com` | 15       |
-| MX   | `@`  | `eforward5.registrar-servers.com` | 20       |
+| Type      | Host  | Value                                  | Priority |
+| --------- | ----- | -------------------------------------- | -------- |
+| MX        | `@`   | `smtp.google.com`                      | 1        |
+| TXT       | `@`   | `v=spf1 include:_spf.google.com ~all`  |          |
+| TXT       | `@`   | `google-site-verification=HiX0PTw8...` |          |
+| **ALIAS** | `@`   | `d2hoe5qz3t1mgx.cloudfront.net`        |          |
+| CNAME     | `www` | `d2hoe5qz3t1mgx.cloudfront.net`        |          |
 
-Switching Mail Settings to "Custom MX" to add the `mail` subdomain record
-removes these automatically. That is what broke `hello@1127.events` once.
+**An earlier version of this file said five `eforward*.registrar-servers.com` MX
+records were load-bearing. They are not, any more. Do not restore them: they
+would compete with `smtp.google.com` and break Workspace delivery.** Google's
+single-MX setup is complete on its own.
+
+Two things that are easy to get wrong here:
+
+- **The apex must be an ALIAS, never a CNAME.** DNS forbids a CNAME on a root
+  domain, and adding one anyway makes it take precedence over every other record
+  at `@`, including the MX. The website would look perfect while all email
+  silently stopped.
+- **Two SPF records coexist because they are on different hostnames.** `@` covers
+  Google, `mail` covers SES. The "one SPF record per domain" rule is per
+  hostname. Neither may be merged into the other, and this separation is why the
+  Workspace migration did not disturb SES.
+
+The `mail` subdomain records exist so SES puts its envelope sender there instead
+of the root, which is precisely what keeps the two mail systems independent.
 
 ## Verified working
 
