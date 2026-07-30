@@ -284,6 +284,13 @@ Resources:
         # password, which would quietly undo the passwordless decision.
         - ALLOW_USER_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
+      # How long the emailed code stays usable. Cognito defaults to 3 minutes,
+      # which sounds reasonable and is not: it has to cover SES delivery, the
+      # person noticing the email, finding it, reading six digits and typing
+      # them. Three minutes expires mid-task routinely, and Cognito then returns
+      # NotAuthorizedException, which is indistinguishable from a wrong code.
+      # 15 is the maximum Cognito allows.
+      AuthSessionValidity: 15
       AccessTokenValidity: 8
       IdTokenValidity: 8
       RefreshTokenValidity: 30
