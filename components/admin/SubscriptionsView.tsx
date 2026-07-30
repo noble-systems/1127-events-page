@@ -1,6 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import type { SubscriptionSummary } from "@/lib/audience";
-import { subscriptionState } from "@/lib/audience";
 import { toUrlId } from "@/lib/ids";
 import { UNSUBSCRIBE_SOURCE_LABELS, type SubmissionRecord } from "@/lib/types";
 
@@ -22,12 +24,12 @@ function Stat({
   );
 }
 
-/** Dates only. The exact minute of an opt-out is noise on this screen. */
+/** Dates only. The exact minute is noise on this screen. */
 function day(value: string | undefined): string {
-  if (!value) return "Date not recorded";
+  if (!value) return "";
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime())
-    ? "Date not recorded"
+    ? ""
     : parsed.toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
@@ -35,15 +37,60 @@ function day(value: string | undefined): string {
       });
 }
 
+function Row({
+  record,
+  right,
+  meta,
+}: {
+  record: SubmissionRecord;
+  right: string;
+  meta: string;
+}) {
+  return (
+    <li>
+      <Link
+        href={`/admin/list/${toUrlId(record.pk)}`}
+        className="hover:bg-bone-soft flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-5 py-4 transition-colors duration-200"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block truncate">
+            {record.name?.trim() || record.email}
+          </span>
+          {record.name?.trim() ? (
+            <span className="text-ink/65 block truncate text-[0.8125rem]">
+              {record.email}
+            </span>
+          ) : null}
+        </span>
+        <span className="text-ink/65 text-[0.8125rem]">{meta}</span>
+        <span className="text-ink/65 w-32 text-right text-[0.8125rem]">
+          {right}
+        </span>
+      </Link>
+    </li>
+  );
+}
+
 export function SubscriptionsView({
   summary,
   rsvps,
-  rows,
+  subscribedRows,
+  unsubscribedRows,
 }: {
   summary: SubscriptionSummary;
   rsvps: number;
-  rows: SubmissionRecord[];
+  subscribedRows: SubmissionRecord[];
+  unsubscribedRows: SubmissionRecord[];
 }) {
+  const [tab, setTab] = useState<"subscribed" | "off">("subscribed");
+
+  const tabs = [
+    { value: "subscribed" as const, label: "Subscribed", n: subscribedRows.length },
+    { value: "off" as const, label: "Off the list", n: unsubscribedRows.length },
+  ];
+
+  const rows = tab === "subscribed" ? subscribedRows : unsubscribedRows;
+
   return (
     <>
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -70,52 +117,77 @@ export function SubscriptionsView({
       </div>
 
       <section className="mt-12">
-        <h2 className="font-display text-2xl">Off the list</h2>
-        <p className="text-ink/65 mt-2 max-w-2xl text-[0.9375rem] leading-relaxed">
-          Kept deliberately. An unsubscribe is a standing instruction, so this is
-          the record that stops somebody being emailed again after a re-import or
-          a fresh signup. Deleting it would make the next signup look like
-          consent.
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap gap-2">
+            {tabs.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setTab(item.value)}
+                aria-pressed={tab === item.value}
+                className={`rounded-full px-4 py-2 text-[0.875rem] transition-colors duration-200 ${
+                  tab === item.value
+                    ? "bg-ink text-bone"
+                    : "border-ink/15 text-ink/70 hover:border-ink/35 border"
+                }`}
+              >
+                {item.label}
+                <span className="ml-2 opacity-65">{item.n}</span>
+              </button>
+            ))}
+          </div>
+
+          {tab === "subscribed" ? (
+            <a
+              href="/api/admin/audience"
+              className="text-cobalt text-[0.875rem] underline-offset-4 hover:underline"
+            >
+              Export CSV
+            </a>
+          ) : null}
+        </div>
+
+        <p className="text-ink/65 mt-4 max-w-2xl text-[0.9375rem] leading-relaxed">
+          {tab === "subscribed"
+            ? "The list itself. This is exactly who a send goes to: the same test runs here and at send time, so what you see and who receives it cannot disagree."
+            : "Kept deliberately. An unsubscribe is a standing instruction, so this is the record that stops somebody being emailed again after a re-import or a fresh signup. Deleting it would make the next signup look like consent."}
         </p>
 
         {rows.length === 0 ? (
           <p className="border-ink/25 bg-bone/60 text-ink/65 mt-5 rounded-2xl border border-dashed px-6 py-10 text-center text-[0.9375rem]">
-            Nobody has come off the list.
+            {tab === "subscribed"
+              ? "Nobody is subscribed yet."
+              : "Nobody has come off the list."}
           </p>
         ) : (
           <ul className="border-ink/12 bg-bone divide-ink/10 mt-5 divide-y overflow-hidden rounded-2xl border">
-            {rows.map((row) => {
-              const state = subscriptionState(row);
-              return (
-                <li key={row.pk}>
-                  <Link
-                    href={`/admin/list/${toUrlId(row.pk)}`}
-                    className="hover:bg-bone-soft flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-5 py-4 transition-colors duration-200"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate">
-                        {row.name?.trim() || row.email}
-                      </span>
-                      {row.name?.trim() ? (
-                        <span className="text-ink/65 block truncate text-[0.8125rem]">
-                          {row.email}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="text-ink/65 text-[0.8125rem]">
-                      {state === "bounced"
-                        ? UNSUBSCRIBE_SOURCE_LABELS.bounce
-                        : row.unsubscribedSource
-                          ? UNSUBSCRIBE_SOURCE_LABELS[row.unsubscribedSource]
-                          : "Never opted in"}
-                    </span>
-                    <span className="text-ink/65 w-32 text-right text-[0.8125rem]">
-                      {row.unsubscribedAt ? day(row.unsubscribedAt) : ""}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
+            {rows.map((record) =>
+              tab === "subscribed" ? (
+                <Row
+                  key={record.pk}
+                  record={record}
+                  meta={
+                    record.eventIds?.length
+                      ? `${record.eventIds.length} event${record.eventIds.length === 1 ? "" : "s"}`
+                      : "No event"
+                  }
+                  right={day(record.createdAt)}
+                />
+              ) : (
+                <Row
+                  key={record.pk}
+                  record={record}
+                  meta={
+                    record.status === "bounced"
+                      ? UNSUBSCRIBE_SOURCE_LABELS.bounce
+                      : record.unsubscribedSource
+                        ? UNSUBSCRIBE_SOURCE_LABELS[record.unsubscribedSource]
+                        : "Never opted in"
+                  }
+                  right={day(record.unsubscribedAt)}
+                />
+              ),
+            )}
           </ul>
         )}
       </section>

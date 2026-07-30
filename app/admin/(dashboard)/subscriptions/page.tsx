@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SubscriptionsView } from "@/components/admin/SubscriptionsView";
-import { rsvpList, subscriptionSummary, unsubscribes } from "@/lib/audience";
+import {
+  rsvpList,
+  subscribed,
+  subscriptionSummary,
+  unsubscribes,
+} from "@/lib/audience";
 import { listSubmissions } from "@/lib/store";
 
 export const metadata: Metadata = { title: "Subscriptions" };
@@ -40,7 +45,8 @@ export default async function SubscriptionsPage() {
       <SubscriptionsView
         summary={subscriptionSummary(everyone)}
         rsvps={rsvpList(everyone).length}
-        rows={unsubscribes(everyone)}
+        subscribedRows={subscribed(everyone)}
+        unsubscribedRows={unsubscribes(everyone)}
       />
     </div>
   );

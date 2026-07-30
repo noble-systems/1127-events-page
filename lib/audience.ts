@@ -190,6 +190,20 @@ export function rsvpList(
 }
 
 /**
+ * The list itself: everybody you may email right now, newest first.
+ *
+ * This is the same test isMailable applies before a send, so what is on screen
+ * and what actually receives a promo cannot disagree.
+ */
+export function subscribed(
+  records: readonly SubmissionRecord[],
+): SubmissionRecord[] {
+  return rsvpList(records)
+    .filter(isMailable)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/**
  * Opt-outs, newest first, with how each one happened.
  *
  * Manual ones are the reason this exists. A click on the footer link and a hard

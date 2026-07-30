@@ -295,6 +295,14 @@ export async function recordSubmission(
 
   const liveGenres = event ? await getGenreList() : [];
 
+  // Whether this address has already asked to be left alone. Either marker
+  // counts: status is what the RSVP row carries, the timestamp is what an
+  // applicant row carries, since "unsubscribed" is not a stage in a review
+  // pipeline.
+  const suppressed = Boolean(
+    existing?.unsubscribedAt || existing?.status === "unsubscribed",
+  );
+
   const record: SubmissionRecord = {
     pk,
     type,
@@ -305,7 +313,24 @@ export async function recordSubmission(
     community: values.community || undefined,
     role: values.role || undefined,
     termsVersion: values.agreeTerms === "true" ? LEGAL_VERSION : undefined,
-    marketingOptIn: values.marketingOptIn === "true",
+    /**
+     * A past opt-out outlives a later form submission.
+     *
+     * This record is rebuilt from scratch on every signup, so ticking the
+     * marketing box again used to set marketingOptIn back to true on somebody
+     * who had unsubscribed. The suppression survived only because `status` was
+     * carried over, leaving a record that claimed to be opted in and opted out
+     * at once. Worse, the timestamp and source below were not carried at all,
+     * so a re-signup silently erased the record of the opt-out.
+     *
+     * Somebody who genuinely wants back on says so and an admin re-subscribes
+     * them, which stamps resubscribedAt. Quietly re-adding people who once
+     * asked to leave is how a domain gets reported.
+     */
+    marketingOptIn: suppressed ? false : values.marketingOptIn === "true",
+    unsubscribedAt: existing?.unsubscribedAt,
+    unsubscribedSource: existing?.unsubscribedSource,
+    resubscribedAt: existing?.resubscribedAt,
     smsOptIn: smsConsentFrom(values.phone),
     // Union, never replacement. Somebody who signed up for a house night in
     // June and a bass night in August belongs to both audiences; overwriting

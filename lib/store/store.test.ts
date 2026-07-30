@@ -243,3 +243,80 @@ describe("unsubscribing suppresses rather than deletes", () => {
     assert.equal(await suppressEmail("nobody@example.com", "self"), 0);
   });
 });
+
+describe("a past opt-out outlives a later signup", () => {
+  beforeEach(reset);
+
+  const values = {
+    name: "Sam",
+    email: "sam@example.com",
+    marketingOptIn: "true",
+    eventId: "house-night",
+  };
+
+  /**
+   * The regression this pins.
+   *
+   * The record is rebuilt from scratch on every signup, so ticking the
+   * marketing box again set marketingOptIn back to true on somebody who had
+   * unsubscribed, and the timestamp and source were not carried at all. A
+   * re-signup silently erased the record of the opt-out and left a row claiming
+   * to be opted in and opted out at once.
+   */
+  test("signing up again does not quietly re-subscribe them", async () => {
+    await createEvent(event("house-night"));
+    await recordSubmission("rsvp", values);
+    await suppressEmail("sam@example.com", "self");
+    await recordSubmission("rsvp", values);
+
+    const row = (await store().listSubmissions())[0];
+    assert.equal(row.status, "unsubscribed");
+    assert.equal(row.marketingOptIn, false, "quietly opted back in");
+  });
+
+  test("the record of the opt-out survives", async () => {
+    await createEvent(event("house-night"));
+    await recordSubmission("rsvp", values);
+    await suppressEmail("sam@example.com", "self");
+    const before = (await store().listSubmissions())[0].unsubscribedAt;
+
+    await recordSubmission("rsvp", values);
+    const row = (await store().listSubmissions())[0];
+
+    assert.equal(row.unsubscribedAt, before, "timestamp was rewritten or lost");
+    assert.equal(row.unsubscribedSource, "self", "source was lost");
+  });
+
+  test("the new event is still recorded against them", async () => {
+    // Suppression is about email, not about attendance. They still came.
+    await createEvent(event("house-night"));
+    await createEvent(event("bass-night", { order: 1 }));
+    await recordSubmission("rsvp", values);
+    await suppressEmail("sam@example.com", "self");
+    await recordSubmission("rsvp", { ...values, eventId: "bass-night" });
+
+    assert.deepEqual((await store().listSubmissions())[0].eventIds, [
+      "house-night",
+      "bass-night",
+    ]);
+  });
+});
+
+describe("RSVPing twice for the same event", () => {
+  beforeEach(reset);
+
+  test("makes one record, not two, and does not duplicate the event", async () => {
+    await createEvent(event("house-night"));
+    const v = {
+      name: "Sam",
+      email: "sam@example.com",
+      marketingOptIn: "true",
+      eventId: "house-night",
+    };
+    for (let i = 0; i < 3; i++) await recordSubmission("rsvp", v);
+
+    const rows = await store().listSubmissions();
+    assert.equal(rows.length, 1);
+    assert.deepEqual(rows[0].eventIds, ["house-night"]);
+  });
+});
