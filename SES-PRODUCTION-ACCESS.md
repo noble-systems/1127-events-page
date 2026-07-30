@@ -1,4 +1,4 @@
-# SES production access: reply to case 178537942200980
+# SES production access: reply to case 178539122100503 (us-west-1)
 
 Paste the section below into the AWS Support case. Every claim in it is true of
 the deployed system as of 29 July 2026 and can be checked against the code or
@@ -7,15 +7,28 @@ this does not cover, check the code rather than guessing.
 
 If any of the volume figures stop being accurate, correct them before sending.
 
+## Which case
+
+There are two review cases on this account, and only one is live:
+
+| Region    | Case            | Use it?                                                                                                   |
+| --------- | --------------- | --------------------------------------------------------------------------------------------------------- |
+| us-west-1 | 178539122100503 | **Yes.** The verified identity lives here.                                                                |
+| us-west-2 | 178537942200980 | No. That region was torn down and its SES identity deleted, so there is nothing there to grant access to. |
+
+AWS replied on the us-west-2 case asking for more detail. Do not answer it there:
+it cannot be approved, because AWS requires a verified identity and us-west-2 no
+longer has one. Paste the reply below into 178539122100503 instead.
+
 ---
 
 ## Reply to paste
 
-  `  Thank you for the follow-up. Details below.
+` Thank you for the follow-up. Details below.
 
     **Verified identity**
 
-    We have a verified domain identity, `1127.events`, in us-west-2. DKIM is enabled
+    We have a verified domain identity, `1127.events`, in us-west-1. DKIM is enabled
     and shows a status of SUCCESS with signing active. We also use a custom MAIL
     FROM domain, `mail.1127.events`, which is verified with its own MX and SPF
     records so that SPF aligns with the From address. We send only from
