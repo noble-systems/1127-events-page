@@ -284,6 +284,64 @@ function noReplyNote(): string {
   return `<p style="margin:0 0 8px;">${escapeHtml(noReplyText())}</p>`;
 }
 
+/**
+ * The layout for an acknowledgement.
+ *
+ * Deliberately plain. `shell` below is a designed template: dark banner, accent
+ * stripe, rounded card on a tinted background, nested tables. That is what a
+ * newsletter looks like, and Gmail classifies on structure as much as wording,
+ * so a confirmation wearing it gets filed under Promotions where nobody reads
+ * it. A receipt from a bank or a ticket seller is close to plain text, and it
+ * lands in the inbox.
+ *
+ * So: one table, no background fill, no banner, no accent colour, a wordmark in
+ * text rather than a coloured bar. It still looks like it came from 1127, but
+ * it looks like a receipt rather than a mailshot.
+ *
+ * Keep `shell` for genuine campaign sends, where Promotions is the right tab
+ * and the design is worth having.
+ */
+function receiptShell(options: {
+  preheader: string;
+  heading: string;
+  body: string;
+  footer: string;
+}): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(options.heading)}</title>
+</head>
+<body style="margin:0;padding:0;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(options.preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 16px;">
+  <tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+      <tr>
+        <td style="padding:0 0 20px;font:600 15px/1 Georgia,'Times New Roman',serif;color:${INK};">
+          1127 Events
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 0 4px;">
+          <h1 style="margin:0 0 16px;font:600 20px/1.3 Georgia,'Times New Roman',serif;color:${INK};">${escapeHtml(options.heading)}</h1>
+          ${options.body}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:24px 0 0;font:400 12px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">
+          ${noReplyNote()}${options.footer}
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+}
+
 function shell(options: {
   preheader: string;
   heading: string;
@@ -347,7 +405,9 @@ export function renderGuestEmail(
     ["Date", event?.date ?? "Dates announcing soon"],
     ["Location", event?.location ?? brand.region],
     ["Venue", event?.venue ?? "Announcing soon"],
-    ["Music", "House"],
+    // Was hardcoded to "House", which told everyone signing up for a bass or
+    // techno night the wrong thing. The event carries its genres; use them.
+    ["Music", event?.genres?.length ? event.genres.join(", ") : "Announcing soon"],
   ];
 
   // Per-event wording when an admin has set it, the standard copy otherwise.
@@ -358,11 +418,11 @@ export function renderGuestEmail(
 
   const openingText = event?.emailHeading?.trim()
     ? fill(event.emailHeading.trim())
-    : `Thanks ${firstName}, you're on the ${name} list.`;
+    : `Thanks ${firstName}, your RSVP for ${name} is confirmed.`;
 
   const bodyText = event?.emailBody?.trim()
     ? fill(event.emailBody.trim())
-    : "We'll email you as soon as the next date is set, before it goes public. Nothing else, and never more than we'd want to receive ourselves.";
+    : "We'll email you as soon as the next date is set. Nothing else, and never more than we'd want to receive ourselves.";
 
   const body = `
     <p style="margin:0 0 16px;font:400 16px/1.65 Helvetica,Arial,sans-serif;color:${INK};">${escapeHtml(openingText)}</p>
@@ -401,13 +461,13 @@ export function renderGuestEmail(
     subject: event?.emailSubject?.trim()
       ? fill(event.emailSubject.trim())
       : `You're confirmed for ${name}`,
-    html: shell({
-      preheader: `We'll email you the next ${name} date before it's public.`,
-      eyebrow: "1127 Events",
+    html: receiptShell({
+      // This is the grey preview line next to the subject in an inbox list.
+      // It should read as a receipt, because that is what this is.
+      preheader: `Your RSVP for ${name} is confirmed.`,
       heading: "You're confirmed.",
       body,
       footer,
-      noReply: true,
     }),
     text,
   };
@@ -454,13 +514,11 @@ export function renderAmbassadorApplicantEmail(record: SubmissionRecord) {
 
   return {
     subject: "Your Sun Club ambassador application",
-    html: shell({
-      preheader: "We review applications ahead of every date.",
-      eyebrow: "Sun Club Ambassador Program",
+    html: receiptShell({
+      preheader: "We have your ambassador application.",
       heading: "Application received.",
       body,
       footer,
-      noReply: true,
     }),
     text,
   };
@@ -695,13 +753,11 @@ export function renderTalentApplicantEmail(record: SubmissionRecord) {
 
   return {
     subject: "Your 1127 application",
-    html: shell({
-      preheader: "We reach out when there's a date that fits.",
-      eyebrow: "Work with 1127",
+    html: receiptShell({
+      preheader: "We have your details.",
       heading: "Application received.",
       body,
       footer,
-      noReply: true,
     }),
     text,
   };
@@ -820,13 +876,11 @@ export function renderPartnerInquirerEmail(record: SubmissionRecord) {
 
   return {
     subject: "Your message to 1127",
-    html: shell({
+    html: receiptShell({
       preheader: "Someone will come back to you directly.",
-      eyebrow: "1127 Events",
       heading: "Message received.",
       body,
       footer,
-      noReply: true,
     }),
     text,
   };

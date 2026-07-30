@@ -121,6 +121,32 @@ describe("public-facing email compliance", () => {
       }
     });
 
+    test(`${label}: is laid out as a receipt, not a newsletter`, () => {
+      /**
+       * Gmail classifies on structure as much as on wording, and the designed
+       * template (dark banner, accent stripe, rounded card on a tinted
+       * background) is the shape of a mailshot. An acknowledgement wearing it
+       * gets filed under Promotions, where a confirmation goes unread.
+       *
+       * These markers are the chrome that distinguishes the two layouts. The
+       * designed shell stays for genuine campaign sends.
+       */
+      const { html } = render();
+      for (const [marker, what] of [
+        ["border-radius:20px", "the rounded card"],
+        ["padding:26px 32px", "the branded banner"],
+        // 0.2em is the banner wordmark and the eyebrow. The detail rows use
+        // 0.14em, and uppercase labels on a Date/Location table are ordinary
+        // receipt styling rather than chrome.
+        ["letter-spacing:0.2em", "the eyebrow or banner wordmark"],
+      ] as const) {
+        assert.ok(
+          !html.includes(marker),
+          `${label} still carries ${what}`,
+        );
+      }
+    });
+
     test(`${label}: has both an HTML and a plain-text part`, () => {
       const { html, text } = render();
       assert.ok(html.trim().length > 0);
@@ -243,7 +269,7 @@ describe("per-event email customisation", () => {
   test("falls back to the standard wording when nothing is customised", () => {
     const { subject, html } = renderGuestEmail(rsvp, baseEvent);
     assert.match(subject, /You're confirmed for Sun Club/);
-    assert.match(html, /Thanks Alex, you're on the Sun Club list/);
+    assert.match(html, /Thanks Alex, your RSVP for Sun Club is confirmed/);
   });
 
   test("uses the custom subject, opening line and body", () => {
@@ -369,5 +395,52 @@ describe("the sender has a name", () => {
         );
       },
     );
+  });
+});
+
+describe("the music line follows the event", () => {
+  /**
+   * The regression this pins.
+   *
+   * This row was hardcoded to "House", so somebody signing up for a bass or
+   * techno night was told the wrong thing in the one email they actually read.
+   */
+  const withGenres = (genres: string[]) =>
+    renderGuestEmail(rsvp, {
+      id: "x",
+      name: "X",
+      tagline: "",
+      summary: "",
+      status: "",
+      date: "",
+      location: "",
+      venue: null,
+      tags: [],
+      genres,
+      tone: "dusk" as const,
+      featured: true,
+      published: true,
+      rsvpEnabled: true,
+      order: 0,
+      shotNote: "",
+      image: null,
+      imageAlt: "",
+      ctaLabel: "",
+      ctaAction: "rsvp" as const,
+      emailSubject: null,
+      emailHeading: null,
+      emailBody: null,
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    });
+
+  test("names the event's own genres", () => {
+    const { text } = withGenres(["Bass", "Dubstep"]);
+    assert.match(text, /Music: Bass, Dubstep/);
+    assert.ok(!text.includes("Music: House"), "still claiming House");
+  });
+
+  test("degrades honestly when no genre is set", () => {
+    assert.match(withGenres([]).text, /Music: Announcing soon/);
   });
 });
