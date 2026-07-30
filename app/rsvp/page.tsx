@@ -48,10 +48,11 @@ export default async function RsvpPage({
    * events rather than trusted, so a crafted link cannot attribute a signup to
    * an event that does not exist, or open a form for an unpublished draft.
    */
+  const open = events.filter((event) => event.rsvpEnabled !== false);
   const requested = params.event
-    ? events.find((event) => event.id === params.event)
+    ? open.find((event) => event.id === params.event)
     : undefined;
-  const target = requested ?? events.find((event) => event.featured);
+  const target = requested ?? open.find((event) => event.featured);
 
   if (target) redirect(`/rsvp/${encodeURIComponent(target.id)}`);
 

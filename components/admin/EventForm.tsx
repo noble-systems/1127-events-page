@@ -630,8 +630,8 @@ export function EventForm({
           <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
             <Toggle
               id="ev-featured"
-              label="Featured card"
-              hint="Large two-column treatment. Use it for one event at a time."
+              label="Featured"
+              hint="Drives the hero, the header RSVP button and /rsvp. Only one event can be featured, so turning this on turns it off everywhere else."
               checked={values.featured}
               disabled={busy}
               onChange={(value) => set("featured", value)}
@@ -643,6 +643,14 @@ export function EventForm({
               checked={values.published}
               disabled={busy}
               onChange={(value) => set("published", value)}
+            />
+            <Toggle
+              id="ev-rsvp-enabled"
+              label="Accepting RSVPs"
+              hint="Off removes the RSVP button and closes this event's signup page. Use it for an event worth showing before there is a date to sign up to."
+              checked={values.rsvpEnabled}
+              disabled={busy}
+              onChange={(value) => set("rsvpEnabled", value)}
             />
           </div>
         </div>

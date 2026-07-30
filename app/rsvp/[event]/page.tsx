@@ -17,16 +17,18 @@ type Params = { params: Promise<{ event: string }> };
  * so a link stays pointed at the night it was sent for even after the featured
  * slot moves on.
  *
- * Unpublished drafts 404 rather than render. The id is resolved against the
- * published list, never trusted from the URL, so a guessed slug cannot open a
- * signup form for an event that is not live yet.
+ * Unpublished drafts 404 rather than render, and so do events with RSVPs
+ * turned off. The id is resolved against the published list, never trusted from
+ * the URL, so a guessed slug cannot open a signup form for an event that is not
+ * live yet, or one that was never meant to collect addresses.
  */
 async function resolve(params: Params["params"]) {
   const [events, { event: id }] = await Promise.all([
     listPublicEvents(),
     params,
   ]);
-  return events.find((event) => event.id === id) ?? null;
+  const found = events.find((event) => event.id === id) ?? null;
+  return found?.rsvpEnabled === false ? null : found;
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {

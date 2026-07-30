@@ -202,3 +202,50 @@ describe("a genre an admin created survives a save", () => {
     assert.equal(values.genres.length, 5, JSON.stringify(values.genres));
   });
 });
+
+describe("accepting RSVPs is separate from being published", () => {
+  /**
+   * An event can be worth showing on the site long before there is anything to
+   * sign up for. "More concepts in development" is the case that forced this:
+   * it belongs on the page, but a signup form for it collects addresses against
+   * a night that does not exist.
+   */
+  test("new events start open to RSVPs", () => {
+    assert.equal(EMPTY_EVENT.rsvpEnabled, true);
+  });
+
+  test("an absent flag means open, not closed", () => {
+    // A payload written before this field existed must keep collecting signups
+    // rather than silently stopping.
+    assert.equal(readEventBody({ name: "X" }, GENRE_LIST).rsvpEnabled, true);
+  });
+
+  test("it can be turned off, and survives the round trip", () => {
+    const values = readEventBody({ ...valid, rsvpEnabled: false }, GENRE_LIST);
+    assert.equal(values.rsvpEnabled, false);
+
+    const input = toEventInput("x", values, GENRE_LIST);
+    assert.equal(input.rsvpEnabled, false);
+    assert.equal(eventToFormValues(input, GENRE_LIST).rsvpEnabled, false);
+  });
+
+  test("it does not follow published", () => {
+    const values = readEventBody(
+      { ...valid, published: true, rsvpEnabled: false },
+      GENRE_LIST,
+    );
+    assert.equal(values.published, true);
+    assert.equal(values.rsvpEnabled, false);
+  });
+
+  test("only a real false turns it off", () => {
+    for (const raw of ["no", 0, null, "false"]) {
+      const values = readEventBody({ ...valid, rsvpEnabled: raw }, GENRE_LIST);
+      assert.equal(
+        values.rsvpEnabled,
+        raw === "false" ? false : true,
+        `rsvpEnabled: ${JSON.stringify(raw)}`,
+      );
+    }
+  });
+});

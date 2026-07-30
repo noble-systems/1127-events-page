@@ -37,9 +37,13 @@ function Tags({ tags }: { tags: readonly string[] }) {
  */
 export function EventCard({ event }: { event: EventRecord }) {
   const featured = event.featured;
-  const rsvp = event.ctaAction === "rsvp";
+  // An event that is not taking signups has no RSVP button rather than one that
+  // leads to a 404. Its other CTA still works, so "More concepts in
+  // development" can still point at /partner.
+  const rsvp = event.ctaAction === "rsvp" && event.rsvpEnabled !== false;
+  const showCta = rsvp || event.ctaAction !== "rsvp";
 
-  const cta = (
+  const cta = !showCta ? null : (
     <ButtonLink
       // The event's own RSVP page, so the signup is attributed to this night
       // and their genre affinity recorded even when another event is featured.
@@ -122,7 +126,9 @@ export function EventCard({ event }: { event: EventRecord }) {
           )}
         </dl>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3 pt-1">{cta}</div>
+        {cta ? (
+          <div className="mt-8 flex flex-wrap items-center gap-3 pt-1">{cta}</div>
+        ) : null}
       </div>
     </article>
   );

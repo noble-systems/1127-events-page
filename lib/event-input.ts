@@ -26,6 +26,7 @@ export type EventFormValues = {
   tone: string;
   featured: boolean;
   published: boolean;
+  rsvpEnabled: boolean;
   order: string;
   shotNote: string;
   image: string;
@@ -50,6 +51,8 @@ export const EMPTY_EVENT: EventFormValues = {
   tone: "dusk",
   featured: false,
   published: false,
+  // New events are usually created to collect signups, so this starts on.
+  rsvpEnabled: true,
   order: "0",
   shotNote: "",
   image: "",
@@ -166,6 +169,7 @@ export function toEventInput(
     tone: values.tone as MediaTone,
     featured: Boolean(values.featured),
     published: Boolean(values.published),
+    rsvpEnabled: Boolean(values.rsvpEnabled),
     order: Number(values.order),
     shotNote: values.shotNote.trim(),
     image: values.image.trim() || null,
@@ -201,6 +205,12 @@ export function readEventBody(
     tone: str("tone") || "dusk",
     featured: raw.featured === true || raw.featured === "true",
     published: raw.published === true || raw.published === "true",
+    // Note the inverted test. published and featured default off, so there the
+    // safe read is "only an explicit true counts". This defaults on, so the safe
+    // read is the mirror: only an explicit false closes signups. A record
+    // written before this field existed, or a payload with a junk value, keeps
+    // collecting rather than silently stopping.
+    rsvpEnabled: raw.rsvpEnabled !== false && raw.rsvpEnabled !== "false",
     order: typeof raw.order === "number" ? String(raw.order) : str("order") || "0",
     shotNote: str("shotNote"),
     image: str("image"),
@@ -227,6 +237,7 @@ export function eventToFormValues(
     tone: MediaTone;
     featured: boolean;
     published: boolean;
+    rsvpEnabled?: boolean;
     order: number;
     shotNote: string;
     image: string | null;
@@ -252,6 +263,7 @@ export function eventToFormValues(
     tone: event.tone,
     featured: event.featured,
     published: event.published,
+    rsvpEnabled: event.rsvpEnabled !== false,
     order: String(event.order),
     shotNote: event.shotNote,
     image: event.image ?? "",

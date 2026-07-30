@@ -27,6 +27,16 @@ export type EventRecord = {
   name: string;
   tagline: string;
   summary: string;
+  /**
+   * Whether this event is accepting RSVPs.
+   *
+   * Separate from `published`, because an event can be worth showing on the
+   * site long before there is anything to sign up for. "More concepts in
+   * development" is the case that forced this: it belongs on the page, but a
+   * signup form for it collects addresses against a night that does not exist.
+   * With this off the card shows no RSVP button and /rsvp/<id> 404s.
+   */
+  rsvpEnabled: boolean;
   /** Small badge on the card, e.g. "Featured series". */
   status: string;
   /** Free text so "Dates Announcing Soon" is as valid as a real date. */

@@ -21,7 +21,9 @@ export const dynamic = "force-dynamic";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let events: Awaited<ReturnType<typeof listPublicEvents>> = [];
   try {
-    events = await listPublicEvents();
+    events = (await listPublicEvents()).filter(
+      (event) => event.rsvpEnabled !== false,
+    );
   } catch {
     // A sitemap missing its event pages beats a sitemap that 500s.
   }

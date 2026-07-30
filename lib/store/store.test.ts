@@ -33,6 +33,7 @@ const EVENT = {
   tone: "dusk" as const,
   featured: false,
   published: true,
+  rsvpEnabled: true,
   order: 0,
   shotNote: "",
   image: null,

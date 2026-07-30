@@ -129,6 +129,7 @@ describe("message bodies", () => {
     tone: "dusk",
     featured: true,
     published: true,
+    rsvpEnabled: true,
     order: 0,
     shotNote: "",
     image: null,

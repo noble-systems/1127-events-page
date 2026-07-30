@@ -12,11 +12,22 @@ import { getSiteContent, listPublicEvents } from "@/lib/store";
 import type { EventRecord } from "@/lib/types";
 
 /**
- * Events are edited in the admin dashboard, so the page revalidates rather
- * than baking the list in at build time. A publish from /admin also triggers
- * an immediate revalidation.
+ * Rendered per request.
+ *
+ * This used to be `revalidate = 60`, on the belief that it meant the event list
+ * was not baked in at build time. It did not. Next prerendered the page during
+ * the build, and the Amplify build role has no DynamoDB access (only the
+ * compute role does), so listPublicEvents() threw, fell back to the seed events
+ * and baked those in. The site then served a hero and an event list that had
+ * nothing to do with the dashboard: an event marked Featured never appeared,
+ * and Sun Club showed permanently because it is the first seed event. Amplify
+ * did not reliably regenerate it either, answering `x-nextjs-cache: STALE`
+ * indefinitely.
+ *
+ * Nothing here is worth caching against that. It is one small scan on a page
+ * whose whole job is to show what the dashboard currently says.
  */
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 /**
  * Structured data. Only facts we actually have. No dates, prices, venues or

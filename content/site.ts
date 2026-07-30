@@ -199,6 +199,7 @@ export const facts = [
 export const seedEvents: EventRecord[] = [
   {
     id: "sun-club",
+    rsvpEnabled: true,
     name: "Sun Club",
     tagline: "House music under the desert sun.",
     summary:
@@ -226,6 +227,8 @@ export const seedEvents: EventRecord[] = [
   },
   {
     id: "in-development",
+    // Nothing to sign up to yet, so no RSVP button and no signup page.
+    rsvpEnabled: false,
     name: "More concepts in development",
     tagline: "Sun Club is the first series, not the last.",
     summary:

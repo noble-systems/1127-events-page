@@ -200,6 +200,7 @@ describe("per-event email customisation", () => {
     tone: "dusk" as const,
     featured: true,
     published: true,
+    rsvpEnabled: true,
     order: 0,
     shotNote: "",
     image: null,
