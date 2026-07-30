@@ -4,12 +4,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { INQUIRY_TYPES } from "@/lib/validation";
 import {
-  CheckboxField,
   Field,
   FormAlert,
   FormSuccess,
   Honeypot,
   Select,
+  MarketingCheckbox,
   SmsDisclosure,
   Spinner,
   TextArea,
@@ -159,16 +159,12 @@ export function InquiryForm() {
           onChange={(checked) => setField("agreeTerms", String(checked))}
         />
 
-        <CheckboxField
-          id="inq-marketing"
-          name="marketingOptIn"
+        <MarketingCheckbox
+          idPrefix="inq"
           checked={values.marketingOptIn === "true"}
           disabled={busy}
           onChange={(checked) => setField("marketingOptIn", String(checked))}
-        >
-          Also add me to the Sun Club list so I hear about upcoming dates. Optional,
-          and one click to leave.
-        </CheckboxField>
+        />
       </div>
 
       <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center">

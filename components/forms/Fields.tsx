@@ -336,6 +336,38 @@ export function TermsCheckbox({
 }
 
 /**
+ * The optional "add me to the list too" box.
+ *
+ * Copied verbatim into three forms before this existed. It is consent wording,
+ * so three copies meant three chances to have one say something different from
+ * the others, which is the version of this problem that actually matters.
+ */
+export function MarketingCheckbox({
+  idPrefix,
+  checked,
+  onChange,
+  disabled,
+}: {
+  idPrefix: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <CheckboxField
+      id={`${idPrefix}-marketing`}
+      name="marketingOptIn"
+      checked={checked}
+      disabled={disabled}
+      onChange={onChange}
+    >
+      Also add me to the Sun Club list so I hear about upcoming dates. Optional, and
+      one click to leave.
+    </CheckboxField>
+  );
+}
+
+/**
  * The text-message disclosure, shown under every phone field.
  *
  * There is no tick box here by design: entering a number is the opt-in. That

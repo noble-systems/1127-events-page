@@ -188,10 +188,3 @@ export const CONTENT_FIELDS: ReadonlyMap<string, ContentField> = new Map(
 export function isEditableKey(key: string): boolean {
   return CONTENT_FIELDS.has(key);
 }
-
-/** Every image field, which the admin page renders with an uploader. */
-export function imageKeys(): string[] {
-  return [...CONTENT_FIELDS.values()]
-    .filter((f) => f.kind === "image")
-    .map((f) => f.key);
-}

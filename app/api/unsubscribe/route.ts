@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { consume } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/request-meta";
 import { deleteSubmission, listSubmissions } from "@/lib/store";
 import { readUnsubscribeToken } from "@/lib/tokens";
 
@@ -12,6 +14,23 @@ import { readUnsubscribeToken } from "@/lib/tokens";
  * and friends POST with `List-Unsubscribe=One-Click` as the body.
  */
 export async function POST(request: Request) {
+  // Unauthenticated and, on a valid token, a full scan of the submissions
+  // table. The token cannot be forged, but nothing stopped an attacker calling
+  // this endlessly with junk tokens.
+  const throttle = await consume(
+    "unsubscribe",
+    clientIp(request.headers) ?? "unknown",
+  );
+  if (!throttle.allowed) {
+    return NextResponse.json(
+      { ok: false, message: "Too many requests. Try again in a few minutes." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(throttle.retryAfterSeconds) },
+      },
+    );
+  }
+
   const url = new URL(request.url);
   let token = url.searchParams.get("token") ?? "";
 

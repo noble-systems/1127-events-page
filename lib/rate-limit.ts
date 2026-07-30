@@ -107,6 +107,13 @@ export const RATE_LIMITS = {
   loginRequest: { limit: 4, windowSeconds: 15 * 60 },
   /** Submitting a login code. Guards against guessing the six digits. */
   loginVerify: { limit: 8, windowSeconds: 15 * 60 },
+  /**
+   * Unsubscribing. Unauthenticated, and each call scans the submissions table
+   * to find every record for the address, so an unthrottled endpoint is a cost
+   * and availability amplifier even though the token itself cannot be guessed.
+   * Generous, because a real person clicking twice must never be blocked.
+   */
+  unsubscribe: { limit: 20, windowSeconds: 10 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

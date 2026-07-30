@@ -69,9 +69,20 @@ function StructuredData({ events }: { events: EventRecord[] }) {
   return (
     <script
       type="application/ld+json"
-      // Content is authored in this repo, not user input.
       dangerouslySetInnerHTML={{
-        __html: JSON.stringify([organization, series].filter(Boolean)),
+        // JSON.stringify does not escape "<", so an event name containing
+        // "</script>" would close this tag and execute whatever follows. Event
+        // names come from the dashboard, so that is stored XSS against every
+        // visitor, and an earlier comment here claiming the content was "authored
+        // in this repo, not user input" stopped being true when events moved into
+        // the database.
+        //
+        // Escaping "<" as < is the standard fix: a JSON parser reads it as
+        // an identical string, but an HTML parser never sees a tag.
+        __html: JSON.stringify([organization, series].filter(Boolean)).replace(
+          /</g,
+          "\\u003c",
+        ),
       }}
     />
   );

@@ -85,14 +85,30 @@ Browser ──> Amplify Hosting (CloudFront + Lambda, Next.js SSR)
                                     DynamoDB: events + submissions
 ```
 
+- **Homepage content** lives in DynamoDB as an overlay on `content/site.ts` and
+  is edited at `/admin/content`. Only changed fields are stored, so an empty or
+  unreachable store renders exactly the copy committed to the repo. The schema in
+  `lib/content-schema.ts` drives the store, the editor UI and the merge.
+- **The hero and the series intro follow whichever event is marked Featured**,
+  so their name, tagline, date, location and photograph have one source of
+  truth. Those fields are deliberately absent from the content editor.
+- **Photographs** upload from the dashboard straight to S3 with a presigned PUT,
+  so image bytes never pass through the Lambda request body. References are
+  stored as keys (`s3:site/hero-image.jpg`), not URLs, so changing bucket or
+  region later is config rather than a data migration.
+- **Rate limiting** is a sliding window log in DynamoDB, shared across Lambda
+  instances. See `lib/rate-limit.ts` for why the previous in-process version was
+  not really a limit.
 - **Events** live in DynamoDB and are edited from `/admin`. The public page
   revalidates every 60 seconds, and immediately on any save/publish/delete.
 - **Submissions** (RSVP, ambassador, partner) are written by `/api/inquiry`.
   RSVPs are keyed `rsvp#<email>` so the mailing list self-deduplicates.
-- **Auth** is a Cognito user pool. Sign-in exchanges email + password for an
-  access token stored in an HTTP-only cookie, verified against the pool's JWKS
-  on every admin request. `middleware.ts` only does a fast cookie-presence
-  redirect, it is not the security boundary.
+- **Auth** is a Cognito user pool, and it is passwordless: staff enter an email
+  address, Cognito emails a six-digit code, and the code is exchanged for an
+  access token stored in an HTTP-only cookie and verified against the pool's
+  JWKS on every admin request. There is no admin password anywhere.
+  `middleware.ts` only does a fast cookie-presence redirect, it is not the
+  security boundary.
 - An **empty** store is seeded with the launch content on first use, so the
   dashboard and the public site always agree. The seed array is only used as a
   live fallback when the store is genuinely **unreachable**.
@@ -275,7 +291,7 @@ remove.
 ## Accessibility
 
 - Semantic landmarks, ordered headings, skip link
-- Modals and the mobile menu use native `<dialog>`, real focus trapping, Escape, top layer
+- The mobile menu uses a native `<dialog>`: real focus trapping, Escape, top layer
 - Visible focus rings that invert on dark surfaces
 - All body and label text verified at **≥ 4.5:1** contrast
 - `prefers-reduced-motion` disables every transition, reveal and animation
