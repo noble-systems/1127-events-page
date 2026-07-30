@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { LEGAL_VERSION, seedEvents } from "@/content/site";
 import type { RequestMeta } from "@/lib/request-meta";
-import { mergeEventIds, mergeGenres } from "@/lib/genres";
+import { DEFAULT_GENRES, mergeEventIds, mergeGenres } from "@/lib/genres";
 import { smsConsentFrom } from "@/lib/sms";
 import { defaultStatusFor } from "@/lib/types";
 import type {
@@ -238,6 +238,8 @@ export async function recordSubmission(
       ? (await store().listSubmissions("rsvp")).find((row) => row.pk === pk)
       : undefined;
 
+  const liveGenres = event ? await getGenreList() : [];
+
   const record: SubmissionRecord = {
     pk,
     type,
@@ -256,7 +258,11 @@ export async function recordSubmission(
     eventIds: event
       ? mergeEventIds(existing?.eventIds, [event.id])
       : existing?.eventIds,
-    genres: event ? mergeGenres(existing?.genres, event.genres) : existing?.genres,
+    // Merged against the live list, not the seed, so a genre an admin created
+    // today is recorded on somebody signing up today.
+    genres: event
+      ? mergeGenres(existing?.genres, event.genres, liveGenres)
+      : existing?.genres,
     company: values.company || undefined,
     inquiryType: values.inquiryType || undefined,
     message: values.message || undefined,
@@ -324,6 +330,35 @@ export async function getSiteContent(): Promise<SiteContent> {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Genres                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Genres in use, falling back to the seed list in lib/genres.ts.
+ *
+ * Stored under a reserved key in the same row as the content overrides, so this
+ * needs no new table and no new environment variable. Never throws: an
+ * unreachable store yields the seed list, so the event form still works.
+ */
+export async function getGenreList(): Promise<string[]> {
+  try {
+    const overrides = await store().getContent();
+    const stored = overrides?.["__genres__"];
+    if (Array.isArray(stored) && stored.length > 0) {
+      return stored.filter((g): g is string => typeof g === "string" && !!g.trim());
+    }
+  } catch (error) {
+    console.error("[1127] genre list unavailable, using defaults:", error);
+  }
+  return [...DEFAULT_GENRES];
+}
+
+export async function saveGenreList(genres: string[]): Promise<void> {
+  const overrides = (await store().getContent()) ?? {};
+  await store().putContent({ ...overrides, __genres__: genres });
+}
+
 /** Raw overrides, for the dashboard editor. Defaults are applied client-side. */
 export async function getContentOverrides(): Promise<Record<string, unknown>> {
   try {
@@ -338,4 +373,37 @@ export async function saveContentOverrides(
   overrides: Record<string, unknown>,
 ): Promise<void> {
   await store().putContent(overrides);
+}
+
+/**
+ * Rewrites just the genres on an event, leaving everything else alone.
+ *
+ * Used by the genre migration. A full putEvent would need the whole record and
+ * would race with anybody editing that event at the same moment.
+ */
+export async function updateEventGenres(
+  id: string,
+  genres: string[],
+): Promise<void> {
+  const event = await store().getEvent(id);
+  if (!event) return;
+  await store().putEvent({ ...event, genres, updatedAt: new Date().toISOString() });
+}
+
+/** Patches one submission. Same reasoning as updateEventGenres. */
+export async function updateSubmission(
+  pk: string,
+  patch: Partial<SubmissionRecord>,
+): Promise<void> {
+  const existing = await store().getSubmission(pk);
+  if (!existing) return;
+  await store().putSubmission({
+    ...existing,
+    ...patch,
+    // Never let a patch rewrite identity.
+    pk: existing.pk,
+    type: existing.type,
+    email: existing.email,
+    updatedAt: new Date().toISOString(),
+  });
 }

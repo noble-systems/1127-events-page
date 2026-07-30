@@ -18,7 +18,6 @@ import {
   type EventFormValues,
   validateEvent,
 } from "@/lib/event-input";
-import { GENRES } from "@/lib/genres";
 import { MEDIA_TONES } from "@/lib/types";
 import type { FormErrors } from "@/lib/validation";
 
@@ -63,9 +62,12 @@ function Toggle({
 export function EventForm({
   initial,
   eventId,
+  genreList,
 }: {
   initial?: EventFormValues;
   eventId?: string;
+  /** The genres currently in use, from the store. */
+  genreList: string[];
 }) {
   const router = useRouter();
   const [values, setValues] = useState<EventFormValues>(initial ?? EMPTY_EVENT);
@@ -527,7 +529,7 @@ export function EventForm({
             hint="Drives who gets promo email. Somebody who signs up from this event joins these audiences, so a bass night should not be tagged House."
           >
             <div className="border-ink/15 bg-bone-soft grid gap-2 rounded-xl border p-4 sm:grid-cols-2">
-              {GENRES.map((genre) => {
+              {genreList.map((genre) => {
                 const on = values.genres.includes(genre);
                 return (
                   <label

@@ -1,4 +1,3 @@
-import { GENRES, type Genre } from "./genres.ts";
 import { normaliseStatus, type SubmissionRecord } from "./types.ts";
 
 /**
@@ -102,16 +101,21 @@ export function tallyByEvent(
     .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
 }
 
-export function tallyByGenre(records: readonly SubmissionRecord[]): Tally[] {
-  return GENRES.map((genre: Genre) => {
-    const inGenre = records.filter((r) => (r.genres ?? []).includes(genre));
-    return {
-      key: genre,
-      label: genre,
-      total: inGenre.length,
-      mailable: inGenre.filter(isMailable).length,
-    };
-  }).filter((tally) => tally.total > 0);
+export function tallyByGenre(
+  records: readonly SubmissionRecord[],
+  genres: readonly string[],
+): Tally[] {
+  return genres
+    .map((genre) => {
+      const inGenre = records.filter((r) => (r.genres ?? []).includes(genre));
+      return {
+        key: genre,
+        label: genre,
+        total: inGenre.length,
+        mailable: inGenre.filter(isMailable).length,
+      };
+    })
+    .filter((tally) => tally.total > 0);
 }
 
 /**

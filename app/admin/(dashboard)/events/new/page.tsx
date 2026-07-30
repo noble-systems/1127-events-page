@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { EventForm } from "@/components/admin/EventForm";
+import { getGenreList } from "@/lib/store";
 
-export default function NewEventPage() {
+export default async function NewEventPage() {
+  const genreList = await getGenreList();
+
   return (
     <>
       <Link
@@ -18,7 +21,7 @@ export default function NewEventPage() {
       </p>
 
       <div className="mt-10">
-        <EventForm />
+        <EventForm genreList={genreList} />
       </div>
     </>
   );

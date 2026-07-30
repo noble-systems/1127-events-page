@@ -12,7 +12,13 @@
  * the old value, so add a new entry and migrate instead.
  */
 
-export const GENRES = [
+/**
+ * Seed list, used until an admin edits it. After that the stored list wins.
+ *
+ * Kept in code so a fresh deploy has sensible genres and an unreachable store
+ * still renders a usable event form, exactly like content/site.ts.
+ */
+export const DEFAULT_GENRES = [
   "House",
   "Tech House",
   "Techno",
@@ -26,12 +32,16 @@ export const GENRES = [
   "Open Format",
 ] as const;
 
-export type Genre = (typeof GENRES)[number];
+export type Genre = string;
 
-const GENRE_SET: ReadonlySet<string> = new Set(GENRES);
-
-export function isGenre(value: unknown): value is Genre {
-  return typeof value === "string" && GENRE_SET.has(value);
+/**
+ * Whether a value is one of the genres currently in use.
+ *
+ * Takes the list rather than closing over a constant, because the list is now
+ * editable and a stale copy would silently reject genres an admin just created.
+ */
+export function isGenre(value: unknown, allowed: readonly string[]): boolean {
+  return typeof value === "string" && allowed.includes(value);
 }
 
 /**
@@ -41,7 +51,10 @@ export function isGenre(value: unknown): value is Genre {
  * always compare and display identically, and so a segment count cannot depend
  * on the sequence somebody happened to tick boxes in.
  */
-export function normaliseGenres(input: unknown): Genre[] {
+export function normaliseGenres(
+  input: unknown,
+  allowed: readonly string[] = DEFAULT_GENRES,
+): Genre[] {
   const values = Array.isArray(input)
     ? input
     : typeof input === "string"
@@ -51,10 +64,12 @@ export function normaliseGenres(input: unknown): Genre[] {
   const seen = new Set<string>();
   for (const value of values) {
     const trimmed = typeof value === "string" ? value.trim() : "";
-    if (isGenre(trimmed)) seen.add(trimmed);
+    if (isGenre(trimmed, allowed)) seen.add(trimmed);
   }
 
-  return GENRES.filter((genre) => seen.has(genre));
+  // Canonical order is the order of the list itself, so two records with the
+  // same genres always compare and display identically.
+  return allowed.filter((genre) => seen.has(genre));
 }
 
 /**
@@ -66,11 +81,15 @@ export function normaliseGenres(input: unknown): Genre[] {
  * to both audiences; overwriting would quietly erase the June affinity and they
  * would stop hearing about the thing they originally came for.
  */
-export function mergeGenres(existing: unknown, incoming: unknown): Genre[] {
-  return normaliseGenres([
-    ...normaliseGenres(existing),
-    ...normaliseGenres(incoming),
-  ]);
+export function mergeGenres(
+  existing: unknown,
+  incoming: unknown,
+  allowed: readonly string[] = DEFAULT_GENRES,
+): Genre[] {
+  return normaliseGenres(
+    [...normaliseGenres(existing, allowed), ...normaliseGenres(incoming, allowed)],
+    allowed,
+  );
 }
 
 /** Union of ids, order-stable and de-duplicated. Same reasoning as genres. */

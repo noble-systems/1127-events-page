@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EventForm } from "@/components/admin/EventForm";
 import { eventToFormValues } from "@/lib/event-input";
-import { getEvent } from "@/lib/store";
+import { getEvent, getGenreList } from "@/lib/store";
 
 export default async function EditEventPage({
   params,
@@ -10,7 +10,7 @@ export default async function EditEventPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const event = await getEvent(id);
+  const [event, genreList] = await Promise.all([getEvent(id), getGenreList()]);
 
   if (!event) notFound();
 
@@ -40,7 +40,11 @@ export default async function EditEventPage({
       </p>
 
       <div className="mt-10">
-        <EventForm initial={eventToFormValues(event)} eventId={event.id} />
+        <EventForm
+          initial={eventToFormValues(event)}
+          eventId={event.id}
+          genreList={genreList}
+        />
       </div>
     </>
   );

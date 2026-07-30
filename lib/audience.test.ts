@@ -8,6 +8,7 @@ import {
   tallyByGenre,
   unattributed,
 } from "./audience.ts";
+import { DEFAULT_GENRES } from "./genres.ts";
 import type { SubmissionRecord } from "./types.ts";
 
 function person(over: Partial<SubmissionRecord> = {}): SubmissionRecord {
@@ -174,7 +175,7 @@ describe("tallies", () => {
   });
 
   test("genre tally omits genres nobody carries", () => {
-    const tally = tallyByGenre(list);
+    const tally = tallyByGenre(list, DEFAULT_GENRES);
     assert.ok(tally.every((t) => t.total > 0));
     assert.ok(tally.some((t) => t.key === "House"));
     assert.ok(!tally.some((t) => t.key === ("Polka" as string)));

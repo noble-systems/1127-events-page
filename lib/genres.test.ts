@@ -1,29 +1,33 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
-  GENRES,
+  DEFAULT_GENRES,
   isGenre,
   mergeEventIds,
   mergeGenres,
   normaliseGenres,
 } from "./genres.ts";
 
+/** The list is editable now, so tests pass it explicitly rather than assuming. */
+const LIST = DEFAULT_GENRES;
+
 describe("the vocabulary itself", () => {
   test("has no duplicates", () => {
-    assert.equal(new Set(GENRES).size, GENRES.length);
+    assert.equal(new Set(DEFAULT_GENRES).size, DEFAULT_GENRES.length);
   });
 
   test("has no leading or trailing whitespace", () => {
     // A stray space produces a genre that looks identical on screen and never
     // matches, which is exactly the silent split this list exists to prevent.
-    for (const genre of GENRES) assert.equal(genre, genre.trim(), `"${genre}"`);
+    for (const genre of DEFAULT_GENRES)
+      assert.equal(genre, genre.trim(), `"${genre}"`);
   });
 });
 
 describe("isGenre", () => {
   test("accepts exact members only", () => {
-    assert.equal(isGenre("House"), true);
-    assert.equal(isGenre("Drum & Bass"), true);
+    assert.equal(isGenre("House", LIST), true);
+    assert.equal(isGenre("Drum & Bass", LIST), true);
   });
 
   test("rejects near-misses, which is the point", () => {
@@ -40,7 +44,11 @@ describe("isGenre", () => {
       42,
       ["House"],
     ]) {
-      assert.equal(isGenre(value), false, `accepted ${JSON.stringify(value)}`);
+      assert.equal(
+        isGenre(value, LIST),
+        false,
+        `accepted ${JSON.stringify(value)}`,
+      );
     }
   });
 });

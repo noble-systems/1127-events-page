@@ -108,6 +108,8 @@ export function mergeContent(overrides: ContentOverrides | null): SiteContent {
   if (!overrides) return content;
 
   for (const [key, value] of Object.entries(overrides)) {
+    // "__genres__" shares this row but is not page content. isEditableKey
+    // already rejects it; this is just to say so out loud.
     if (!isEditableKey(key)) continue;
     if (value === null || value === undefined) continue;
 

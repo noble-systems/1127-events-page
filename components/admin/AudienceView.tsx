@@ -7,7 +7,6 @@ import {
   tallyByGenre,
   unattributed,
 } from "@/lib/audience";
-import { GENRES } from "@/lib/genres";
 import type { SubmissionRecord } from "@/lib/types";
 
 /**
@@ -21,9 +20,12 @@ import type { SubmissionRecord } from "@/lib/types";
 export function AudienceView({
   records,
   events,
+  genreList,
 }: {
   records: SubmissionRecord[];
   events: { id: string; name: string }[];
+  /** The genres currently in use. Editable, so passed in rather than imported. */
+  genreList: string[];
 }) {
   const [eventIds, setEventIds] = useState<string[]>([]);
   const [genres, setGenres] = useState<string[]>([]);
@@ -32,7 +34,10 @@ export function AudienceView({
     () => tallyByEvent(records, events),
     [records, events],
   );
-  const genreTally = useMemo(() => tallyByGenre(records), [records]);
+  const genreTally = useMemo(
+    () => tallyByGenre(records, genreList),
+    [records, genreList],
+  );
   const orphans = useMemo(() => unattributed(records), [records]);
 
   const audience = useMemo(
@@ -160,7 +165,7 @@ export function AudienceView({
           <div>
             <h3 className="label-xs text-ink/65 mb-2.5">Genres</h3>
             <div className="flex flex-wrap gap-2">
-              {GENRES.map((genre) => {
+              {genreList.map((genre) => {
                 const on = genres.includes(genre);
                 return (
                   <button

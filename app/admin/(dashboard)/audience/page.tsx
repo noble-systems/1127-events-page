@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import { AudienceView } from "@/components/admin/AudienceView";
-import { listAllEvents, listSubmissions } from "@/lib/store";
+import { GenreManager } from "@/components/admin/GenreManager";
+import { getGenreList, listAllEvents, listSubmissions } from "@/lib/store";
 
 export const metadata: Metadata = { title: "Audience" };
 export const dynamic = "force-dynamic";
 
 export default async function AudiencePage() {
-  const [records, events] = await Promise.all([listSubmissions(), listAllEvents()]);
+  const [records, events, genreList] = await Promise.all([
+    listSubmissions(),
+    listAllEvents(),
+    getGenreList(),
+  ]);
 
   return (
     <div>
@@ -21,9 +26,14 @@ export default async function AudiencePage() {
       </header>
 
       <div className="mt-10">
+        <GenreManager genres={genreList} />
+      </div>
+
+      <div className="mt-10">
         <AudienceView
           records={records}
           events={events.map((event) => ({ id: event.id, name: event.name }))}
+          genreList={genreList}
         />
       </div>
     </div>
