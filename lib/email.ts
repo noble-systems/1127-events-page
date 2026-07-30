@@ -22,8 +22,41 @@ import type { EventRecord, SubmissionRecord } from "./types.ts";
 const region = () =>
   process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-1";
 
-const FROM = () => process.env.SES_FROM_ADDRESS?.trim();
+/**
+ * The From header, with a display name.
+ *
+ * SES_FROM_ADDRESS is a bare mailbox, and a bare address leaves the client to
+ * invent a sender name. Gmail uses the local part, so every message showed up
+ * in the list as "hello". The address is unchanged; it just arrives attributed
+ * to the company. An env value that already carries its own display name is
+ * left alone.
+ */
+const FROM = () => {
+  const raw = process.env.SES_FROM_ADDRESS?.trim();
+  if (!raw) return undefined;
+  return raw.includes("<") ? raw : `${brand.name} <${raw}>`;
+};
+
 const REPLY_TO = () => process.env.SES_REPLY_TO?.trim();
+
+/**
+ * Where replies to an acknowledgement go.
+ *
+ * Nothing can stop somebody hitting reply, so the question is only where it
+ * lands. These messages are automated and answer a form; a reply to one is
+ * almost always meant for a person, and pointing it at the sending mailbox
+ * buries it among confirmations nobody reads. It goes to a no-reply address
+ * instead, and the footer tells people where to write for a human.
+ *
+ * Defaults to no-reply@ on the sending domain, overridable when that mailbox
+ * should be something else.
+ */
+const NO_REPLY = () => {
+  const explicit = process.env.SES_NO_REPLY_ADDRESS?.trim();
+  if (explicit) return explicit;
+  const domain = (process.env.SES_FROM_ADDRESS ?? "").split("@")[1]?.trim();
+  return domain ? `no-reply@${domain}` : undefined;
+};
 const CONFIG_SET = () => process.env.SES_CONFIGURATION_SET?.trim();
 
 /**
@@ -233,12 +266,32 @@ function factRows(rows: Array<[string, string]>): string {
  * lowest-common-denominator that renders correctly in Outlook and Gmail alike.
  * No webfonts: Georgia stands in for the display face.
  */
+/**
+ * Sent from an address nobody reads, with the address that somebody does.
+ *
+ * Saying so is the point. A reply that vanishes silently is worse than no
+ * reply address at all, so the message that takes no replies has to name the
+ * one that does.
+ */
+export function noReplyText(): string {
+  const human = contact.email;
+  return human
+    ? `This message is automated and this address is not monitored. Write to ${human} if you need us.`
+    : "This message is automated and this address is not monitored.";
+}
+
+function noReplyNote(): string {
+  return `<p style="margin:0 0 8px;">${escapeHtml(noReplyText())}</p>`;
+}
+
 function shell(options: {
   preheader: string;
   heading: string;
   eyebrow: string;
   body: string;
   footer: string;
+  /** Adds the line telling people this address is not read. */
+  noReply?: boolean;
 }): string {
   return `<!doctype html>
 <html lang="en">
@@ -271,7 +324,7 @@ function shell(options: {
       </tr>
       <tr>
         <td style="padding:22px 32px 30px;border-top:1px solid rgba(25,23,19,0.10);font:400 12px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">
-          ${options.footer}
+          ${options.noReply ? noReplyNote() : ""}${options.footer}
         </td>
       </tr>
     </table>
@@ -339,6 +392,7 @@ export function renderGuestEmail(
     "",
     siteUrl(),
     "",
+    noReplyText(),
     postalLine(),
     `Unsubscribe: ${unsubUrl}`,
   ].join("\n");
@@ -353,6 +407,7 @@ export function renderGuestEmail(
       heading: "You're confirmed.",
       body,
       footer,
+      noReply: true,
     }),
     text,
   };
@@ -392,6 +447,7 @@ export function renderAmbassadorApplicantEmail(record: SubmissionRecord) {
     "",
     `${siteUrl()}/#ambassadors`,
     "",
+    noReplyText(),
     postalLine(),
     `Unsubscribe: ${unsubUrl}`,
   ].join("\n");
@@ -404,6 +460,7 @@ export function renderAmbassadorApplicantEmail(record: SubmissionRecord) {
       heading: "Application received.",
       body,
       footer,
+      noReply: true,
     }),
     text,
   };
@@ -560,6 +617,7 @@ export async function notifyRsvp(
       "RSVP confirmation",
       [record.email],
       renderGuestEmail(record, event),
+      NO_REPLY(),
     );
   }
 
@@ -586,6 +644,7 @@ export async function notifyAmbassador(
       "Ambassador acknowledgement",
       [record.email],
       renderAmbassadorApplicantEmail(record),
+      NO_REPLY(),
     );
   }
 
@@ -629,6 +688,7 @@ export function renderTalentApplicantEmail(record: SubmissionRecord) {
     "",
     `${siteUrl()}/opportunities`,
     "",
+    noReplyText(),
     postalLine(),
     `Unsubscribe: ${unsubUrl}`,
   ].join("\n");
@@ -641,6 +701,7 @@ export function renderTalentApplicantEmail(record: SubmissionRecord) {
       heading: "Application received.",
       body,
       footer,
+      noReply: true,
     }),
     text,
   };
@@ -709,6 +770,7 @@ export async function notifyTalent(
       "Talent acknowledgement",
       [record.email],
       renderTalentApplicantEmail(record),
+      NO_REPLY(),
     );
   }
 
@@ -751,6 +813,7 @@ export function renderPartnerInquirerEmail(record: SubmissionRecord) {
     `Company: ${record.company || "Not given"}`,
     `About: ${record.inquiryType || "Not given"}`,
     "",
+    noReplyText(),
     postalLine(),
     `Unsubscribe: ${unsubUrl}`,
   ].join("\n");
@@ -763,6 +826,7 @@ export function renderPartnerInquirerEmail(record: SubmissionRecord) {
       heading: "Message received.",
       body,
       footer,
+      noReply: true,
     }),
     text,
   };
@@ -838,6 +902,7 @@ export async function notifyPartner(
       "Partner acknowledgement",
       [record.email],
       renderPartnerInquirerEmail(record),
+      NO_REPLY(),
     );
   }
 

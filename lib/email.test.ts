@@ -9,6 +9,7 @@ import {
   renderTalentApplicantEmail,
   renderTeamEmail,
   mayEmail,
+  emailStatus,
 } from "./email.ts";
 import type { SubmissionRecord } from "./types.ts";
 
@@ -100,6 +101,24 @@ describe("public-facing email compliance", () => {
         undefined,
         `${label} sets List-Unsubscribe, which marks it as bulk`,
       );
+    });
+
+    test(`${label}: says the address is not monitored, and where to write`, () => {
+      /**
+       * Replies to these go to a no-reply address, so the message has to name
+       * one a person reads. A reply that vanishes silently is worse than not
+       * offering the address at all.
+       */
+      const { html, text } = render();
+      const human = contact.email as string;
+      assert.ok(human, "no contact address configured");
+      for (const [part, body] of [
+        ["HTML", html],
+        ["text", text],
+      ] as const) {
+        assert.match(body, /not monitored/i, `${label} ${part}`);
+        assert.ok(body.includes(human), `${label} ${part} omits ${human}`);
+      }
     });
 
     test(`${label}: has both an HTML and a plain-text part`, () => {
@@ -305,5 +324,50 @@ describe("mayEmail suppression", () => {
     for (const status of ["new", "reviewing", "contacted", "accepted"] as const) {
       assert.equal(mayEmail({ ...rsvp, status }), true, `blocked "${status}"`);
     }
+  });
+});
+
+describe("the sender has a name", () => {
+  /**
+   * The regression this pins.
+   *
+   * SES_FROM_ADDRESS is a bare mailbox, and a bare address leaves the client to
+   * invent a sender name. Gmail uses the local part, so every message arrived
+   * in the list attributed to "hello" rather than to the company.
+   */
+  const withEnv = (vars: Record<string, string>, run: () => void) => {
+    const saved = { ...process.env };
+    Object.assign(process.env, vars);
+    try {
+      run();
+    } finally {
+      process.env = saved;
+    }
+  };
+
+  test("a bare address gains the company name", () => {
+    withEnv(
+      { SES_FROM_ADDRESS: "hello@1127.events", APP_SECRET: "x".repeat(40) },
+      () => {
+        assert.match(emailStatus().detail, /1127 Events <hello@1127\.events>/);
+      },
+    );
+  });
+
+  test("an address that already has a display name is left alone", () => {
+    withEnv(
+      {
+        SES_FROM_ADDRESS: "Sun Club <hi@1127.events>",
+        APP_SECRET: "x".repeat(40),
+      },
+      () => {
+        const { detail } = emailStatus();
+        assert.match(detail, /Sun Club <hi@1127\.events>/);
+        assert.ok(
+          !detail.includes("1127 Events <Sun Club"),
+          "double-wrapped the display name",
+        );
+      },
+    );
   });
 });
