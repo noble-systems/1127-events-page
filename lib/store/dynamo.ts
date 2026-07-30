@@ -23,7 +23,7 @@ import type { Store } from "./types";
 
 // Amplify reserves names beginning with AWS_, so APP_AWS_REGION is the one you
 // can actually set in the console; AWS_REGION is injected by Lambda at runtime.
-const region = process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-2";
+const region = process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-1";
 
 let docClient: DynamoDBDocumentClient | null = null;
 

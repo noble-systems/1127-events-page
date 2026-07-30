@@ -20,7 +20,7 @@ import type { EventRecord, SubmissionRecord } from "./types.ts";
  */
 
 const region = () =>
-  process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-2";
+  process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-1";
 
 const FROM = () => process.env.SES_FROM_ADDRESS?.trim();
 const REPLY_TO = () => process.env.SES_REPLY_TO?.trim();

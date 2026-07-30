@@ -117,7 +117,7 @@ export type RateLimitName = keyof typeof RATE_LIMITS;
 
 const TABLE = () => process.env.RATELIMIT_TABLE?.trim();
 const region = () =>
-  process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-2";
+  process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-1";
 
 let client: DynamoDBClient | null = null;
 function db(): DynamoDBClient {

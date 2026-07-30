@@ -18,7 +18,7 @@ import type { EventRecord, SubmissionRecord } from "./types.ts";
  */
 
 const region = () =>
-  process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-2";
+  process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-1";
 
 /** Phone number ARN, pool ID, or sender ID that messages originate from. */
 const ORIGINATION = () => process.env.SMS_ORIGINATION_IDENTITY?.trim();

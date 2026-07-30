@@ -18,7 +18,7 @@ aws cloudformation deploy \
   --template-file infra/1127-infra.yaml \
   --stack-name events-1127 \
   --capabilities CAPABILITY_NAMED_IAM \
-  --region us-west-2 \
+  --region us-west-1 \
   --parameter-overrides AdminEmail=you@yourdomain.com
 ```
 
@@ -31,7 +31,7 @@ Read the outputs, you need all of them in step 3:
 ```bash
 aws cloudformation describe-stacks \
   --stack-name events-1127 \
-  --region us-west-2 \
+  --region us-west-1 \
   --query 'Stacks[0].Outputs' \
   --output table
 ```
@@ -103,7 +103,7 @@ aws cognito-idp admin-create-user \
   --username teammate@yourdomain.com \
   --user-attributes Name=email,Value=teammate@yourdomain.com Name=email_verified,Value=true \
   --desired-delivery-mediums EMAIL \
-  --region us-west-2
+  --region us-west-1
 ```
 
 AWS emails a temporary password. On first sign-in at `/admin/login` the app
@@ -163,7 +163,7 @@ aws cloudformation deploy \
   --template-file infra/1127-infra.yaml \
   --stack-name events-1127 \
   --capabilities CAPABILITY_NAMED_IAM \
-  --region us-west-2 \
+  --region us-west-1 \
   --parameter-overrides SendingDomain=1127.events
 ```
 
@@ -171,7 +171,7 @@ Read the DNS records back out and add them at your registrar:
 
 ```bash
 aws cloudformation describe-stacks --stack-name events-1127 \
-  --region us-west-2 --query 'Stacks[0].Outputs' --output table
+  --region us-west-1 --query 'Stacks[0].Outputs' --output table
 ```
 
 - `DkimRecord1/2/3` → three **CNAME** records (proves you own the domain, signs
@@ -182,7 +182,7 @@ aws cloudformation describe-stacks --stack-name events-1127 \
 Verification usually completes within an hour of the DNS propagating. Check with:
 
 ```bash
-aws sesv2 get-email-identity --email-identity 1127.events --region us-west-2 \
+aws sesv2 get-email-identity --email-identity 1127.events --region us-west-1 \
   --query '{Verified:VerifiedForSendingStatus,Dkim:DkimAttributes.Status}'
 ```
 
@@ -198,13 +198,13 @@ aws sesv2 put-account-details \
   --mail-type TRANSACTIONAL \
   --website-url https://1127.events \
   --use-case-description "Confirmation emails to people who opt in to the Sun Club event list, plus internal new-signup notifications. Every message carries a working one-click unsubscribe." \
-  --region us-west-2
+  --region us-west-1
 ```
 
 While in the sandbox you can still test by verifying your own address:
 
 ```bash
-aws sesv2 create-email-identity --email-identity you@yourdomain.com --region us-west-2
+aws sesv2 create-email-identity --email-identity you@yourdomain.com --region us-west-1
 ```
 
 ### 3. Add the environment variables
@@ -332,7 +332,7 @@ window). For an off-site copy, schedule an export to S3:
 aws dynamodb export-table-to-point-in-time \
   --table-arn <SubmissionsTable ARN> \
   --s3-bucket <your-backup-bucket> \
-  --region us-west-2
+  --region us-west-1
 ```
 
 **Local development.** With no environment variables set, `npm run dev` stores

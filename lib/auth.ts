@@ -40,7 +40,7 @@ const SESSION_MAX_AGE = 60 * 60 * 8; // 8 hours
 const USER_POOL_ID = () => process.env.COGNITO_USER_POOL_ID;
 const CLIENT_ID = () => process.env.COGNITO_CLIENT_ID;
 const REGION = () =>
-  process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-2";
+  process.env.APP_AWS_REGION ?? process.env.AWS_REGION ?? "us-west-1";
 
 export type AdminUser = { email: string; via: AuthMode };
 

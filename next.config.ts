@@ -11,7 +11,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "1127-events-images-769194516210.s3.us-west-2.amazonaws.com",
+        hostname:
+          "1127-events-images-769194516210-us-west-1.s3.us-west-1.amazonaws.com",
         pathname: "/**",
       },
     ],

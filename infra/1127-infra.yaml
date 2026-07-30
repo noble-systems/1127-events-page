@@ -13,7 +13,7 @@ Description: >
       --template-file infra/1127-infra.yaml \
       --stack-name events-1127 \
       --capabilities CAPABILITY_IAM \
-      --region us-west-2
+      --region us-west-1
 
 Parameters:
   ProjectName:
@@ -35,6 +35,21 @@ Parameters:
       Public site domain, without a scheme. Used for the CORS allow-list on the
       images bucket so the dashboard can upload directly to S3.
 
+  UseSesForCognito:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+    Description: >
+      Whether Cognito sends login codes through SES. This exists because the
+      dependency is circular on a fresh region: Cognito refuses a user pool whose
+      SES identity is unverified, and verifying the identity needs DKIM records
+      that only exist once the identity has been created.
+
+      So deploy in two passes. Leave this "false" first, add the DKIM records
+      from the stack outputs, wait for SES to verify, then deploy again with
+      "true". Until then Cognito uses its own sender, which works but is capped
+      at 50 emails a day and lands in spam more often.
+
   SendingDomain:
     Type: String
     Default: ""
@@ -46,6 +61,11 @@ Parameters:
 Conditions:
   CreateAdminUser: !Not [!Equals [!Ref AdminEmail, ""]]
   CreateEmailIdentity: !Not [!Equals [!Ref SendingDomain, ""]]
+  # Both must hold: a domain to send from, and an explicit acknowledgement that
+  # it has already verified. See the UseSesForCognito parameter.
+  CognitoUsesSes: !And
+    - !Not [!Equals [!Ref SendingDomain, ""]]
+    - !Equals [!Ref UseSesForCognito, "true"]
 
 Resources:
   # ---------------------------------------------------------------------------
@@ -142,9 +162,12 @@ Resources:
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
     Properties:
-      # Bucket names are globally unique, so the account id keeps this from
-      # colliding with someone else's.
-      BucketName: !Sub "${ProjectName}-images-${AWS::AccountId}"
+      # Bucket names are globally unique across every account AND every region,
+      # so the name carries both the account id and the region. Without the
+      # region, deploying this same stack to a second region fails on a name
+      # collision with our own bucket, which is exactly what happened when the
+      # backend moved from us-west-2 to us-west-1.
+      BucketName: !Sub "${ProjectName}-images-${AWS::AccountId}-${AWS::Region}"
       OwnershipControls:
         # ACLs disabled. Access is granted by bucket policy only, which is one
         # mechanism to reason about instead of two.
@@ -222,7 +245,7 @@ Resources:
       # Note this keeps working while SES is in the sandbox: every admin address
       # is at the verified domain, so codes are deliverable today.
       EmailConfiguration: !If
-        - CreateEmailIdentity
+        - CognitoUsesSes
         - EmailSendingAccount: DEVELOPER
           From: !Sub "1127 Events <hello@${SendingDomain}>"
           SourceArn: !Sub "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SendingDomain}"
@@ -352,7 +375,11 @@ Resources:
   AppDataPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: !Sub "${ProjectName}-app-data"
+      # IAM is a GLOBAL namespace, unlike almost everything else here, so the
+      # region belongs in the name. Without it, deploying this stack to a second
+      # region collides with the policy the first region already created. Same
+      # trap as the S3 bucket above.
+      ManagedPolicyName: !Sub "${ProjectName}-app-data-${AWS::Region}"
       Description: Read/write access to the 1127 Events tables, plus SES and SMS send.
       PolicyDocument:
         Version: "2012-10-17"

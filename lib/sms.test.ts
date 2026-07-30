@@ -194,7 +194,7 @@ describe("smsStatus", () => {
 
   test("stays off without an opt-out list, and says why", () => {
     process.env.SMS_ORIGINATION_IDENTITY =
-      "arn:aws:sms-voice:us-west-2:1:phone-number/x";
+      "arn:aws:sms-voice:us-west-1:1:phone-number/x";
     delete process.env.SMS_OPT_OUT_LIST;
     const status = smsStatus();
     assert.equal(status.enabled, false, "must not send where STOP is unhandled");
@@ -203,7 +203,7 @@ describe("smsStatus", () => {
 
   test("on only when both are configured", () => {
     process.env.SMS_ORIGINATION_IDENTITY =
-      "arn:aws:sms-voice:us-west-2:1:phone-number/x";
+      "arn:aws:sms-voice:us-west-1:1:phone-number/x";
     process.env.SMS_OPT_OUT_LIST = "1127-opt-outs";
     const status = smsStatus();
     assert.equal(status.enabled, true);
