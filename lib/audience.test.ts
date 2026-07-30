@@ -8,6 +8,7 @@ import {
   tallyByEvent,
   tallyByGenre,
   unattributed,
+  canResubscribe,
   rsvpList,
   subscriptionState,
   subscriptionSummary,
@@ -344,7 +345,6 @@ describe("subscription state", () => {
     assert.equal(summary.subscribed, 1);
     assert.equal(summary.unsubscribed, 2);
     assert.equal(summary.bounced, 1);
-    assert.equal(summary.manual, 1);
   });
 
   test("the log is newest first", () => {
@@ -356,5 +356,42 @@ describe("subscription state", () => {
       unsubscribes(rows).map((r) => r.pk),
       ["new", "old"],
     );
+  });
+});
+
+describe("who may undo an opt-out", () => {
+  const make = (source?: "self" | "admin" | "bounce"): SubmissionRecord => ({
+    pk: "rsvp#x",
+    type: "rsvp",
+    email: "x@example.com",
+    name: "X",
+    status: "unsubscribed",
+    marketingOptIn: false,
+    unsubscribedAt: "2026-07-30T00:00:00.000Z",
+    unsubscribedSource: source,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-07-30T00:00:00.000Z",
+  });
+
+  test("an admin cannot undo somebody's own unsubscribe", () => {
+    // They made a decision about their own inbox. A dashboard button that
+    // quietly reverses it is how a domain gets reported.
+    assert.equal(canResubscribe(make("self")), false);
+  });
+
+  test("an admin can undo their own", () => {
+    // Correcting a mistake, not overriding anybody.
+    assert.equal(canResubscribe(make("admin")), true);
+  });
+
+  test("a bounce can be cleared", () => {
+    // A dead address is a fact, not a decision by a person.
+    assert.equal(canResubscribe(make("bounce")), true);
+  });
+
+  test("a record with no source is not treated as theirs", () => {
+    // Rows predating the source field. Locking them would strand people with no
+    // way back, and there is no evidence they asked to leave themselves.
+    assert.equal(canResubscribe(make(undefined)), true);
   });
 });

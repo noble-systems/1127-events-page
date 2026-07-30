@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readJson, requireAdmin } from "@/lib/admin-api";
+import { canResubscribe } from "@/lib/audience";
 import { deleteSubmission, getSubmission, updateSubmissionMeta } from "@/lib/store";
 import { fromUrlId } from "@/lib/ids";
 import { statusesFor, type SubmissionStatus } from "@/lib/types";
@@ -51,6 +52,28 @@ export async function PATCH(request: Request, { params }: Params) {
   const existing = await getSubmission(pk);
   if (!existing) {
     return NextResponse.json({ ok: false, message: "Not found." }, { status: 404 });
+  }
+
+  /**
+   * An opt-out the person made themselves is not an admin's to undo.
+   *
+   * Enforced here rather than only in the dashboard, because the button being
+   * hidden is not the same as the action being refused: this endpoint takes a
+   * plain PATCH.
+   */
+  if (
+    body?.status === "subscribed" &&
+    existing.status === "unsubscribed" &&
+    !canResubscribe(existing)
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "They unsubscribed themselves, so they can't be put back on the list from here. They'd need to sign up again.",
+      },
+      { status: 409 },
+    );
   }
 
   if (body?.status !== undefined) {

@@ -225,13 +225,27 @@ export function unsubscribes(
     );
 }
 
+/**
+ * Whether an admin may put this person back on the list.
+ *
+ * Only the person who opted out can undo it. Somebody who clicked unsubscribe
+ * made a decision about their own inbox, and a dashboard button that quietly
+ * reverses it is how a list gets complaints and a domain gets reported. If they
+ * want back on, they sign up again.
+ *
+ * An admin undoing their own action is different: that is correcting a mistake,
+ * not overriding anybody. So is clearing a bounce, which is a fact about a dead
+ * address rather than a decision by a person.
+ */
+export function canResubscribe(record: SubmissionRecord): boolean {
+  return record.unsubscribedSource !== "self";
+}
+
 export type SubscriptionSummary = {
   rsvps: number;
   subscribed: number;
   unsubscribed: number;
   bounced: number;
-  /** Of the unsubscribes, how many an admin recorded by hand. */
-  manual: number;
 };
 
 export function subscriptionSummary(
@@ -243,12 +257,10 @@ export function subscriptionSummary(
     subscribed: 0,
     unsubscribed: 0,
     bounced: 0,
-    manual: 0,
   };
 
   for (const record of list) {
     summary[subscriptionState(record)] += 1;
-    if (record.unsubscribedSource === "admin") summary.manual += 1;
   }
 
   return summary;

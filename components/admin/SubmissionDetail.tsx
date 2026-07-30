@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { canResubscribe } from "@/lib/audience";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/forms/Fields";
 import { toUrlId } from "@/lib/ids";
@@ -51,6 +52,14 @@ export function SubmissionDetail({ submission }: { submission: SubmissionRecord 
     normaliseStatus(submission.type, submission.status),
   );
   const options = statusesFor(submission.type);
+
+  /**
+   * An opt-out the person made themselves is not an admin's to undo. The server
+   * refuses it either way; disabling the button explains why before the click
+   * rather than after it.
+   */
+  const lockedOut =
+    status === "unsubscribed" && !canResubscribe(submission);
   const [notes, setNotes] = useState(submission.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -218,10 +227,12 @@ export function SubmissionDetail({ submission }: { submission: SubmissionRecord 
                 <button
                   key={option}
                   type="button"
-                  disabled={saving}
+                  disabled={
+                    saving || (lockedOut && option !== "unsubscribed")
+                  }
                   aria-pressed={status === option}
                   onClick={() => changeStatus(option)}
-                  className={`rounded-xl border px-3 py-2.5 text-[0.875rem] transition-colors duration-200 disabled:opacity-60 ${
+                  className={`rounded-xl border px-3 py-2.5 text-[0.875rem] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${
                     status === option
                       ? "border-ink bg-ink text-bone"
                       : "border-ink/15 bg-bone-soft hover:border-ink/35"
@@ -231,6 +242,14 @@ export function SubmissionDetail({ submission }: { submission: SubmissionRecord 
                 </button>
               ))}
             </div>
+
+            {lockedOut ? (
+              <p className="text-ink/65 mt-3 text-[0.8125rem] leading-relaxed">
+                They unsubscribed themselves, so they can&apos;t be put back on
+                the list from here. If they want back on, they sign up again.
+                An opt-out an admin recorded can be undone; this one is theirs.
+              </p>
+            ) : null}
           </div>
 
           <div className="mt-7">
