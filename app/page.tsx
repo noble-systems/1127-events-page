@@ -1,8 +1,6 @@
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { About } from "@/components/sections/About";
 import { Ambassadors } from "@/components/sections/Ambassadors";
-import { Capabilities } from "@/components/sections/Capabilities";
 import { FinalCta } from "@/components/sections/FinalCta";
 import { Hero } from "@/components/sections/Hero";
 import { MediaGrid } from "@/components/sections/MediaGrid";
@@ -90,11 +88,9 @@ export default async function HomePage() {
         <Hero />
         <UpcomingEvents events={events} />
         <SunClubIntro />
-        <Capabilities />
         <Ambassadors />
         <MediaGrid />
         <Partner />
-        <About />
         <FinalCta />
       </main>
       <SiteFooter />

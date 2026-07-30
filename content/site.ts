@@ -138,8 +138,6 @@ export const notifications = {
 
 export const navLinks = [
   { label: "Events", href: "#events" },
-  { label: "About", href: "#about" },
-  { label: "What We Do", href: "#what-we-do" },
   { label: "Ambassadors", href: "#ambassadors" },
   { label: "Opportunities", href: "/opportunities" },
   { label: "Partner With Us", href: "/partner" },
@@ -387,11 +385,6 @@ export const capabilities: readonly Capability[] = [
   },
 ];
 
-export const capabilitiesSection = {
-  eyebrow: "What 1127 Brings",
-  title: "What we do.",
-} as const;
-
 /* -------------------------------------------------------------------------- */
 /* Ambassador program                                                          */
 /* -------------------------------------------------------------------------- */
@@ -597,23 +590,6 @@ export const partner = {
 } as const;
 
 /* -------------------------------------------------------------------------- */
-/* About                                                                       */
-/* -------------------------------------------------------------------------- */
-
-export const about = {
-  eyebrow: "About 1127",
-  title: "Who we are.",
-  paragraphs: [
-    "1127 Events is a production company and event platform built by an Arizona-based team with roughly 30 years of combined event-production experience across planning, live production, audio, artist management and marketing.",
-    "We create and produce our own event concepts rather than promoting other people's. Sun Club is our featured series, and we partner with venues who want a complete operation instead of a booking.",
-    "We're based here. We know the rooms, the artists, and the people who fill them.",
-  ],
-  shotNote: "Team at work: event day operations",
-  image: null as string | null,
-  imageAlt: "The 1127 team working during an event",
-} as const;
-
-/* -------------------------------------------------------------------------- */
 /* Final CTA                                                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -646,8 +622,6 @@ export const footer = {
         { label: "Upcoming events", href: "/#events" },
         { label: "RSVP for Sun Club", href: "/rsvp" },
         { label: "Sun Club", href: "/#sun-club" },
-        { label: "What we do", href: "/#what-we-do" },
-        { label: "About 1127", href: "/#about" },
       ],
     },
     {
