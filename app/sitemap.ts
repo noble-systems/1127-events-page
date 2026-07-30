@@ -2,7 +2,15 @@ import type { MetadataRoute } from "next";
 import { brand } from "@/content/site";
 import { listPublicEvents } from "@/lib/store";
 
-export const revalidate = 3600;
+/**
+ * Rendered per request, not at build.
+ *
+ * The build role has no DynamoDB access (only the compute role does), so a
+ * prerendered sitemap silently falls back to the seed events and then serves
+ * that stale list until it revalidates. Crawlers hit this once in a while, so
+ * a scan per request is the cheaper mistake.
+ */
+export const dynamic = "force-dynamic";
 
 /**
  * /rsvp redirects to whichever event is featured, so the addresses worth
