@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { LEGAL_VERSION, seedEvents } from "@/content/site";
 import type { RequestMeta } from "@/lib/request-meta";
 import { DEFAULT_GENRES, mergeEventIds, mergeGenres } from "@/lib/genres";
+import { isSuppressed } from "@/lib/audience";
 import { smsConsentFrom } from "@/lib/sms";
 import { defaultStatusFor } from "@/lib/types";
 import type {
@@ -299,9 +300,7 @@ export async function recordSubmission(
   // counts: status is what the RSVP row carries, the timestamp is what an
   // applicant row carries, since "unsubscribed" is not a stage in a review
   // pipeline.
-  const suppressed = Boolean(
-    existing?.unsubscribedAt || existing?.status === "unsubscribed",
-  );
+  const suppressed = existing ? isSuppressed(existing) : false;
 
   const record: SubmissionRecord = {
     pk,
@@ -411,7 +410,15 @@ export async function updateSubmissionMeta(
           resubscribedAt: undefined,
         }
       : {}),
-    ...(wasOut && !nowOut ? { resubscribedAt: now } : {}),
+    ...(wasOut && !nowOut
+      ? {
+          // isMailable reads marketingOptIn, and suppressing cleared it, so a
+          // resubscribe that only changed the status left somebody showing as
+          // subscribed on one screen and missing from the audience on another.
+          marketingOptIn: true,
+          resubscribedAt: now,
+        }
+      : {}),
     updatedAt: now,
   });
 }

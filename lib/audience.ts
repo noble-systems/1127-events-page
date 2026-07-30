@@ -48,8 +48,7 @@ export type Segment = {
 export function isMailable(record: SubmissionRecord): boolean {
   if (record.type !== "rsvp") return false;
   if (record.marketingOptIn !== true) return false;
-  const status = normaliseStatus(record.type, record.status);
-  return status !== "unsubscribed" && status !== "bounced";
+  return !isSuppressed(record);
 }
 
 /** Does this person match the segment? */
@@ -173,12 +172,39 @@ export function unattributed(
  */
 export type SubscriptionState = "subscribed" | "unsubscribed" | "bounced";
 
+/**
+ * Whether this address is currently opted out.
+ *
+ * The comparison at the bottom is the point. The unsubscribe record is kept
+ * deliberately, because it is the audit trail and the thing that suppresses a
+ * later re-import, which means anything reading `unsubscribedAt` on its own
+ * treats somebody who has since come back as still gone. That is exactly what
+ * happened: resubscribing left the row reading "subscribed" on one screen and
+ * absent from the mailable audience on another.
+ *
+ * So an unsubscribe that has been undone is history, not current state, and the
+ * two timestamps are what tell those apart.
+ */
+export function isSuppressed(record: SubmissionRecord): boolean {
+  if (record.type === "rsvp") {
+    const status = normaliseStatus(record.type, record.status);
+    if (status === "unsubscribed" || status === "bounced") return true;
+  }
+
+  // Applications carry no subscription status, so for them the timestamps are
+  // the only signal.
+  if (!record.unsubscribedAt) return false;
+  return (
+    !record.resubscribedAt || record.resubscribedAt < record.unsubscribedAt
+  );
+}
+
 export function subscriptionState(record: SubmissionRecord): SubscriptionState {
   const status = normaliseStatus(record.type, record.status);
   if (status === "bounced") return "bounced";
-  // Never opted in, or opted out: both mean "do not email", but only the second
-  // is an unsubscribe. `unsubscribedAt` is what tells them apart.
-  if (status === "unsubscribed" || record.unsubscribedAt) return "unsubscribed";
+  if (isSuppressed(record)) return "unsubscribed";
+  // Never opted in is also "do not email", but it is not an unsubscribe: there
+  // is no date or source to show against it.
   return record.marketingOptIn === true ? "subscribed" : "unsubscribed";
 }
 

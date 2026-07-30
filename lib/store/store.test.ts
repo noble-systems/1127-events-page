@@ -11,6 +11,10 @@ import { beforeEach, describe, test } from "node:test";
  */
 process.chdir(mkdtempSync(path.join(tmpdir(), "1127-store-")));
 
+const { isMailable, isSuppressed, subscriptionState } = await import(
+  "../audience.ts"
+);
+
 const {
   createEvent,
   featuredEvent,
@@ -19,6 +23,7 @@ const {
   store,
   suppressEmail,
   updateEvent,
+  updateSubmissionMeta,
 } = await import("./index.ts");
 
 const EVENT = {
@@ -318,5 +323,64 @@ describe("RSVPing twice for the same event", () => {
     const rows = await store().listSubmissions();
     assert.equal(rows.length, 1);
     assert.deepEqual(rows[0].eventIds, ["house-night"]);
+  });
+});
+
+describe("resubscribing actually puts somebody back", () => {
+  beforeEach(reset);
+
+  const values = {
+    name: "Sam",
+    email: "sam@example.com",
+    marketingOptIn: "true",
+    eventId: "",
+  };
+
+  /**
+   * The regression this pins.
+   *
+   * Suppressing clears marketingOptIn, which is what isMailable reads. Undoing
+   * it only changed the status, so the row read "subscribed" on the People and
+   * Subscriptions screens while being absent from the mailable audience and
+   * from every export. Two screens, two answers, no error.
+   */
+  test("they are mailable again, not just labelled subscribed", async () => {
+    await recordSubmission("rsvp", values);
+    const pk = (await store().listSubmissions())[0].pk;
+
+    await updateSubmissionMeta(pk, { status: "unsubscribed" });
+    assert.equal(isMailable((await store().listSubmissions())[0]), false);
+
+    await updateSubmissionMeta(pk, { status: "subscribed" });
+    const back = (await store().listSubmissions())[0];
+    assert.equal(back.marketingOptIn, true, "the flag isMailable reads");
+    assert.equal(isMailable(back), true);
+    assert.equal(subscriptionState(back), "subscribed");
+  });
+
+  test("the earlier opt-out is kept as history, not erased", async () => {
+    await recordSubmission("rsvp", values);
+    const pk = (await store().listSubmissions())[0].pk;
+    await updateSubmissionMeta(pk, { status: "unsubscribed" });
+    await updateSubmissionMeta(pk, { status: "subscribed" });
+
+    const row = (await store().listSubmissions())[0];
+    assert.ok(row.unsubscribedAt, "history was thrown away");
+    assert.ok(row.resubscribedAt, "no record of coming back");
+    // Kept, but no longer current: that distinction is the whole fix.
+    assert.equal(isSuppressed(row), false);
+  });
+
+  test("a signup after a resubscribe does not re-suppress them", async () => {
+    // recordSubmission asks whether the address is suppressed before deciding
+    // what to do with the opt-in box. Reading unsubscribedAt on its own put
+    // them straight back in the hole.
+    await recordSubmission("rsvp", values);
+    const pk = (await store().listSubmissions())[0].pk;
+    await updateSubmissionMeta(pk, { status: "unsubscribed" });
+    await updateSubmissionMeta(pk, { status: "subscribed" });
+
+    await recordSubmission("rsvp", values);
+    assert.equal(isMailable((await store().listSubmissions())[0]), true);
   });
 });
