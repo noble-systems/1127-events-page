@@ -8,6 +8,10 @@ import {
   tallyByEvent,
   tallyByGenre,
   unattributed,
+  rsvpList,
+  subscriptionState,
+  subscriptionSummary,
+  unsubscribes,
 } from "./audience.ts";
 import { DEFAULT_GENRES } from "./genres.ts";
 import type { SubmissionRecord } from "./types.ts";
@@ -228,5 +232,129 @@ describe("the mailing list is RSVPs only", () => {
     const tally = tallyByEvent(mixed, [{ id: "sun-club", name: "Sun Club" }]);
     // All four carry sun-club in the fixture, but only the RSVP is mailable.
     assert.equal(tally[0]?.mailable, 1);
+  });
+});
+
+describe("unsubscribing does not remove somebody from the RSVP list", () => {
+  /**
+   * The regression this pins.
+   *
+   * The unsubscribe route deleted every row for the address. That erased the
+   * RSVP history, any application they had submitted, and the record of the
+   * opt-out itself. The last one is the dangerous part: with no record, the
+   * next signup or import looks like fresh consent.
+   */
+  const gone: SubmissionRecord = {
+    pk: "rsvp#sam@example.com",
+    type: "rsvp",
+    email: "sam@example.com",
+    name: "Sam",
+    status: "unsubscribed",
+    marketingOptIn: false,
+    unsubscribedAt: "2026-07-30T12:00:00.000Z",
+    unsubscribedSource: "self",
+    eventIds: ["house-night"],
+    createdAt: "2026-06-01T00:00:00.000Z",
+    updatedAt: "2026-07-30T12:00:00.000Z",
+  };
+
+  const here: SubmissionRecord = {
+    pk: "rsvp@example.com",
+    type: "rsvp",
+    email: "kit@example.com",
+    name: "Kit",
+    status: "subscribed",
+    marketingOptIn: true,
+    eventIds: ["house-night"],
+    createdAt: "2026-06-01T00:00:00.000Z",
+    updatedAt: "2026-06-01T00:00:00.000Z",
+  };
+
+  test("they stay on the RSVP list", () => {
+    assert.equal(rsvpList([gone, here]).length, 2);
+  });
+
+  test("their event history survives", () => {
+    assert.deepEqual(rsvpList([gone])[0].eventIds, ["house-night"]);
+  });
+
+  test("but they are not mailable", () => {
+    assert.equal(isMailable(gone), false);
+    assert.equal(isMailable(here), true);
+  });
+
+  test("and they do not count towards a segment", () => {
+    const picked = selectAudience([gone, here], { eventIds: ["house-night"] });
+    assert.deepEqual(
+      picked.map((r) => r.email),
+      ["kit@example.com"],
+    );
+  });
+});
+
+describe("subscription state", () => {
+  const make = (over: Partial<SubmissionRecord>): SubmissionRecord => ({
+    pk: "rsvp#x",
+    type: "rsvp",
+    email: "x@example.com",
+    name: "X",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    ...over,
+  });
+
+  test("opted in and never opted out is subscribed", () => {
+    assert.equal(
+      subscriptionState(make({ marketingOptIn: true, status: "subscribed" })),
+      "subscribed",
+    );
+  });
+
+  test("a bounce reads as bounced, not as an unsubscribe", () => {
+    // They never asked to leave. Telling the two apart is the difference
+    // between a dead address and a person who opted out.
+    assert.equal(subscriptionState(make({ status: "bounced" })), "bounced");
+  });
+
+  test("never opting in is not the same as unsubscribing", () => {
+    const never = make({ marketingOptIn: false });
+    const left = make({
+      marketingOptIn: false,
+      unsubscribedAt: "2026-07-30T00:00:00.000Z",
+      unsubscribedSource: "admin",
+    });
+    // Both are "do not email", but only one is an opt-out, and only one should
+    // show a date and a source on the subscriptions screen.
+    assert.equal(subscriptionState(never), "unsubscribed");
+    assert.equal(never.unsubscribedAt, undefined);
+    assert.equal(left.unsubscribedSource, "admin");
+  });
+
+  test("the summary counts manual opt-outs separately", () => {
+    const rows = [
+      make({ pk: "a", marketingOptIn: true, status: "subscribed" }),
+      make({ pk: "b", status: "unsubscribed", unsubscribedSource: "self" }),
+      make({ pk: "c", status: "unsubscribed", unsubscribedSource: "admin" }),
+      make({ pk: "d", status: "bounced" }),
+      // An applicant is not on the mailing list at all.
+      make({ pk: "e", type: "ambassador", marketingOptIn: true }),
+    ];
+    const summary = subscriptionSummary(rows);
+    assert.equal(summary.rsvps, 4, "applicants must not be counted");
+    assert.equal(summary.subscribed, 1);
+    assert.equal(summary.unsubscribed, 2);
+    assert.equal(summary.bounced, 1);
+    assert.equal(summary.manual, 1);
+  });
+
+  test("the log is newest first", () => {
+    const rows = [
+      make({ pk: "old", status: "unsubscribed", unsubscribedAt: "2026-01-01T00:00:00.000Z" }),
+      make({ pk: "new", status: "unsubscribed", unsubscribedAt: "2026-07-01T00:00:00.000Z" }),
+    ];
+    assert.deepEqual(
+      unsubscribes(rows).map((r) => r.pk),
+      ["new", "old"],
+    );
   });
 });

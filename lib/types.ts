@@ -124,6 +124,23 @@ export const APPLICATION_STATUSES: readonly SubmissionStatus[] = [
   "archived",
 ];
 
+/**
+ * Who performed an opt-out.
+ *
+ * "self" is the link in the email footer. "admin" is somebody in the dashboard
+ * acting on a request made in person, by text, or at the door; those are the
+ * manual ones, and they are worth telling apart because they are the ones with
+ * no audit trail anywhere else. "bounce" is the provider telling us the address
+ * is dead.
+ */
+export type UnsubscribeSource = "self" | "admin" | "bounce";
+
+export const UNSUBSCRIBE_SOURCE_LABELS: Record<UnsubscribeSource, string> = {
+  self: "Unsubscribe link",
+  admin: "Manual, by an admin",
+  bounce: "Hard bounce",
+};
+
 export const LIST_STATUSES: readonly SubmissionStatus[] = [
   "subscribed",
   "unsubscribed",
@@ -190,6 +207,23 @@ export type SubmissionRecord = {
   termsVersion?: string;
   /** Ticked the box asking for event email. Applicants can opt in too. */
   marketingOptIn?: boolean;
+
+  /**
+   * When the address was last opted out, and how.
+   *
+   * Kept rather than deleted, for two reasons. An unsubscribe is a standing
+   * instruction, so the record of it is the thing that stops them being emailed
+   * again after a re-import or a fresh signup; throwing it away throws away the
+   * suppression. And an RSVP is a fact about a night that happened, which does
+   * not stop being true because somebody later left the mailing list.
+   *
+   * This route used to delete every row for the address instead, which lost
+   * both, along with any application they had submitted.
+   */
+  unsubscribedAt?: string;
+  unsubscribedSource?: UnsubscribeSource;
+  /** Set when somebody opts back in, so the history reads in order. */
+  resubscribedAt?: string;
   /** Ticked the box allowing day-of text messages. Only asked when a phone is given. */
   smsOptIn?: boolean;
 

@@ -154,3 +154,88 @@ export function unattributed(
 ): SubmissionRecord[] {
   return records.filter((r) => (r.eventIds ?? []).length === 0);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Subscriptions                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Subscription is not the same thing as the RSVP list, and conflating them was
+ * a bug worth naming.
+ *
+ * An RSVP is a fact: this person said they were coming to this night. It stays
+ * true forever. A subscription is a standing preference: whether they want to
+ * hear about the next one. It can be withdrawn at any time, and withdrawing it
+ * says nothing about the nights they already came to.
+ *
+ * The unsubscribe route used to delete every row for the address, which erased
+ * both at once, along with the record of the opt-out itself.
+ */
+export type SubscriptionState = "subscribed" | "unsubscribed" | "bounced";
+
+export function subscriptionState(record: SubmissionRecord): SubscriptionState {
+  const status = normaliseStatus(record.type, record.status);
+  if (status === "bounced") return "bounced";
+  // Never opted in, or opted out: both mean "do not email", but only the second
+  // is an unsubscribe. `unsubscribedAt` is what tells them apart.
+  if (status === "unsubscribed" || record.unsubscribedAt) return "unsubscribed";
+  return record.marketingOptIn === true ? "subscribed" : "unsubscribed";
+}
+
+/** Everyone on the RSVP list, whatever their subscription says. */
+export function rsvpList(
+  records: readonly SubmissionRecord[],
+): SubmissionRecord[] {
+  return records.filter((record) => record.type === "rsvp");
+}
+
+/**
+ * Opt-outs, newest first, with how each one happened.
+ *
+ * Manual ones are the reason this exists. A click on the footer link and a hard
+ * bounce are both recorded elsewhere; somebody asking to come off the list at
+ * the door is not, so if the dashboard does not show it, nothing does.
+ */
+export function unsubscribes(
+  records: readonly SubmissionRecord[],
+): SubmissionRecord[] {
+  return records
+    .filter(
+      (record) =>
+        record.type === "rsvp" && subscriptionState(record) !== "subscribed",
+    )
+    .sort((a, b) =>
+      (b.unsubscribedAt ?? b.updatedAt).localeCompare(
+        a.unsubscribedAt ?? a.updatedAt,
+      ),
+    );
+}
+
+export type SubscriptionSummary = {
+  rsvps: number;
+  subscribed: number;
+  unsubscribed: number;
+  bounced: number;
+  /** Of the unsubscribes, how many an admin recorded by hand. */
+  manual: number;
+};
+
+export function subscriptionSummary(
+  records: readonly SubmissionRecord[],
+): SubscriptionSummary {
+  const list = rsvpList(records);
+  const summary: SubscriptionSummary = {
+    rsvps: list.length,
+    subscribed: 0,
+    unsubscribed: 0,
+    bounced: 0,
+    manual: 0,
+  };
+
+  for (const record of list) {
+    summary[subscriptionState(record)] += 1;
+    if (record.unsubscribedSource === "admin") summary.manual += 1;
+  }
+
+  return summary;
+}

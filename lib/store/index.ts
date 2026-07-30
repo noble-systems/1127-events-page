@@ -10,6 +10,7 @@ import type {
   SubmissionRecord,
   SubmissionStatus,
   SubmissionType,
+  UnsubscribeSource,
 } from "@/lib/types";
 import { mergeContent, type SiteContent } from "@/lib/site-content";
 import { dynamoStore } from "./dynamo";
@@ -186,11 +187,11 @@ async function claimFeatured(keepId: string): Promise<void> {
     (event) => event.featured && event.id !== keepId,
   );
   const now = new Date().toISOString();
-  await Promise.all(
-    others.map((event) =>
-      store().putEvent({ ...event, featured: false, updatedAt: now }),
-    ),
-  );
+  // Sequential for the same reason as suppressEmail: the local driver's
+  // read-modify-write loses concurrent updates.
+  for (const event of others) {
+    await store().putEvent({ ...event, featured: false, updatedAt: now });
+  }
 }
 
 export async function createEvent(input: NewEventInput): Promise<EventRecord> {
@@ -360,11 +361,83 @@ export async function updateSubmissionMeta(
   const existing = await store().getSubmission(pk);
   if (!existing) return null;
 
+  const status = patch.status ?? existing.status ?? "new";
+  const now = new Date().toISOString();
+
+  /**
+   * An admin moving somebody to or from "unsubscribed" is an opt-out with no
+   * audit trail anywhere else: it happened in person, by text, or at the door.
+   * Stamping it here is the only record that it was a person's decision rather
+   * than a bounce or a click, and the only way to answer "who took them off,
+   * and when" later.
+   */
+  const wasOut = existing.status === "unsubscribed";
+  const nowOut = status === "unsubscribed";
+
   return store().putSubmission({
     ...existing,
-    status: patch.status ?? existing.status ?? "new",
+    status,
     notes: patch.notes !== undefined ? patch.notes : existing.notes,
+    ...(nowOut && !wasOut
+      ? {
+          marketingOptIn: false,
+          unsubscribedAt: now,
+          unsubscribedSource: "admin" as const,
+          resubscribedAt: undefined,
+        }
+      : {}),
+    ...(wasOut && !nowOut ? { resubscribedAt: now } : {}),
+    updatedAt: now,
   });
+}
+
+/**
+ * Opts an address out, everywhere, without losing anything.
+ *
+ * Marks every row for the address rather than removing it. An unsubscribe is a
+ * standing instruction, and the record of it is what suppresses them on a later
+ * import or a fresh signup, so deleting it deletes the suppression. It also
+ * leaves the RSVP history intact: coming to a night in June is a fact, and
+ * leaving the mailing list in August does not undo it.
+ *
+ * Returns how many rows were touched, so the caller can tell a real opt-out
+ * from a link for an address that no longer exists.
+ */
+export async function suppressEmail(
+  email: string,
+  source: UnsubscribeSource,
+): Promise<number> {
+  const target = email.trim().toLowerCase();
+  const rows = (await store().listSubmissions()).filter(
+    (row) => row.email.trim().toLowerCase() === target,
+  );
+  const now = new Date().toISOString();
+
+  // Sequential, not Promise.all.
+  //
+  // The local driver keeps every submission in one JSON file and does
+  // read-modify-write on it, so concurrent puts read the same starting state
+  // and the last one to finish silently discards the others. Suppressing an
+  // address that had two records only marked one. DynamoDB writes each item
+  // independently and would have been fine, which is exactly why this would
+  // have shipped unnoticed. The row count here is tiny.
+  for (const row of rows) {
+    await store().putSubmission({
+      ...row,
+      // isMailable requires this, so clearing it suppresses every type at
+      // once, including applicants who ticked the box on their form.
+      marketingOptIn: false,
+      // Only RSVPs carry subscription statuses; an application's status is a
+      // review pipeline and "unsubscribed" is not a stage in it.
+      status: row.type === "rsvp" ? "unsubscribed" : row.status,
+      unsubscribedAt: now,
+      unsubscribedSource: source,
+      resubscribedAt: undefined,
+      updatedAt: now,
+    });
+  }
+
+  return rows.length;
 }
 
 export async function deleteSubmission(pk: string): Promise<void> {

@@ -17,6 +17,7 @@ const {
   listAllEvents,
   recordSubmission,
   store,
+  suppressEmail,
   updateEvent,
 } = await import("./index.ts");
 
@@ -187,5 +188,58 @@ describe("recordSubmission reports what changed", () => {
       (row) => row.type === "rsvp",
     );
     assert.equal(rows.length, 1);
+  });
+});
+
+describe("unsubscribing suppresses rather than deletes", () => {
+  beforeEach(reset);
+
+  const values = (over: Record<string, string> = {}) => ({
+    name: "Sam",
+    email: "sam@example.com",
+    marketingOptIn: "true",
+    eventId: "",
+    ...over,
+  });
+
+  test("the RSVP row survives, with its event history", async () => {
+    await createEvent(event("house-night"));
+    await recordSubmission("rsvp", values({ eventId: "house-night" }));
+
+    const touched = await suppressEmail("sam@example.com", "self");
+    assert.equal(touched, 1);
+
+    const rows = await store().listSubmissions();
+    assert.equal(rows.length, 1, "the row was deleted");
+    assert.equal(rows[0].status, "unsubscribed");
+    assert.equal(rows[0].marketingOptIn, false);
+    assert.equal(rows[0].unsubscribedSource, "self");
+    assert.ok(rows[0].unsubscribedAt, "no timestamp recorded");
+    assert.deepEqual(rows[0].eventIds, ["house-night"], "history was lost");
+  });
+
+  test("an application by the same person is suppressed, not destroyed", async () => {
+    await recordSubmission("rsvp", values());
+    await recordSubmission("ambassador", values({ community: "Hospitality" }));
+
+    await suppressEmail("sam@example.com", "self");
+
+    const rows = await store().listSubmissions();
+    assert.equal(rows.length, 2, "an application was deleted");
+
+    const application = rows.find((r) => r.type === "ambassador")!;
+    // Its status is a review pipeline; "unsubscribed" is not a stage in it.
+    assert.notEqual(application.status, "unsubscribed");
+    assert.equal(application.marketingOptIn, false, "still mailable");
+    assert.ok(application.unsubscribedAt);
+  });
+
+  test("matching is case-insensitive, since addresses are stored folded", async () => {
+    await recordSubmission("rsvp", values());
+    assert.equal(await suppressEmail("SAM@Example.COM", "self"), 1);
+  });
+
+  test("an address with no records is a no-op, not an error", async () => {
+    assert.equal(await suppressEmail("nobody@example.com", "self"), 0);
   });
 });

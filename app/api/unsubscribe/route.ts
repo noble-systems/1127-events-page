@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { consume } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request-meta";
-import { deleteSubmission, listSubmissions } from "@/lib/store";
+import { suppressEmail } from "@/lib/store";
 import { readUnsubscribeToken } from "@/lib/tokens";
 
 /**
@@ -53,10 +53,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Remove every record for this address, not just the RSVP row.
-    const rows = await listSubmissions();
-    const mine = rows.filter((row) => row.email === email);
-    await Promise.all(mine.map((row) => deleteSubmission(row.pk)));
+    // Suppress rather than delete.
+    //
+    // This used to remove every row for the address, which threw away three
+    // things at once: the RSVP history, any application they had submitted, and
+    // the record of the opt-out itself. That last one matters most, because the
+    // record of an unsubscribe is what stops them being emailed again after a
+    // re-import or a fresh signup. Deleting it means the next signup looks like
+    // consent.
+    await suppressEmail(email, "self");
   } catch (error) {
     console.error("[1127] unsubscribe failed", error);
     return NextResponse.json(

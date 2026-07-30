@@ -53,8 +53,17 @@ function detailFor(row: SubmissionRecord): string {
 export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
   const router = useRouter();
   const [tab, setTab] = useState<TabValue>("rsvp");
-  const [statusFilter, setStatusFilter] = useState<SubmissionStatus | "open">(
-    "open",
+  /**
+   * "open" is the review queue: an application that still needs a decision.
+   *
+   * It is meaningless for RSVPs, which are not a pipeline. Applying it to them
+   * was the bug that made an unsubscribe look like a deletion: "open" excludes
+   * unsubscribed and bounced, so opting out removed somebody from the RSVP list
+   * on screen even though the row was still there. The RSVP tab shows everyone
+   * by default and you filter down deliberately.
+   */
+  const [statusFilter, setStatusFilter] = useState<SubmissionStatus | "open" | "all">(
+    "all",
   );
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -81,6 +90,7 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
     return rows
       .filter((row) => row.type === tab)
       .filter((row) => {
+        if (statusFilter === "all") return true;
         const status = normaliseStatus(row.type, row.status);
         // "Open" is the working queue: everything not yet closed out.
         if (statusFilter === "open") {
@@ -120,12 +130,15 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
     router.refresh();
   };
 
-  // An RSVP has a subscription state; everything else moves through a review
-  // pipeline. Offering "Declined" on a mailing list would be meaningless.
-  const statusOptions: Array<SubmissionStatus | "open"> = [
-    "open",
-    ...(tab === "rsvp" ? LIST_STATUSES : APPLICATION_STATUSES),
-  ];
+  /**
+   * An RSVP has a subscription state; everything else moves through a review
+   * pipeline. Offering "Declined" on a mailing list would be meaningless, and
+   * "Open" is just as meaningless there: an RSVP is never awaiting a decision.
+   */
+  const statusOptions: Array<SubmissionStatus | "open" | "all"> =
+    tab === "rsvp"
+      ? ["all", ...LIST_STATUSES]
+      : ["all", "open", ...APPLICATION_STATUSES];
 
   // Always scoped to the visible tab, so an export is one kind of record with
   // one meaning per column rather than a mix.
@@ -139,7 +152,12 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
           <button
             key={item.value}
             type="button"
-            onClick={() => setTab(item.value)}
+            onClick={() => {
+              setTab(item.value);
+              // The status vocabularies do not overlap, so a filter carried
+              // across tabs would silently show nothing.
+              setStatusFilter("all");
+            }}
             aria-pressed={tab === item.value}
             className={`rounded-full px-4 py-2 text-[0.875rem] transition-colors duration-200 ${
               tab === item.value
@@ -168,7 +186,11 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
                 : "text-ink/65 hover:text-ink"
             }`}
           >
-            {option === "open" ? "Open" : STATUS_LABELS[option]}
+            {option === "all"
+              ? "All"
+              : option === "open"
+                ? "Open"
+                : STATUS_LABELS[option]}
             {option === "new" && newCount > 0 ? (
               <span className="bg-sun/30 text-sun-deep ml-1.5 rounded-full px-1.5 py-0.5 text-[0.6875rem]">
                 {newCount}
