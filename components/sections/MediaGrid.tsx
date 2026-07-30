@@ -45,18 +45,24 @@ function PlayBadge({ label }: { label: string }) {
   );
 }
 
-export function MediaGrid() {
+export function MediaGrid({
+  section = mediaSection,
+  slots = mediaSlots,
+}: {
+  section?: typeof mediaSection;
+  slots?: typeof mediaSlots;
+} = {}) {
   return (
     <Section tone="deep" size="lg" labelledBy="media-title">
       <SectionHeader
         id="media-title"
-        eyebrow={mediaSection.eyebrow}
-        title={mediaSection.title}
-        intro={mediaSection.intro}
+        eyebrow={section.eyebrow}
+        title={section.title}
+        intro={section.intro}
       />
 
       <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-5">
-        {mediaSlots.map((slot, index) => (
+        {slots.map((slot, index) => (
           <Reveal
             key={slot.id}
             delay={Math.min(index, 5) * 70}

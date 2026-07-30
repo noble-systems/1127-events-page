@@ -14,6 +14,7 @@ import type { Store } from "./types";
 const DIR = path.join(process.cwd(), ".data");
 const EVENTS = path.join(DIR, "events.json");
 const SUBMISSIONS = path.join(DIR, "submissions.json");
+const CONTENT = path.join(DIR, "content.json");
 
 async function read<T>(file: string): Promise<T[]> {
   try {
@@ -30,6 +31,22 @@ async function write<T>(file: string, rows: T[]): Promise<void> {
 
 export const localStore: Store = {
   kind: "local",
+
+  async getContent() {
+    try {
+      const parsed = JSON.parse(await readFile(CONTENT, "utf8")) as unknown;
+      return parsed && typeof parsed === "object"
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  },
+
+  async putContent(overrides) {
+    await mkdir(DIR, { recursive: true });
+    await writeFile(CONTENT, JSON.stringify(overrides, null, 2), "utf8");
+  },
 
   async listEvents() {
     return read<EventRecord>(EVENTS);

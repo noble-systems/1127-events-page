@@ -39,8 +39,48 @@ function client(): DynamoDBDocumentClient {
 const EVENTS_TABLE = () => process.env.EVENTS_TABLE as string;
 const SUBMISSIONS_TABLE = () => process.env.SUBMISSIONS_TABLE as string;
 
+/**
+ * Reserved row id for the content overrides. Filtered out of every event
+ * listing alongside the seed marker, so it can never surface as an event.
+ */
+const CONTENT_ROW_ID = "__content__";
+
 export const dynamoStore: Store = {
   kind: "dynamodb",
+
+  async getContent() {
+    const result = await client().send(
+      new GetCommand({ TableName: EVENTS_TABLE(), Key: { id: CONTENT_ROW_ID } }),
+    );
+    const raw = result.Item?.overrides;
+    if (typeof raw !== "string") return null;
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return parsed && typeof parsed === "object"
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      // Corrupt JSON must not take the homepage down: the caller falls back to
+      // the committed defaults.
+      console.error("[1127] content overrides are not valid JSON, ignoring");
+      return null;
+    }
+  },
+
+  async putContent(overrides) {
+    // Stored as a JSON string rather than a nested map so keys containing dots
+    // stay keys, and so the row shape never collides with an EventRecord.
+    await client().send(
+      new PutCommand({
+        TableName: EVENTS_TABLE(),
+        Item: {
+          id: CONTENT_ROW_ID,
+          overrides: JSON.stringify(overrides),
+          updatedAt: new Date().toISOString(),
+        },
+      }),
+    );
+  },
 
   async listEvents() {
     const out = await client().send(new ScanCommand({ TableName: EVENTS_TABLE() }));

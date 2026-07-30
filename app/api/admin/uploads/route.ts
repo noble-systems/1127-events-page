@@ -2,12 +2,14 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { NextResponse } from "next/server";
 import { readJson, requireAdmin } from "@/lib/admin-api";
-import { S3_PREFIX, eventImageKey, isValidS3Key } from "@/lib/images";
+import { S3_PREFIX, eventImageKey, isValidS3Key, siteImageKey } from "@/lib/images";
+import { isEditableKey } from "@/lib/content-schema";
 
 /**
  * POST /api/admin/uploads
  *
- *   { eventId, filename, contentType } → { url, ref, key }
+ *   { eventId,    filename, contentType } → { url, ref, key }   event photo
+ *   { contentKey, filename, contentType } → { url, ref, key }   homepage photo
  *
  * Hands back a short-lived presigned PUT URL so the browser uploads the file
  * straight to S3. The bytes never pass through this app, which matters: Lambda
@@ -54,6 +56,7 @@ export async function POST(request: Request) {
 
   const body = (await readJson(request)) as Record<string, unknown> | null;
   const eventId = typeof body?.eventId === "string" ? body.eventId : "";
+  const contentKey = typeof body?.contentKey === "string" ? body.contentKey : "";
   const contentType = typeof body?.contentType === "string" ? body.contentType : "";
 
   // The client also sends `filename`, and it is deliberately not read. A
@@ -61,9 +64,19 @@ export async function POST(request: Request) {
   // you end up writing "../index.html" or serving something unexpected from your
   // own domain. The extension comes from the content type allow-list instead.
 
-  if (!eventId.trim()) {
+  if (!eventId.trim() && !contentKey.trim()) {
     return NextResponse.json(
       { ok: false, message: "Save the event first, then add a photo." },
+      { status: 400 },
+    );
+  }
+
+  // A content key must name a real image field. Without this check the key
+  // would be attacker-chosen, and the whole point of deriving keys server side
+  // is that they are not.
+  if (contentKey && !isEditableKey(contentKey)) {
+    return NextResponse.json(
+      { ok: false, message: `"${contentKey}" is not an editable image field.` },
       { status: 400 },
     );
   }
@@ -82,7 +95,9 @@ export async function POST(request: Request) {
   // The key is derived from the event id and the content type, never from the
   // uploaded filename. A filename is attacker-controlled; deriving the key from
   // it is how you end up serving something unexpected from your own domain.
-  const key = eventImageKey(eventId, `x.${extension}`);
+  const key = contentKey
+    ? siteImageKey(contentKey, `x.${extension}`)
+    : eventImageKey(eventId, `x.${extension}`);
 
   if (!isValidS3Key(key)) {
     // Should be unreachable, since eventImageKey sanitises. Belt and braces:

@@ -110,6 +110,21 @@ export function resolveImageSrc(value: string | null | undefined): string | null
  * these swappable. The tradeoff is caching, which is why the upload route sets
  * a short max-age on these objects.
  */
+/**
+ * Stable key for a homepage photograph, derived from its content field.
+ *
+ * "hero.image" becomes "site/hero-image.jpg". Stable for the same reason event
+ * keys are: re-uploading replaces the picture wherever it appears, with no
+ * content change needed.
+ */
+export function siteImageKey(fieldKey: string, filename: string): string {
+  const extension = (filename.match(/\.(jpe?g|png|webp|avif)$/i)?.[1] ?? "jpg")
+    .toLowerCase()
+    .replace("jpeg", "jpg");
+  const safe = fieldKey.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return `site/${safe || "image"}.${extension}`;
+}
+
 export function eventImageKey(eventId: string, filename: string): string {
   const extension = (filename.match(/\.(jpe?g|png|webp|avif)$/i)?.[1] ?? "jpg")
     .toLowerCase()

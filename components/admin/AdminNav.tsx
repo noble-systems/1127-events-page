@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/admin", label: "Overview", exact: true },
   { href: "/admin/events", label: "Events" },
   { href: "/admin/list", label: "People" },
+  { href: "/admin/content", label: "Page content" },
 ];
 
 export function AdminNav({ email, mode }: { email: string; mode: string }) {

@@ -3,7 +3,11 @@ import { Reveal } from "@/components/ui/Reveal";
 import { Section } from "@/components/ui/Section";
 import { finalCta } from "@/content/site";
 
-export function FinalCta() {
+export function FinalCta({
+  content = finalCta,
+}: {
+  content?: typeof finalCta;
+} = {}) {
   return (
     <Section
       tone="ink"
@@ -28,12 +32,12 @@ export function FinalCta() {
         {/* Guests */}
         <Reveal>
           <div className="border-bone/15 bg-bone/[0.04] flex h-full flex-col rounded-3xl border p-8 sm:p-10">
-            <p className="label-xs text-sun/80">{finalCta.guests.eyebrow}</p>
+            <p className="label-xs text-sun/80">{content.guests.eyebrow}</p>
             <h3 className="mt-5 text-[2rem] leading-[1.06] sm:text-[2.6rem]">
-              {finalCta.guests.title}
+              {content.guests.title}
             </h3>
             <p className="text-bone/65 mt-4 max-w-sm text-[0.9375rem] leading-relaxed">
-              {finalCta.guests.body}
+              {content.guests.body}
             </p>
             <div className="mt-auto pt-8">
               <ButtonLink
@@ -42,7 +46,7 @@ export function FinalCta() {
                 size="lg"
                 className="w-full sm:w-auto"
               >
-                {finalCta.guests.cta}
+                {content.guests.cta}
                 <ArrowIcon />
               </ButtonLink>
             </div>
@@ -52,12 +56,12 @@ export function FinalCta() {
         {/* Partners */}
         <Reveal delay={90}>
           <div className="border-bone/15 bg-bone/[0.04] flex h-full flex-col rounded-3xl border p-8 sm:p-10">
-            <p className="label-xs text-bone/60">{finalCta.partners.eyebrow}</p>
+            <p className="label-xs text-bone/60">{content.partners.eyebrow}</p>
             <h3 className="mt-5 text-[2rem] leading-[1.06] sm:text-[2.6rem]">
-              {finalCta.partners.title}
+              {content.partners.title}
             </h3>
             <p className="text-bone/65 mt-4 max-w-sm text-[0.9375rem] leading-relaxed">
-              {finalCta.partners.body}
+              {content.partners.body}
             </p>
             <div className="mt-auto pt-8">
               <ButtonLink
@@ -66,7 +70,7 @@ export function FinalCta() {
                 size="lg"
                 className="text-bone w-full sm:w-auto"
               >
-                {finalCta.partners.cta}
+                {content.partners.cta}
                 <ArrowIcon />
               </ButtonLink>
             </div>

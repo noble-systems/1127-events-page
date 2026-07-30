@@ -8,7 +8,7 @@ import { Partner } from "@/components/sections/Partner";
 import { SunClubIntro } from "@/components/sections/SunClubIntro";
 import { UpcomingEvents } from "@/components/sections/UpcomingEvents";
 import { brand, hero } from "@/content/site";
-import { listPublicEvents } from "@/lib/store";
+import { getSiteContent, listPublicEvents } from "@/lib/store";
 import type { EventRecord } from "@/lib/types";
 
 /**
@@ -78,20 +78,25 @@ function StructuredData({ events }: { events: EventRecord[] }) {
 }
 
 export default async function HomePage() {
-  const events = await listPublicEvents();
+  // One read, passed down. Sections fall back to the committed defaults if
+  // this ever comes back empty, so the page cannot render blank.
+  const [events, content] = await Promise.all([
+    listPublicEvents(),
+    getSiteContent(),
+  ]);
 
   return (
     <>
       <StructuredData events={events} />
       <SiteHeader />
       <main id="main">
-        <Hero />
+        <Hero content={content.hero} />
         <UpcomingEvents events={events} />
-        <SunClubIntro />
-        <Ambassadors />
-        <MediaGrid />
-        <Partner />
-        <FinalCta />
+        <SunClubIntro content={content.sunClub} />
+        <Ambassadors content={content.ambassadors} />
+        <MediaGrid section={content.mediaSection} slots={content.mediaSlots} />
+        <Partner content={content.partner} />
+        <FinalCta content={content.finalCta} />
       </main>
       <SiteFooter />
     </>

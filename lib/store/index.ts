@@ -10,6 +10,7 @@ import type {
   SubmissionStatus,
   SubmissionType,
 } from "@/lib/types";
+import { mergeContent, type SiteContent } from "@/lib/site-content";
 import { dynamoStore } from "./dynamo";
 import { localStore } from "./local";
 import type { Store } from "./types";
@@ -62,9 +63,13 @@ function byDisplayOrder(a: EventRecord, b: EventRecord) {
  * next request. It is filtered out of every listing.
  */
 const SEED_MARKER_ID = "__seed__";
+/** Homepage content overrides live in this table too; see the dynamo driver. */
+const CONTENT_ROW_ID = "__content__";
 
 function isMarker(row: EventRecord) {
-  return row.id === SEED_MARKER_ID;
+  // Both reserved rows are filtered from every listing. Missing the content row
+  // here would render it as a broken event on the public site.
+  return row.id === SEED_MARKER_ID || row.id === CONTENT_ROW_ID;
 }
 
 async function writeSeedMarker(): Promise<void> {
@@ -276,4 +281,41 @@ export async function updateSubmissionMeta(
 
 export async function deleteSubmission(pk: string): Promise<void> {
   return store().deleteSubmission(pk);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Homepage content                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Merged homepage content: the defaults in content/site.ts with any dashboard
+ * edits applied.
+ *
+ * Never throws. If the store is unreachable the committed defaults are returned
+ * and the page renders exactly as it does in the repo, which is the whole point
+ * of overlaying rather than moving content into the database.
+ */
+export async function getSiteContent(): Promise<SiteContent> {
+  try {
+    return mergeContent(await store().getContent());
+  } catch (error) {
+    console.error("[1127] content overrides unavailable, using defaults:", error);
+    return mergeContent(null);
+  }
+}
+
+/** Raw overrides, for the dashboard editor. Defaults are applied client-side. */
+export async function getContentOverrides(): Promise<Record<string, unknown>> {
+  try {
+    return (await store().getContent()) ?? {};
+  } catch (error) {
+    console.error("[1127] could not read content overrides:", error);
+    return {};
+  }
+}
+
+export async function saveContentOverrides(
+  overrides: Record<string, unknown>,
+): Promise<void> {
+  await store().putContent(overrides);
 }

@@ -2,20 +2,24 @@ import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Media } from "@/components/ui/Media";
 import { hero } from "@/content/site";
 
-export function Hero() {
+export function Hero({
+  content = hero,
+}: {
+  content?: typeof hero;
+} = {}) {
   return (
     <section
       id="top"
       aria-labelledby="hero-title"
       className="on-dark bg-deep text-bone relative isolate flex min-h-[92svh] flex-col justify-end overflow-hidden"
     >
-      {/* Backdrop, swap `hero.image` in content/site.ts for real footage stills */}
+      {/* Backdrop, swap `content.image` in content/site.ts for real footage stills */}
       <div className="absolute inset-0 -z-10">
         <Media
           tone="dusk"
-          src={hero.image}
-          alt={hero.imageAlt}
-          shotNote={hero.shotNote}
+          src={content.image}
+          alt={content.imageAlt}
+          shotNote={content.shotNote}
           hideNote
           priority
           sizes="100vw"
@@ -39,7 +43,7 @@ export function Hero() {
             className="animate-rise label-sm text-sun-soft"
             style={{ ["--rise-delay" as string]: "80ms" }}
           >
-            {hero.eyebrow}
+            {content.eyebrow}
           </p>
 
           <h1
@@ -50,38 +54,38 @@ export function Hero() {
               ["--rise-delay" as string]: "160ms",
             }}
           >
-            {hero.title}
+            {content.title}
           </h1>
 
           <p
             className="animate-rise font-display text-bone/90 mt-7 text-[1.6rem] leading-tight sm:text-[2.1rem]"
             style={{ ["--rise-delay" as string]: "260ms" }}
           >
-            {hero.tagline}
+            {content.tagline}
           </p>
 
           <p
             className="animate-rise text-bone/70 mt-6 max-w-xl text-[1.0625rem] leading-relaxed"
             style={{ ["--rise-delay" as string]: "340ms" }}
           >
-            {hero.body}
+            {content.body}
           </p>
 
           <div
             className="animate-rise mt-10 flex flex-wrap items-center gap-3"
             style={{ ["--rise-delay" as string]: "420ms" }}
           >
-            <ButtonLink href={hero.primaryCta.href} variant="sun" size="lg">
-              {hero.primaryCta.label}
+            <ButtonLink href={content.primaryCta.href} variant="sun" size="lg">
+              {content.primaryCta.label}
               <ArrowIcon />
             </ButtonLink>
             <ButtonLink
-              href={hero.secondaryCta.href}
+              href={content.secondaryCta.href}
               variant="outline"
               size="lg"
               className="text-bone"
             >
-              {hero.secondaryCta.label}
+              {content.secondaryCta.label}
             </ButtonLink>
             <ButtonLink
               href="/rsvp"
@@ -105,7 +109,7 @@ export function Hero() {
                 className="bg-sun h-1.5 w-1.5 rounded-full"
               />
               <dt className="sr-only">Location</dt>
-              <dd className="label-xs text-bone/75">{hero.location}</dd>
+              <dd className="label-xs text-bone/75">{content.location}</dd>
             </div>
             <div className="flex items-center gap-2.5">
               <span
@@ -113,7 +117,7 @@ export function Hero() {
                 className="bg-bone/40 h-1.5 w-1.5 rounded-full"
               />
               <dt className="sr-only">Next date</dt>
-              <dd className="label-xs text-bone/75">{hero.date}</dd>
+              <dd className="label-xs text-bone/75">{content.date}</dd>
             </div>
           </dl>
 

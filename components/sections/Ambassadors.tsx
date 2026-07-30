@@ -23,13 +23,17 @@ function CheckIcon() {
   );
 }
 
-export function Ambassadors() {
+export function Ambassadors({
+  content = ambassadors,
+}: {
+  content?: typeof ambassadors;
+} = {}) {
   return (
     <Section id="ambassadors" tone="bone" size="lg" labelledBy="ambassadors-title">
       <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-16">
         <div className="lg:col-span-6">
           <Reveal>
-            <Eyebrow>{ambassadors.eyebrow}</Eyebrow>
+            <Eyebrow>{content.eyebrow}</Eyebrow>
           </Reveal>
 
           <Reveal delay={60}>
@@ -37,21 +41,21 @@ export function Ambassadors() {
               id="ambassadors-title"
               className="mt-5 text-[2.1rem] leading-[1.04] sm:text-5xl lg:text-[3.75rem]"
             >
-              {ambassadors.title}
+              {content.title}
             </h2>
           </Reveal>
 
           <Reveal delay={120}>
             <p className="text-ink/70 mt-6 max-w-xl text-[1.0625rem] leading-relaxed">
-              {ambassadors.intro}
+              {content.intro}
             </p>
           </Reveal>
 
           <Reveal delay={180}>
             <div className="mt-10">
-              <h3 className="label-sm text-ink/65">{ambassadors.doTitle}</h3>
+              <h3 className="label-sm text-ink/65">{content.doTitle}</h3>
               <ul className="mt-4 space-y-2.5">
-                {ambassadors.does.map((item) => (
+                {content.does.map((item) => (
                   <li
                     key={item}
                     className="text-ink/80 flex items-start gap-3 text-[0.9375rem]"
@@ -69,9 +73,9 @@ export function Ambassadors() {
 
           <Reveal delay={240}>
             <div className="mt-10">
-              <h3 className="label-sm text-ink/65">{ambassadors.forTitle}</h3>
+              <h3 className="label-sm text-ink/65">{content.forTitle}</h3>
               <ul className="mt-4 flex flex-wrap gap-2">
-                {ambassadors.communities.map((community) => (
+                {content.communities.map((community) => (
                   <li
                     key={community}
                     className="border-ink/15 bg-bone-soft text-ink/75 rounded-full border px-3.5 py-2 text-[0.8125rem]"
@@ -89,9 +93,9 @@ export function Ambassadors() {
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl sm:aspect-[16/10]">
               <Media
                 tone="terracotta"
-                src={ambassadors.image}
-                alt={ambassadors.imageAlt}
-                shotNote={ambassadors.shotNote}
+                src={content.image}
+                alt={content.imageAlt}
+                shotNote={content.shotNote}
                 sizes="(max-width: 1024px) 100vw, 46vw"
                 className="h-full w-full"
               />
@@ -100,9 +104,9 @@ export function Ambassadors() {
 
           <Reveal delay={160}>
             <div className="border-ink/12 bg-sand/70 mt-6 rounded-3xl border p-7 sm:p-9">
-              <h3 className="label-sm text-ink/65">{ambassadors.benefitsTitle}</h3>
+              <h3 className="label-sm text-ink/65">{content.benefitsTitle}</h3>
               <ul className="mt-5 space-y-3">
-                {ambassadors.benefits.map((benefit) => (
+                {content.benefits.map((benefit) => (
                   <li
                     key={benefit}
                     className="text-ink/80 flex items-start gap-3 text-[0.9375rem] leading-relaxed"
@@ -120,7 +124,7 @@ export function Ambassadors() {
                   size="lg"
                   className="w-full sm:w-auto"
                 >
-                  {ambassadors.cta}
+                  {content.cta}
                   <ArrowIcon />
                 </ButtonLink>
                 <p className="text-ink/65 mt-4 text-[0.8125rem] leading-relaxed">
