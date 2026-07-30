@@ -8,6 +8,7 @@ import {
   renderPartnerTeamEmail,
   renderTalentApplicantEmail,
   renderTeamEmail,
+  mayEmail,
 } from "./email.ts";
 import type { SubmissionRecord } from "./types.ts";
 
@@ -180,5 +181,120 @@ describe("partner templates specifically", () => {
     assert.ok(html.includes("Not given"));
     // The subject falls back through company, name, then email.
     assert.match(subject, /sparse@example\.com/);
+  });
+});
+
+describe("per-event email customisation", () => {
+  const baseEvent = {
+    id: "sun-club",
+    name: "Sun Club",
+    series: "1127 Events",
+    tagline: "",
+    summary: "",
+    status: "",
+    date: "Saturday, May 16",
+    location: "Old Town Scottsdale",
+    venue: null,
+    tags: [],
+    tone: "dusk" as const,
+    featured: true,
+    published: true,
+    order: 0,
+    shotNote: "",
+    image: null,
+    imageAlt: "",
+    ctaLabel: "",
+    ctaAction: "rsvp" as const,
+    emailSubject: null,
+    emailHeading: null,
+    emailBody: null,
+    createdAt: "",
+    updatedAt: "",
+  };
+
+  test("falls back to the standard wording when nothing is customised", () => {
+    const { subject, html } = renderGuestEmail(rsvp, baseEvent);
+    assert.match(subject, /You're on the Sun Club list/);
+    assert.match(html, /Thanks Alex, you're on the Sun Club list/);
+  });
+
+  test("uses the custom subject, opening line and body", () => {
+    const { subject, html, text } = renderGuestEmail(rsvp, {
+      ...baseEvent,
+      emailSubject: "See you poolside",
+      emailHeading: "You're in.",
+      emailBody: "Doors at four.\n\nBring a towel.",
+    });
+    assert.equal(subject, "See you poolside");
+    assert.match(html, /You're in\./);
+    assert.match(html, /Doors at four\./);
+    assert.match(html, /Bring a towel\./);
+    // The plain-text part must carry the same wording, or text-only clients see
+    // different copy and filters treat the mismatch as a signal.
+    assert.match(text, /You're in\./);
+    assert.match(text, /Doors at four\./);
+  });
+
+  test("substitutes {name} and {event}", () => {
+    const { subject, html } = renderGuestEmail(rsvp, {
+      ...baseEvent,
+      emailSubject: "{name}, you're on the {event} list",
+      emailHeading: "Hi {name}, welcome to {event}.",
+    });
+    assert.equal(subject, "Alex, you're on the Sun Club list");
+    assert.match(html, /Hi Alex, welcome to Sun Club\./);
+  });
+
+  test("blank custom fields are treated as unset, not as empty copy", () => {
+    const { subject, html } = renderGuestEmail(rsvp, {
+      ...baseEvent,
+      emailSubject: "   ",
+      emailHeading: "",
+      emailBody: "\n  \n",
+    });
+    assert.match(subject, /You're on the Sun Club list/);
+    assert.match(html, /Thanks Alex/);
+  });
+
+  test("custom copy is escaped, so it cannot break the layout or inject markup", () => {
+    const { html } = renderGuestEmail(rsvp, {
+      ...baseEvent,
+      emailHeading: "<script>alert(1)</script>",
+      emailBody: "</td></table><img src=x onerror=alert(1)>",
+    });
+    assert.ok(!html.includes("<script>"), "raw script survived");
+    assert.ok(!html.includes("<img src=x"), "raw img survived");
+    assert.match(html, /&lt;script&gt;/);
+  });
+
+  test("blank lines become separate paragraphs", () => {
+    const { html } = renderGuestEmail(rsvp, {
+      ...baseEvent,
+      emailBody: "First para.\n\nSecond para.\n\nThird para.",
+    });
+    const count = (html.match(/First para\.|Second para\.|Third para\./g) ?? [])
+      .length;
+    assert.equal(count, 3);
+    assert.ok(!html.includes("First para.\n\nSecond"), "not left as one blob");
+  });
+});
+
+describe("mayEmail suppression", () => {
+  test("allows a normal subscriber", () => {
+    assert.equal(mayEmail({ ...rsvp, status: "subscribed" }), true);
+    assert.equal(mayEmail(rsvp), true, "no status set means allowed");
+  });
+
+  test("blocks unsubscribed and bounced", () => {
+    // These were labels only until this existed: marking somebody unsubscribed
+    // in the dashboard did not stop a single message reaching them.
+    assert.equal(mayEmail({ ...rsvp, status: "unsubscribed" }), false);
+    assert.equal(mayEmail({ ...rsvp, status: "bounced" }), false);
+  });
+
+  test("does not block review statuses, which are about our workflow", () => {
+    for (const status of ["new", "reviewing", "contacted", "accepted"] as const) {
+      assert.equal(mayEmail({ ...rsvp, status }), true, `blocked "${status}"`);
+    }
   });
 });

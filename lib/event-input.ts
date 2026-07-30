@@ -31,6 +31,9 @@ export type EventFormValues = {
   imageAlt: string;
   ctaLabel: string;
   ctaAction: string;
+  emailSubject: string;
+  emailHeading: string;
+  emailBody: string;
 };
 
 export const EMPTY_EVENT: EventFormValues = {
@@ -52,6 +55,9 @@ export const EMPTY_EVENT: EventFormValues = {
   imageAlt: "",
   ctaLabel: "RSVP",
   ctaAction: "rsvp",
+  emailSubject: "",
+  emailHeading: "",
+  emailBody: "",
 };
 
 const REQUIRED: Array<[keyof EventFormValues, string]> = [
@@ -78,6 +84,9 @@ const MAX: Partial<Record<keyof EventFormValues, number>> = {
   shotNote: 160,
   imageAlt: 200,
   ctaLabel: 60,
+  emailSubject: 120,
+  emailHeading: 120,
+  emailBody: 2000,
 };
 
 export function slugify(value: string): string {
@@ -159,6 +168,10 @@ export function toEventInput(id: string, values: EventFormValues): NewEventInput
     imageAlt: values.imageAlt.trim(),
     ctaLabel: values.ctaLabel.trim(),
     ctaAction: values.ctaAction as CtaAction,
+    // Blank means "use the standard wording", so store null rather than "".
+    emailSubject: values.emailSubject.trim() || null,
+    emailHeading: values.emailHeading.trim() || null,
+    emailBody: values.emailBody.trim() || null,
   };
 }
 
@@ -187,6 +200,9 @@ export function readEventBody(body: unknown): EventFormValues {
     imageAlt: str("imageAlt"),
     ctaLabel: str("ctaLabel"),
     ctaAction: str("ctaAction") || "rsvp",
+    emailSubject: str("emailSubject"),
+    emailHeading: str("emailHeading"),
+    emailBody: str("emailBody"),
   };
 }
 
@@ -209,6 +225,9 @@ export function eventToFormValues(event: {
   imageAlt: string;
   ctaLabel: string;
   ctaAction: CtaAction;
+  emailSubject: string | null;
+  emailHeading: string | null;
+  emailBody: string | null;
 }): EventFormValues {
   return {
     name: event.name,
@@ -229,5 +248,8 @@ export function eventToFormValues(event: {
     imageAlt: event.imageAlt,
     ctaLabel: event.ctaLabel,
     ctaAction: event.ctaAction,
+    emailSubject: event.emailSubject ?? "",
+    emailHeading: event.emailHeading ?? "",
+    emailBody: event.emailBody ?? "",
   };
 }

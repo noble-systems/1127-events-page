@@ -47,6 +47,24 @@ export type EventRecord = {
   imageAlt: string;
   ctaLabel: string;
   ctaAction: CtaAction;
+
+  /**
+   * Confirmation email wording for people who RSVP to this event.
+   *
+   * Named text slots rather than a raw HTML template, deliberately. A free HTML
+   * field would let a typo break the layout in Outlook, and would put
+   * unescaped markup from a form field into a message we send on our own
+   * domain. These are plain text, escaped on render, and dropped into the same
+   * branded shell as every other message.
+   *
+   * All three are optional. Null means "use the standard wording", so an event
+   * nobody has customised still sends a good email.
+   */
+  emailSubject: string | null;
+  emailHeading: string | null;
+  /** Body copy. Blank lines separate paragraphs. */
+  emailBody: string | null;
+
   createdAt: string;
   updatedAt: string;
 };

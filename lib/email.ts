@@ -185,6 +185,25 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Turns admin-written plain text into escaped paragraphs.
+ *
+ * Blank lines separate paragraphs, which is how people naturally write in a
+ * textarea. Everything is escaped: this copy comes from a form field and ends up
+ * in a message sent from our own domain, so it is never trusted as markup.
+ */
+function paragraphs(text: string, colour: string): string {
+  return text
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map(
+      (part) =>
+        `<p style="margin:0 0 26px;font:400 16px/1.65 Helvetica,Arial,sans-serif;color:${colour};">${escapeHtml(part).replace(/\n/g, "<br>")}</p>`,
+    )
+    .join("\n    ");
+}
+
 function factRows(rows: Array<[string, string]>): string {
   return rows
     .map(
@@ -266,9 +285,23 @@ export function renderGuestEmail(
     ["Music", "House"],
   ];
 
+  // Per-event wording when an admin has set it, the standard copy otherwise.
+  // {name} is substituted so a custom line can still greet people by name
+  // without the admin needing to know anything about templating.
+  const fill = (value: string) =>
+    value.replace(/\{name\}/g, firstName).replace(/\{event\}/g, name);
+
+  const openingText = event?.emailHeading?.trim()
+    ? fill(event.emailHeading.trim())
+    : `Thanks ${firstName}, you're on the ${name} list.`;
+
+  const bodyText = event?.emailBody?.trim()
+    ? fill(event.emailBody.trim())
+    : "We'll email you as soon as the next date is set, before it goes public. Nothing else, and never more than we'd want to receive ourselves.";
+
   const body = `
-    <p style="margin:0 0 16px;font:400 16px/1.65 Helvetica,Arial,sans-serif;color:${INK};">Thanks ${escapeHtml(firstName)}, you're on the ${escapeHtml(name)} list.</p>
-    <p style="margin:0 0 26px;font:400 16px/1.65 Helvetica,Arial,sans-serif;color:${MUTED};">We'll email you as soon as the next date is set, before it goes public. Nothing else, and never more than we'd want to receive ourselves.</p>
+    <p style="margin:0 0 16px;font:400 16px/1.65 Helvetica,Arial,sans-serif;color:${INK};">${escapeHtml(openingText)}</p>
+    ${paragraphs(bodyText, MUTED)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(25,23,19,0.10);">
       ${factRows(facts)}
     </table>
@@ -281,10 +314,13 @@ export function renderGuestEmail(
     <p style="margin:0;">You're getting this because you asked to hear about ${escapeHtml(name)} dates.
       <a href="${unsubUrl}" style="color:${MUTED};">Unsubscribe</a>.</p>`;
 
+  // The plain-text part carries the same custom wording. Letting the two drift
+  // means anyone reading in a text-only client gets different copy, and spam
+  // filters treat a mismatched multipart message as a signal.
   const text = [
-    `Thanks ${firstName}, you're on the ${name} list.`,
+    openingText,
     "",
-    "We'll email you as soon as the next date is set, before it goes public.",
+    bodyText,
     "",
     ...facts.map(([label, value]) => `${label}: ${value}`),
     "",
@@ -295,7 +331,9 @@ export function renderGuestEmail(
   ].join("\n");
 
   return {
-    subject: `You're on the ${name} list`,
+    subject: event?.emailSubject?.trim()
+      ? fill(event.emailSubject.trim())
+      : `You're on the ${name} list`,
     html: shell({
       preheader: `We'll email you the next ${name} date before it's public.`,
       eyebrow: "1127 Events",
@@ -462,6 +500,22 @@ type Rendered = {
 };
 
 /** Each send is isolated: one failure never prevents the other. */
+/**
+ * Whether we are still allowed to email this person.
+ *
+ * Until this existed, the "Unsubscribed" and "Bounced" statuses in the
+ * dashboard were labels and nothing more: setting one changed how a row was
+ * filtered and did not stop a single message. Somebody marking a person
+ * unsubscribed because they asked in person would reasonably assume it worked.
+ *
+ * Only applies to mail addressed to the member of the public. Internal team
+ * notifications are not affected, because a bounced guest address is exactly
+ * the sort of thing the team still needs to be told about.
+ */
+export function mayEmail(record: SubmissionRecord): boolean {
+  return record.status !== "unsubscribed" && record.status !== "bounced";
+}
+
 async function trySend(
   label: string,
   to: string[],
@@ -490,7 +544,7 @@ export async function notifyRsvp(
 ): Promise<void> {
   const status = emailStatus();
 
-  if (status.guest) {
+  if (status.guest && mayEmail(record)) {
     await trySend(
       "RSVP confirmation",
       [record.email],
@@ -516,7 +570,7 @@ export async function notifyAmbassador(
 ): Promise<void> {
   const status = emailStatus();
 
-  if (status.guest) {
+  if (status.guest && mayEmail(record)) {
     await trySend(
       "Ambassador acknowledgement",
       [record.email],
@@ -640,7 +694,7 @@ export async function notifyTalent(
 ): Promise<void> {
   const status = emailStatus();
 
-  if (status.guest) {
+  if (status.guest && mayEmail(record)) {
     await trySend(
       "Talent acknowledgement",
       [record.email],
@@ -770,7 +824,7 @@ export async function notifyPartner(
 ): Promise<void> {
   const status = emailStatus();
 
-  if (status.guest) {
+  if (status.guest && mayEmail(record)) {
     await trySend(
       "Partner acknowledgement",
       [record.email],

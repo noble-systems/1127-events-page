@@ -10,7 +10,7 @@ import {
   renderTalentTeamEmail,
   renderTeamEmail,
 } from "@/lib/email";
-import { listPublicEvents } from "@/lib/store";
+import { listAllEvents } from "@/lib/store";
 import type { SubmissionRecord } from "@/lib/types";
 
 /**
@@ -90,8 +90,21 @@ export async function GET(request: Request) {
   const type = url.searchParams.get("type") ?? "guest";
   const asText = url.searchParams.get("format") === "text";
 
-  const events = await listPublicEvents();
-  const featured = events.find((event) => event.featured) ?? events[0] ?? null;
+  // ?eventId= previews a specific event's custom wording. The admin form links
+  // here so copy can be checked before a real signup receives it. Falls back to
+  // the featured event, which is what an RSVP would actually get today.
+  const requestedId = url.searchParams.get("eventId");
+  const events = await listAllEvents();
+  const featured = requestedId
+    ? (events.find((event) => event.id === requestedId) ?? null)
+    : (events.find((event) => event.featured) ?? events[0] ?? null);
+
+  if (requestedId && !featured) {
+    return NextResponse.json(
+      { ok: false, message: `No event with id "${requestedId}".` },
+      { status: 404 },
+    );
+  }
 
   // A lookup rather than a ternary chain: this list grows every time a form is
   // added, and the chain was already six deep and silently fell through to the

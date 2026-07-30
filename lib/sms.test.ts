@@ -135,6 +135,9 @@ describe("message bodies", () => {
     imageAlt: "",
     ctaLabel: "",
     ctaAction: "rsvp",
+    emailSubject: null,
+    emailHeading: null,
+    emailBody: null,
     createdAt: "",
     updatedAt: "",
   };

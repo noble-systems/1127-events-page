@@ -433,6 +433,92 @@ export function EventForm({
             </div>
           </Field>
 
+          <div className="border-ink/12 bg-bone-soft space-y-5 rounded-2xl border p-5">
+            <div>
+              <h3 className="text-[1.0625rem] font-medium">
+                Confirmation email for this event
+              </h3>
+              <p className="text-ink/65 mt-1.5 text-[0.8125rem] leading-relaxed">
+                Sent to anyone who RSVPs while this is the featured event. Leave
+                blank to use the standard wording. Write{" "}
+                <code className="bg-ink/[0.06] rounded px-1">{"{name}"}</code> for
+                their first name and{" "}
+                <code className="bg-ink/[0.06] rounded px-1">{"{event}"}</code> for
+                the event name.
+              </p>
+            </div>
+
+            <Field
+              id="ev-email-subject"
+              label="Subject line"
+              optional
+              error={errors.emailSubject}
+              hint="Default: You're on the Sun Club list"
+            >
+              <TextInput
+                id="ev-email-subject"
+                name="emailSubject"
+                placeholder="You're on the {event} list"
+                value={values.emailSubject}
+                error={errors.emailSubject}
+                disabled={busy}
+                onChange={(e) => set("emailSubject", e.target.value)}
+              />
+            </Field>
+
+            <Field
+              id="ev-email-heading"
+              label="Opening line"
+              optional
+              error={errors.emailHeading}
+              hint="Default: Thanks {name}, you're on the {event} list."
+            >
+              <TextInput
+                id="ev-email-heading"
+                name="emailHeading"
+                placeholder="Thanks {name}, you're on the {event} list."
+                value={values.emailHeading}
+                error={errors.emailHeading}
+                disabled={busy}
+                onChange={(e) => set("emailHeading", e.target.value)}
+              />
+            </Field>
+
+            <Field
+              id="ev-email-body"
+              label="Message"
+              optional
+              error={errors.emailBody}
+              hint="Leave a blank line between paragraphs. Plain text only, so it cannot break the layout."
+            >
+              <TextArea
+                id="ev-email-body"
+                name="emailBody"
+                rows={5}
+                placeholder="We'll email you as soon as the next date is set, before it goes public."
+                value={values.emailBody}
+                error={errors.emailBody}
+                disabled={busy}
+                onChange={(e) => set("emailBody", e.target.value)}
+              />
+            </Field>
+
+            {eventId ? (
+              <a
+                href={`/api/admin/email-preview?type=guest&eventId=${encodeURIComponent(eventId)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-cobalt inline-block text-[0.875rem] underline-offset-4 hover:underline"
+              >
+                Preview this email in a new tab
+              </a>
+            ) : (
+              <p className="text-ink/65 text-[0.8125rem]">
+                Save the event to preview the email.
+              </p>
+            )}
+          </div>
+
           <Field
             id="ev-image-alt"
             label="Image alt text"
