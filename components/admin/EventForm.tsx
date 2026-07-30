@@ -271,7 +271,7 @@ export function EventForm({
             id="ev-status"
             label="Status badge"
             error={errors.status}
-            hint="Small label on the image, e.g. Featured series."
+            hint="Small label on the image, e.g. Announcing Soon, Tickets Live, Sold Out. Say what state the event is in, not whether it is featured: Featured is the toggle below, and a badge that disagrees with it is the thing people notice."
           >
             <TextInput
               id="ev-status"

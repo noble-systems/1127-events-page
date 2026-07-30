@@ -204,7 +204,7 @@ export const seedEvents: EventRecord[] = [
     tagline: "House music under the desert sun.",
     summary:
       "A poolside house series in Old Town Scottsdale. Hometown DJs, water you're meant to get into, and a room that builds from afternoon into golden hour.",
-    status: "Featured series",
+    status: "Announcing Soon",
     date: DATE_TBA,
     location: "Old Town Scottsdale, Arizona",
     venue: null,

@@ -37,7 +37,15 @@ export type EventRecord = {
    * With this off the card shows no RSVP button and /rsvp/<id> 404s.
    */
   rsvpEnabled: boolean;
-  /** Small badge on the card, e.g. "Featured series". */
+  /**
+   * Small badge on the card, e.g. "Announcing Soon", "Tickets Live", "Sold Out".
+   *
+   * Free text, and deliberately about what state the event is in rather than
+   * whether it is featured. This shipped defaulting to "Featured series", which
+   * kept claiming Sun Club was featured long after the flag moved to another
+   * event. Same trap the old `series` field had: a typed string asserting
+   * something the system already tracks, with nothing keeping the two in step.
+   */
   status: string;
   /** Free text so "Dates Announcing Soon" is as valid as a real date. */
   date: string;
