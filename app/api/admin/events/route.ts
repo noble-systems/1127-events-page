@@ -7,7 +7,7 @@ import {
   toEventInput,
   validateEvent,
 } from "@/lib/event-input";
-import { createEvent, listAllEvents } from "@/lib/store";
+import { createEvent, getGenreList, listAllEvents } from "@/lib/store";
 
 export async function GET() {
   const denied = await requireAdmin();
@@ -20,8 +20,11 @@ export async function GET() {
 export async function POST(request: Request) {
   const denied = await requireAdmin();
   if (denied) return denied;
+  // The live genre list, so a genre an admin created is not silently
+  // discarded on save. See normaliseGenres.
+  const allowedGenres = await getGenreList();
 
-  const values = readEventBody(await readJson(request));
+  const values = readEventBody(await readJson(request), allowedGenres);
   const errors = validateEvent(values);
 
   if (Object.keys(errors).length > 0) {
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
   let suffix = 2;
   while (taken.has(id)) id = `${base}-${suffix++}`;
 
-  const event = await createEvent(toEventInput(id, values));
+  const event = await createEvent(toEventInput(id, values, allowedGenres));
   revalidatePath("/");
 
   return NextResponse.json({ ok: true, event }, { status: 201 });

@@ -146,7 +146,11 @@ export function validateEvent(values: EventFormValues): FormErrors {
 }
 
 /** Assumes `validateEvent` already passed. */
-export function toEventInput(id: string, values: EventFormValues): NewEventInput {
+export function toEventInput(
+  id: string,
+  values: EventFormValues,
+  allowedGenres: readonly string[],
+): NewEventInput {
   return {
     id,
     name: values.name.trim(),
@@ -164,7 +168,7 @@ export function toEventInput(id: string, values: EventFormValues): NewEventInput
       .slice(0, 8),
     // Anything off the controlled list is dropped rather than stored, so a
     // crafted payload cannot invent an audience segment.
-    genres: normaliseGenres(values.genres),
+    genres: normaliseGenres(values.genres, allowedGenres),
     tone: values.tone as MediaTone,
     featured: Boolean(values.featured),
     published: Boolean(values.published),
@@ -182,7 +186,10 @@ export function toEventInput(id: string, values: EventFormValues): NewEventInput
 }
 
 /** Normalises an unknown JSON body into form values. */
-export function readEventBody(body: unknown): EventFormValues {
+export function readEventBody(
+  body: unknown,
+  allowedGenres: readonly string[],
+): EventFormValues {
   const raw = (body ?? {}) as Record<string, unknown>;
   const str = (key: keyof EventFormValues) =>
     typeof raw[key] === "string" ? (raw[key] as string) : "";
@@ -197,7 +204,7 @@ export function readEventBody(body: unknown): EventFormValues {
     location: str("location"),
     venue: str("venue"),
     tags: Array.isArray(raw.tags) ? raw.tags.join(", ") : str("tags"),
-    genres: normaliseGenres(raw.genres),
+    genres: normaliseGenres(raw.genres, allowedGenres),
     tone: str("tone") || "dusk",
     featured: raw.featured === true || raw.featured === "true",
     published: raw.published === true || raw.published === "true",
@@ -213,30 +220,33 @@ export function readEventBody(body: unknown): EventFormValues {
   };
 }
 
-export function eventToFormValues(event: {
-  name: string;
-  series: string;
-  tagline: string;
-  summary: string;
-  status: string;
-  date: string;
-  location: string;
-  venue: string | null;
-  tags: string[];
-  genres: string[];
-  tone: MediaTone;
-  featured: boolean;
-  published: boolean;
-  order: number;
-  shotNote: string;
-  image: string | null;
-  imageAlt: string;
-  ctaLabel: string;
-  ctaAction: CtaAction;
-  emailSubject: string | null;
-  emailHeading: string | null;
-  emailBody: string | null;
-}): EventFormValues {
+export function eventToFormValues(
+  event: {
+    name: string;
+    series: string;
+    tagline: string;
+    summary: string;
+    status: string;
+    date: string;
+    location: string;
+    venue: string | null;
+    tags: string[];
+    genres: string[];
+    tone: MediaTone;
+    featured: boolean;
+    published: boolean;
+    order: number;
+    shotNote: string;
+    image: string | null;
+    imageAlt: string;
+    ctaLabel: string;
+    ctaAction: CtaAction;
+    emailSubject: string | null;
+    emailHeading: string | null;
+    emailBody: string | null;
+  },
+  allowedGenres: readonly string[],
+): EventFormValues {
   return {
     name: event.name,
     series: event.series,
@@ -247,7 +257,7 @@ export function eventToFormValues(event: {
     location: event.location,
     venue: event.venue ?? "",
     tags: event.tags.join(", "),
-    genres: normaliseGenres(event.genres),
+    genres: normaliseGenres(event.genres, allowedGenres),
     tone: event.tone,
     featured: event.featured,
     published: event.published,

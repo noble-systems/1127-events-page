@@ -55,36 +55,39 @@ describe("isGenre", () => {
 
 describe("normaliseGenres", () => {
   test("keeps recognised values and drops the rest", () => {
-    assert.deepEqual(normaliseGenres(["House", "nonsense", "Techno"]), [
+    assert.deepEqual(normaliseGenres(["House", "nonsense", "Techno"], LIST), [
       "House",
       "Techno",
     ]);
   });
 
   test("trims, so a value pasted with whitespace still counts", () => {
-    assert.deepEqual(normaliseGenres([" House ", "Techno"]), ["House", "Techno"]);
+    assert.deepEqual(normaliseGenres([" House ", "Techno"], LIST), [
+      "House",
+      "Techno",
+    ]);
   });
 
   test("de-duplicates", () => {
-    assert.deepEqual(normaliseGenres(["House", "House", "House"]), ["House"]);
+    assert.deepEqual(normaliseGenres(["House", "House", "House"], LIST), ["House"]);
   });
 
   test("returns canonical order regardless of input order", () => {
     // Two records with the same genres must compare and display identically, and
     // a segment count must not depend on the order boxes were ticked.
-    const a = normaliseGenres(["Techno", "House", "Bass"]);
-    const b = normaliseGenres(["Bass", "Techno", "House"]);
+    const a = normaliseGenres(["Techno", "House", "Bass"], LIST);
+    const b = normaliseGenres(["Bass", "Techno", "House"], LIST);
     assert.deepEqual(a, b);
     assert.deepEqual(a, ["House", "Techno", "Bass"]);
   });
 
   test("accepts a comma-separated string", () => {
-    assert.deepEqual(normaliseGenres("House, Techno"), ["House", "Techno"]);
+    assert.deepEqual(normaliseGenres("House, Techno", LIST), ["House", "Techno"]);
   });
 
   test("survives junk", () => {
     for (const junk of [null, undefined, 42, {}, [null, 1, {}]]) {
-      assert.deepEqual(normaliseGenres(junk), []);
+      assert.deepEqual(normaliseGenres(junk, LIST), []);
     }
   });
 });
@@ -94,27 +97,27 @@ describe("mergeGenres", () => {
     // The heart of the feature. Somebody who came to a house party and later a
     // bass night belongs to both audiences; replacing would erase the first and
     // they would stop hearing about what they originally came for.
-    assert.deepEqual(mergeGenres(["House"], ["Bass"]), ["House", "Bass"]);
+    assert.deepEqual(mergeGenres(["House"], ["Bass"], LIST), ["House", "Bass"]);
   });
 
   test("re-signing up for the same kind of event changes nothing", () => {
-    assert.deepEqual(mergeGenres(["House"], ["House"]), ["House"]);
+    assert.deepEqual(mergeGenres(["House"], ["House"], LIST), ["House"]);
   });
 
   test("works from empty on either side", () => {
-    assert.deepEqual(mergeGenres([], ["House"]), ["House"]);
-    assert.deepEqual(mergeGenres(["House"], []), ["House"]);
-    assert.deepEqual(mergeGenres(undefined, undefined), []);
+    assert.deepEqual(mergeGenres([], ["House"], LIST), ["House"]);
+    assert.deepEqual(mergeGenres(["House"], [], LIST), ["House"]);
+    assert.deepEqual(mergeGenres(undefined, undefined, LIST), []);
   });
 
   test("an unrecognised incoming genre cannot poison a record", () => {
-    assert.deepEqual(mergeGenres(["House"], ["Polka"]), ["House"]);
+    assert.deepEqual(mergeGenres(["House"], ["Polka"], LIST), ["House"]);
   });
 
   test("stays in canonical order after several merges", () => {
-    let genres = mergeGenres([], ["Techno"]);
-    genres = mergeGenres(genres, ["House"]);
-    genres = mergeGenres(genres, ["Dubstep"]);
+    let genres = mergeGenres([], ["Techno"], LIST);
+    genres = mergeGenres(genres, ["House"], LIST);
+    genres = mergeGenres(genres, ["Dubstep"], LIST);
     assert.deepEqual(genres, ["House", "Techno", "Dubstep"]);
   });
 });

@@ -45,7 +45,14 @@ export function isGenre(value: unknown, allowed: readonly string[]): boolean {
 }
 
 /**
- * Keeps only recognised genres, de-duplicated, in the canonical order above.
+ * Keeps only recognised genres, de-duplicated, in the canonical order of the
+ * list passed in.
+ *
+ * `allowed` is required, deliberately. It used to default to the seed list, and
+ * that default silently discarded every genre an admin had created: an event
+ * saved with ["House", "Rave"] came back as ["House"] with nothing to say why.
+ * Making it required means the compiler finds any caller that does not have the
+ * live list, rather than that caller quietly losing data.
  *
  * Canonical order rather than input order so two records with the same genres
  * always compare and display identically, and so a segment count cannot depend
@@ -53,7 +60,7 @@ export function isGenre(value: unknown, allowed: readonly string[]): boolean {
  */
 export function normaliseGenres(
   input: unknown,
-  allowed: readonly string[] = DEFAULT_GENRES,
+  allowed: readonly string[],
 ): Genre[] {
   const values = Array.isArray(input)
     ? input
@@ -84,7 +91,7 @@ export function normaliseGenres(
 export function mergeGenres(
   existing: unknown,
   incoming: unknown,
-  allowed: readonly string[] = DEFAULT_GENRES,
+  allowed: readonly string[],
 ): Genre[] {
   return normaliseGenres(
     [...normaliseGenres(existing, allowed), ...normaliseGenres(incoming, allowed)],

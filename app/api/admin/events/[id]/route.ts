@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { readJson, requireAdmin } from "@/lib/admin-api";
 import { readEventBody, toEventInput, validateEvent } from "@/lib/event-input";
-import { deleteEvent, getEvent, updateEvent } from "@/lib/store";
+import { deleteEvent, getEvent, getGenreList, updateEvent } from "@/lib/store";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -36,8 +36,11 @@ export async function PUT(request: Request, { params }: Params) {
       { status: 404 },
     );
   }
+  // The live genre list, so a genre an admin created is not silently
+  // discarded on save. See normaliseGenres.
+  const allowedGenres = await getGenreList();
 
-  const values = readEventBody(await readJson(request));
+  const values = readEventBody(await readJson(request), allowedGenres);
   const errors = validateEvent(values);
 
   if (Object.keys(errors).length > 0) {
@@ -47,7 +50,10 @@ export async function PUT(request: Request, { params }: Params) {
     );
   }
 
-  const event = await updateEvent(existing, toEventInput(id, values));
+  const event = await updateEvent(
+    existing,
+    toEventInput(id, values, allowedGenres),
+  );
   revalidatePath("/");
 
   return NextResponse.json({ ok: true, event });

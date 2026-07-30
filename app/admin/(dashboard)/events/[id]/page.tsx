@@ -41,7 +41,7 @@ export default async function EditEventPage({
 
       <div className="mt-10">
         <EventForm
-          initial={eventToFormValues(event)}
+          initial={eventToFormValues(event, genreList)}
           eventId={event.id}
           genreList={genreList}
         />
