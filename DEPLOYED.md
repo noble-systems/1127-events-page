@@ -2,58 +2,62 @@
 
 Account **769194516210**. Deployed 29 July 2026.
 
-**This project spans two regions on purpose. Read the next section before
-copying any value out of this file.**
+**Everything is in us-west-1.** Amplify Hosting, DynamoDB, Cognito, SES, S3 and
+the IAM policy.
 
 None of the values here are secret. Access keys and `APP_SECRET` are never
 recorded in the repo.
 
-## Two regions, and why
+## The backend moved from us-west-2 on 29 July 2026
 
-| What                                   | Region        |
-| -------------------------------------- | ------------- |
-| Amplify Hosting app `1127-events-page` | **us-west-1** |
-| DynamoDB, Cognito, SES, IAM policy     | **us-west-2** |
+It briefly ran split, with Amplify in us-west-1 and the data in us-west-2, then
+was consolidated. Nothing is left running in us-west-2 that the app depends on.
 
-The backend went to us-west-2 first; the Amplify app was later created in
-us-west-1. We kept it that way deliberately rather than rebuilding, because
-moving the backend would mean issuing a new SES identity and therefore three new
-DKIM records plus a new MAIL FROM record at Namecheap. That DNS work already
-caused one outage of `hello@1127.events`, and the only thing it buys is tidiness.
+Three things had to change in the template before a second region would deploy at
+all. All three are permanent traps, not one-offs:
 
-The cost of the split is about 20ms of cross-region latency on DynamoDB reads,
-which the 60-second ISR cache absorbs for nearly all traffic.
+- **S3 bucket names are globally unique across every account and region.** The
+  stack collided with its own bucket. The name now carries `${AWS::Region}`.
+- **IAM is a global namespace too.** The managed policy collided identically, so
+  it is now `1127-events-app-data-${AWS::Region}`.
+- **Cognito refuses a user pool whose SES identity is unverified**, and verifying
+  that identity needs DKIM records that only exist once the identity has been
+  created. Circular on a fresh region. Hence the `UseSesForCognito` parameter and
+  a deliberate two-pass deploy.
 
-**`APP_AWS_REGION=us-west-2` is what makes this work.** The app reads it for
-every AWS client. If it is unset the code falls back to us-west-2 as well, so
-the split fails safe, but set it explicitly so the intent is visible.
+Two further things worth knowing if this is ever repeated:
 
-### Do not "fix" the region with find-and-replace
+- `DeletionPolicy: Retain` means a failed stack leaves tables and buckets
+  behind, and those orphans then block the retry with an existence check. Delete
+  them before redeploying.
+- The Amplify **compute role** keeps whatever policy was attached to it. Moving
+  region does not move the policy, so the app deployed green and then returned
+  502 on every write until the new policy was attached and the old one detached.
 
-A blind `us-west-2` → `us-west-1` replace has been attempted once and did real
-damage. Two things to understand:
+### Do not "fix" a region with find-and-replace
 
+A blind replace has been attempted twice on this project and did real damage both
+times:
+
+- It ate the closing quote on the region fallback in `lib/sms.ts` and
+  `lib/store/dynamo.ts`, producing unterminated string literals that broke the
+  build.
 - **A Cognito pool ID contains its region as part of the identifier.**
-  `us-west-2_Jee1pVz4Z` is the literal name of the pool. Rewriting it to
-  `us-west-1_...` does not move anything; it produces an ID that authenticates
-  nothing.
-- The replace also ate the closing quote on the region fallback in `lib/sms.ts`
-  and `lib/store/dynamo.ts`, producing unterminated string literals that broke
-  the build.
+  `us-west-1_mL39ZWlIe` is the literal name of the pool. Rewriting the region
+  inside it does not move anything; it produces an ID that authenticates nothing.
 
-If the regions ever really need to converge, it is an infrastructure migration,
-not an edit.
+Moving regions is an infrastructure migration, not an edit.
 
-## Stack outputs (us-west-2, stack `events-1127`)
+## Stack outputs (us-west-1, stack `events-1127`)
 
-| Output                    | Value                                                   |
-| ------------------------- | ------------------------------------------------------- |
-| EventsTableName           | `1127-events-events`                                    |
-| SubmissionsTableName      | `1127-events-submissions`                               |
-| CognitoUserPoolId         | `us-west-2_Jee1pVz4Z`                                   |
-| CognitoClientId           | `3iekhqghjkeujbpt6e28ui5uhh`                            |
-| EmailConfigurationSetName | `1127-events-email`                                     |
-| AppDataPolicyArn          | `arn:aws:iam::769194516210:policy/1127-events-app-data` |
+| Output                    | Value                                                             |
+| ------------------------- | ----------------------------------------------------------------- |
+| EventsTableName           | `1127-events-events`                                              |
+| SubmissionsTableName      | `1127-events-submissions`                                         |
+| CognitoUserPoolId         | `us-west-1_mL39ZWlIe`                                             |
+| CognitoClientId           | `6m6cp251j76grdcaja3b0hasc2`                                      |
+| EmailConfigurationSetName | `1127-events-email`                                               |
+| AppDataPolicyArn          | `arn:aws:iam::769194516210:policy/1127-events-app-data-us-west-1` |
 
 ## Amplify app (us-west-1)
 
@@ -72,12 +76,12 @@ not an edit.
 EVENTS_TABLE=1127-events-events
 SUBMISSIONS_TABLE=1127-events-submissions
 RATELIMIT_TABLE=1127-events-ratelimit
-IMAGES_BUCKET=1127-events-images-769194516210
-IMAGES_BASE_URL=https://1127-events-images-769194516210.s3.us-west-2.amazonaws.com
-NEXT_PUBLIC_IMAGES_BASE_URL=https://1127-events-images-769194516210.s3.us-west-2.amazonaws.com
-COGNITO_USER_POOL_ID=us-west-2_Jee1pVz4Z
-COGNITO_CLIENT_ID=3iekhqghjkeujbpt6e28ui5uhh
-APP_AWS_REGION=us-west-2
+IMAGES_BUCKET=1127-events-images-769194516210-us-west-1
+IMAGES_BASE_URL=https://1127-events-images-769194516210-us-west-1.s3.us-west-1.amazonaws.com
+NEXT_PUBLIC_IMAGES_BASE_URL=https://1127-events-images-769194516210-us-west-1.s3.us-west-1.amazonaws.com
+COGNITO_USER_POOL_ID=us-west-1_mL39ZWlIe
+COGNITO_CLIENT_ID=6m6cp251j76grdcaja3b0hasc2
+APP_AWS_REGION=us-west-1
 SES_CONFIGURATION_SET=1127-events-email
 SES_FROM_ADDRESS=hello@1127.events
 SITE_URL=https://1127.events
@@ -100,15 +104,15 @@ Do not re-enter these. They are in place and SES has verified against them.
 
 | Type  | Host                                          | Value                                                 |
 | ----- | --------------------------------------------- | ----------------------------------------------------- |
-| CNAME | `lwb3jhpcn3ul6awf6yq466klxgr67jac._domainkey` | `lwb3jhpcn3ul6awf6yq466klxgr67jac.dkim.amazonses.com` |
-| CNAME | `dpaf7cvwb7v4yxjnp3ef3rdq4bpjdrmg._domainkey` | `dpaf7cvwb7v4yxjnp3ef3rdq4bpjdrmg.dkim.amazonses.com` |
-| CNAME | `ynuim7udmmipvao5t25iwel25gnqcuph._domainkey` | `ynuim7udmmipvao5t25iwel25gnqcuph.dkim.amazonses.com` |
-| MX    | `mail`                                        | `feedback-smtp.us-west-2.amazonses.com` (priority 10) |
+| CNAME | `nwj3qwkugafptnymcbixxuwcaizocc3n._domainkey` | `nwj3qwkugafptnymcbixxuwcaizocc3n.dkim.amazonses.com` |
+| CNAME | `naiduwvezn5ixl4nxa6vw5sovh4ss6eu._domainkey` | `naiduwvezn5ixl4nxa6vw5sovh4ss6eu.dkim.amazonses.com` |
+| CNAME | `saqktw2n2sqv4pohmh6dnzlyo2yvhz2w._domainkey` | `saqktw2n2sqv4pohmh6dnzlyo2yvhz2w.dkim.amazonses.com` |
+| MX    | `mail`                                        | `feedback-smtp.us-west-1.amazonses.com` (priority 10) |
 | TXT   | `mail`                                        | `v=spf1 include:amazonses.com ~all`                   |
 
-Note the MAIL FROM MX points at **us-west-2**, because that is where the SES
-identity lives. This is the clearest example of why the region split cannot be
-text-edited away.
+The MAIL FROM MX points at **us-west-1**, matching where the SES identity lives.
+If the region ever changes again this record changes with it, along with all
+three DKIM tokens, which are also region-specific.
 
 ### Root records: Google Workspace and the apex
 
@@ -178,11 +182,11 @@ move them out of `FORCE_CHANGE_PASSWORD`, which Cognito requires before
 recorded:
 
 ```
-aws cognito-idp admin-create-user --user-pool-id us-west-2_Jee1pVz4Z \
-  --region us-west-2 --username new@1127.events --message-action SUPPRESS \
+aws cognito-idp admin-create-user --user-pool-id us-west-1_mL39ZWlIe \
+  --region us-west-1 --username new@1127.events --message-action SUPPRESS \
   --user-attributes Name=email,Value=new@1127.events Name=email_verified,Value=true
-aws cognito-idp admin-set-user-password --user-pool-id us-west-2_Jee1pVz4Z \
-  --region us-west-2 --username new@1127.events --permanent \
+aws cognito-idp admin-set-user-password --user-pool-id us-west-1_mL39ZWlIe \
+  --region us-west-1 --username new@1127.events --permanent \
   --password "$(openssl rand -base64 24)Aa1!"
 ```
 
@@ -192,7 +196,7 @@ people to click on credential emails.
 
 ## Swapping a photograph
 
-Event photos live in `1127-events-images-769194516210`, which grants
+Event photos live in `1127-events-images-769194516210-us-west-1`, which grants
 `GetObject` to the public and nothing else. No listing, no public write.
 
 The dashboard is the intended route: open an event, choose a file, and it uploads
