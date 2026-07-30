@@ -32,15 +32,11 @@ describe("the schema matches the real content", () => {
     // search. Pairing them in the schema is what makes the editor show them
     // together.
     const images = [...CONTENT_FIELDS.values()].filter((f) => f.kind === "image");
-    // Hero, ambassadors, and the eight media tiles. The series intro photograph
-    // is deliberately NOT here: it comes from whichever event is featured, so
-    // offering it in the content editor too would be two places to change one
-    // thing. If this count drops, check that was intentional.
-    assert.equal(
-      images.length,
-      10,
-      `expected 10 image fields, got ${images.length}`,
-    );
+    // Ambassadors plus the eight media tiles. The hero and series-intro
+    // photographs are deliberately NOT here: both come from whichever event is
+    // featured, so offering them in the content editor too would be two places
+    // to change one thing. If this count moves, check that was intentional.
+    assert.equal(images.length, 9, `expected 9 image fields, got ${images.length}`);
     for (const image of images) {
       const alt = [...CONTENT_FIELDS.values()].find((f) => f.altFor === image.key);
       assert.ok(alt, `no alt-text field for ${image.key}`);
@@ -89,10 +85,10 @@ describe("mergeContent", () => {
   });
 
   test("applies an override", () => {
-    const merged = mergeContent({ "hero.title": "Moon Club" });
-    assert.equal(merged.hero.title, "Moon Club");
+    const merged = mergeContent({ "ambassadors.title": "Moon Club" });
+    assert.equal(merged.ambassadors.title, "Moon Club");
     // Everything else untouched.
-    assert.equal(merged.hero.tagline, defaultContent().hero.tagline);
+    assert.equal(merged.ambassadors.intro, defaultContent().ambassadors.intro);
   });
 
   test("sets an image on a media tile", () => {
@@ -104,20 +100,20 @@ describe("mergeContent", () => {
   test("an empty string reverts to the default rather than blanking the page", () => {
     // Clearing a field in the dashboard must restore the committed copy. If it
     // wrote through, a stray keystroke would empty a section on the live site.
-    const merged = mergeContent({ "hero.title": "   " });
-    assert.equal(merged.hero.title, defaultContent().hero.title);
+    const merged = mergeContent({ "ambassadors.title": "   " });
+    assert.equal(merged.ambassadors.title, defaultContent().ambassadors.title);
   });
 
   test("ignores keys that are not in the schema", () => {
     // This is the layer that renders the public site, so it does not trust the
     // store even though writes are validated.
     const merged = mergeContent({
-      "hero.title": "Fine",
+      "ambassadors.title": "Fine",
       "contact.email": "attacker@example.com",
       "__proto__.polluted": "yes",
       "brand.domain": "https://evil.example",
     });
-    assert.equal(merged.hero.title, "Fine");
+    assert.equal(merged.ambassadors.title, "Fine");
     assert.equal(isEditableKey("contact.email"), false);
     assert.equal(
       ({} as Record<string, unknown>).polluted,
@@ -129,16 +125,19 @@ describe("mergeContent", () => {
   test("does not mutate the module-level defaults across calls", () => {
     // Sections run per request in the same Lambda. A leaked mutation would show
     // one visitor's override to everybody.
-    const first = mergeContent({ "hero.title": "Once" });
-    assert.equal(first.hero.title, "Once");
+    const first = mergeContent({ "ambassadors.title": "Once" });
+    assert.equal(first.ambassadors.title, "Once");
     const second = mergeContent(null);
-    assert.equal(second.hero.title, defaultContent().hero.title);
+    assert.equal(second.ambassadors.title, defaultContent().ambassadors.title);
   });
 
   test("null and undefined overrides are skipped", () => {
-    const merged = mergeContent({ "hero.title": null, "hero.tagline": undefined });
-    assert.equal(merged.hero.title, defaultContent().hero.title);
-    assert.equal(merged.hero.tagline, defaultContent().hero.tagline);
+    const merged = mergeContent({
+      "ambassadors.title": null,
+      "ambassadors.intro": undefined,
+    });
+    assert.equal(merged.ambassadors.title, defaultContent().ambassadors.title);
+    assert.equal(merged.ambassadors.intro, defaultContent().ambassadors.intro);
   });
 });
 
@@ -185,5 +184,31 @@ describe("the series intro follows the featured event", () => {
   test("the fallback copy is still editable for when nothing is featured", () => {
     assert.equal(CONTENT_FIELDS.has("sunClub.title"), true);
     assert.equal(CONTENT_FIELDS.has("sunClub.paragraphs"), true);
+  });
+});
+
+describe("the hero follows the featured event", () => {
+  test("no field the featured event owns is also editable as content", () => {
+    // Hardcoding these is what made the headline keep naming last month's event
+    // after somebody featured a new one.
+    for (const key of [
+      "hero.title",
+      "hero.tagline",
+      "hero.date",
+      "hero.location",
+      "hero.image",
+      "hero.imageAlt",
+    ]) {
+      assert.equal(
+        CONTENT_FIELDS.has(key),
+        false,
+        `${key} is owned by the featured event and must not be editable here`,
+      );
+    }
+  });
+
+  test("brand framing that is not event-specific stays editable", () => {
+    assert.equal(CONTENT_FIELDS.has("hero.eyebrow"), true);
+    assert.equal(CONTENT_FIELDS.has("hero.body"), true);
   });
 });

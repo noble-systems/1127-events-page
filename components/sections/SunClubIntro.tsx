@@ -26,7 +26,10 @@ export function SunClubIntro({
   event?: EventRecord | null;
 } = {}) {
   const eyebrow = event?.series?.trim() || content.eyebrow;
-  const title = event?.tagline?.trim() || event?.name?.trim() || content.title;
+  // Deliberately NOT the event's name or tagline: both are already large on
+  // screen in the hero directly above. This heading is the editorial line about
+  // the series, and it stays editable in the dashboard.
+  const title = content.title;
   const paragraphs = event?.summary?.trim()
     ? [event.summary.trim()]
     : content.paragraphs;

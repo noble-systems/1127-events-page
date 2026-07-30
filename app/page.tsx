@@ -85,17 +85,18 @@ export default async function HomePage() {
     getSiteContent(),
   ]);
 
+  // One featured event drives both the hero and the series intro, so they can
+  // never describe different events.
+  const featured = events.find((e) => e.featured) ?? events[0] ?? null;
+
   return (
     <>
       <StructuredData events={events} />
       <SiteHeader />
       <main id="main">
-        <Hero content={content.hero} />
+        <Hero content={content.hero} event={featured} />
         <UpcomingEvents events={events} />
-        <SunClubIntro
-          content={content.sunClub}
-          event={events.find((e) => e.featured) ?? events[0] ?? null}
-        />
+        <SunClubIntro content={content.sunClub} event={featured} />
         <Ambassadors content={content.ambassadors} />
         <MediaGrid section={content.mediaSection} slots={content.mediaSlots} />
         <Partner content={content.partner} />

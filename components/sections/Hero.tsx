@@ -1,25 +1,48 @@
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Media } from "@/components/ui/Media";
 import { hero } from "@/content/site";
+import type { EventRecord } from "@/lib/types";
 
+/**
+ * The block at the top of the homepage, showing whichever event is Featured.
+ *
+ * The name, tagline, date, location and photograph all come from the event
+ * record. Hardcoding "Sun Club" here meant the headline kept naming last
+ * month's event after somebody featured a new one, with no indication anything
+ * was wrong.
+ *
+ * The eyebrow and body stay editable content: the eyebrow is brand framing
+ * rather than event detail, and the body is deliberately not the event summary,
+ * which already appears in full in the series intro below. Saying the same
+ * paragraph twice on one page reads as a mistake.
+ */
 export function Hero({
   content = hero,
+  event = null,
 }: {
   content?: typeof hero;
+  event?: EventRecord | null;
 } = {}) {
+  const title = event?.name?.trim() || content.title;
+  const tagline = event?.tagline?.trim() || content.tagline;
+  const location = event?.location?.trim() || content.location;
+  const date = event?.date?.trim() || content.date;
+  const image = event?.image ?? content.image;
+  const imageAlt = event?.imageAlt?.trim() || content.imageAlt;
+  const shotNote = event?.shotNote?.trim() || content.shotNote;
   return (
     <section
       id="top"
       aria-labelledby="hero-title"
       className="on-dark bg-deep text-bone relative isolate flex min-h-[92svh] flex-col justify-end overflow-hidden"
     >
-      {/* Backdrop, swap `content.image` in content/site.ts for real footage stills */}
+      {/* Backdrop: the featured event's photograph, or its designed gradient */}
       <div className="absolute inset-0 -z-10">
         <Media
           tone="dusk"
-          src={content.image}
-          alt={content.imageAlt}
-          shotNote={content.shotNote}
+          src={image}
+          alt={imageAlt}
+          shotNote={shotNote}
           hideNote
           priority
           sizes="100vw"
@@ -54,14 +77,14 @@ export function Hero({
               ["--rise-delay" as string]: "160ms",
             }}
           >
-            {content.title}
+            {title}
           </h1>
 
           <p
             className="animate-rise font-display text-bone/90 mt-7 text-[1.6rem] leading-tight sm:text-[2.1rem]"
             style={{ ["--rise-delay" as string]: "260ms" }}
           >
-            {content.tagline}
+            {tagline}
           </p>
 
           <p
@@ -109,7 +132,7 @@ export function Hero({
                 className="bg-sun h-1.5 w-1.5 rounded-full"
               />
               <dt className="sr-only">Location</dt>
-              <dd className="label-xs text-bone/75">{content.location}</dd>
+              <dd className="label-xs text-bone/75">{location}</dd>
             </div>
             <div className="flex items-center gap-2.5">
               <span
@@ -117,7 +140,7 @@ export function Hero({
                 className="bg-bone/40 h-1.5 w-1.5 rounded-full"
               />
               <dt className="sr-only">Next date</dt>
-              <dd className="label-xs text-bone/75">{content.date}</dd>
+              <dd className="label-xs text-bone/75">{date}</dd>
             </div>
           </dl>
 
