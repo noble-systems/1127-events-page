@@ -16,10 +16,18 @@ import {
   type SubmissionType,
 } from "@/lib/types";
 
-type TabValue = SubmissionType | "all";
+/**
+ * One tab per submission type, and no "Everyone".
+ *
+ * The four types are different kinds of record with different workflows: an
+ * RSVP is a mailing list entry with a subscription state, an application moves
+ * through a review pipeline. A combined view had to show the union of two status
+ * sets, which meant offering "Declined" next to "Unsubscribed" on a list where
+ * only one of them means anything.
+ */
+type TabValue = SubmissionType;
 
 const TABS: Array<{ value: TabValue; label: string }> = [
-  { value: "all", label: "Everyone" },
   { value: "rsvp", label: "RSVP list" },
   { value: "talent", label: "Talent" },
   { value: "ambassador", label: "Ambassadors" },
@@ -44,7 +52,7 @@ function detailFor(row: SubmissionRecord): string {
 
 export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
   const router = useRouter();
-  const [tab, setTab] = useState<TabValue>("all");
+  const [tab, setTab] = useState<TabValue>("rsvp");
   const [statusFilter, setStatusFilter] = useState<SubmissionStatus | "open">(
     "open",
   );
@@ -53,7 +61,6 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
 
   const counts = useMemo(() => {
     const base: Record<TabValue, number> = {
-      all: rows.length,
       rsvp: 0,
       talent: 0,
       ambassador: 0,
@@ -72,7 +79,7 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return rows
-      .filter((row) => tab === "all" || row.type === tab)
+      .filter((row) => row.type === tab)
       .filter((row) => {
         const status = normaliseStatus(row.type, row.status);
         // "Open" is the working queue: everything not yet closed out.
@@ -113,20 +120,16 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
     router.refresh();
   };
 
-  // Showing "Declined" while the RSVP tab is active would be nonsense.
+  // An RSVP has a subscription state; everything else moves through a review
+  // pipeline. Offering "Declined" on a mailing list would be meaningless.
   const statusOptions: Array<SubmissionStatus | "open"> = [
     "open",
-    ...(tab === "rsvp"
-      ? LIST_STATUSES
-      : tab === "all"
-        ? [...APPLICATION_STATUSES, ...LIST_STATUSES]
-        : APPLICATION_STATUSES),
+    ...(tab === "rsvp" ? LIST_STATUSES : APPLICATION_STATUSES),
   ];
 
-  const exportHref =
-    tab === "all"
-      ? "/api/admin/subscribers?format=csv"
-      : `/api/admin/subscribers?type=${tab}&format=csv`;
+  // Always scoped to the visible tab, so an export is one kind of record with
+  // one meaning per column rather than a mix.
+  const exportHref = `/api/admin/subscribers?type=${tab}&format=csv`;
 
   return (
     <div>
@@ -205,7 +208,12 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
           <p className="text-ink/65 mx-auto mt-3 max-w-sm text-[0.9375rem] leading-relaxed">
             {query
               ? "Try a different term, or widen the status filter."
-              : "RSVPs, talent applications, ambassador applications and partner inquiries all land here."}
+              : {
+                  rsvp: "Nobody has joined the mailing list yet.",
+                  talent: "No talent applications yet.",
+                  ambassador: "No ambassador applications yet.",
+                  partner: "No partner inquiries yet.",
+                }[tab]}
           </p>
         </div>
       ) : (
@@ -315,8 +323,9 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
       )}
 
       <p className="text-ink/65 mt-5 text-[0.8125rem] leading-relaxed">
-        Showing {visible.length} of {counts[tab]}. Export gives you a UTF-8 CSV
-        including status and notes.
+        Showing {visible.length} of {counts[tab]}{" "}
+        {TABS.find((t) => t.value === tab)?.label.toLowerCase()}. Export gives you a
+        UTF-8 CSV of this tab, including status and notes.
       </p>
     </div>
   );

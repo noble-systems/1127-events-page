@@ -8,9 +8,9 @@ export default async function AdminListPage() {
     <>
       <h1 className="text-4xl leading-tight">People</h1>
       <p className="text-ink/65 mt-2.5 max-w-2xl text-[0.9375rem] leading-relaxed">
-        Every RSVP, talent application, ambassador application and partner inquiry,
-        in one place. Open a record to read what they sent, move it through the
-        pipeline and keep internal notes.
+        RSVPs, talent applications, ambassador applications and partner inquiries,
+        each in their own list. Open a record to read what they sent, move it
+        through the pipeline and keep internal notes.
       </p>
 
       <div className="mt-10">
