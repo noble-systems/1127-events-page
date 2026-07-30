@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Pager, SearchBox, usePaginated } from "@/components/admin/Paginate";
 import type { SubscriptionSummary } from "@/lib/audience";
 import { toUrlId } from "@/lib/ids";
 import { UNSUBSCRIBE_SOURCE_LABELS, type SubmissionRecord } from "@/lib/types";
@@ -83,13 +84,19 @@ export function SubscriptionsView({
   unsubscribedRows: SubmissionRecord[];
 }) {
   const [tab, setTab] = useState<"subscribed" | "off">("subscribed");
+  const [query, setQuery] = useState("");
 
   const tabs = [
     { value: "subscribed" as const, label: "Subscribed", n: subscribedRows.length },
     { value: "off" as const, label: "Off the list", n: unsubscribedRows.length },
   ];
 
-  const rows = tab === "subscribed" ? subscribedRows : unsubscribedRows;
+  const all = tab === "subscribed" ? subscribedRows : unsubscribedRows;
+  const { filtered, visible, page, pages, setPage, start } = usePaginated(
+    all,
+    query,
+    (row) => [row.name, row.email],
+  );
 
   return (
     <>
@@ -123,7 +130,10 @@ export function SubscriptionsView({
               <button
                 key={item.value}
                 type="button"
-                onClick={() => setTab(item.value)}
+                onClick={() => {
+                  setTab(item.value);
+                  setPage(0);
+                }}
                 aria-pressed={tab === item.value}
                 className={`rounded-full px-4 py-2 text-[0.875rem] transition-colors duration-200 ${
                   tab === item.value
@@ -137,14 +147,21 @@ export function SubscriptionsView({
             ))}
           </div>
 
-          {tab === "subscribed" ? (
-            <a
-              href="/api/admin/audience"
-              className="text-cobalt text-[0.875rem] underline-offset-4 hover:underline"
-            >
-              Export CSV
-            </a>
-          ) : null}
+          <div className="flex items-center gap-4">
+            <SearchBox
+              value={query}
+              onChange={setQuery}
+              placeholder="Search name or email"
+            />
+            {tab === "subscribed" ? (
+              <a
+                href="/api/admin/audience"
+                className="text-cobalt shrink-0 text-[0.875rem] underline-offset-4 hover:underline"
+              >
+                Export CSV
+              </a>
+            ) : null}
+          </div>
         </div>
 
         <p className="text-ink/65 mt-4 max-w-2xl text-[0.9375rem] leading-relaxed">
@@ -153,15 +170,17 @@ export function SubscriptionsView({
             : "Kept deliberately. An unsubscribe is a standing instruction, so this is the record that stops somebody being emailed again after a re-import or a fresh signup. Deleting it would make the next signup look like consent."}
         </p>
 
-        {rows.length === 0 ? (
+        {filtered.length === 0 ? (
           <p className="border-ink/25 bg-bone/60 text-ink/65 mt-5 rounded-2xl border border-dashed px-6 py-10 text-center text-[0.9375rem]">
-            {tab === "subscribed"
-              ? "Nobody is subscribed yet."
-              : "Nobody has come off the list."}
+            {query.trim()
+              ? `Nobody matching "${query.trim()}".`
+              : tab === "subscribed"
+                ? "Nobody is subscribed yet."
+                : "Nobody has come off the list."}
           </p>
         ) : (
           <ul className="border-ink/12 bg-bone divide-ink/10 mt-5 divide-y overflow-hidden rounded-2xl border">
-            {rows.map((record) =>
+            {visible.map((record) =>
               tab === "subscribed" ? (
                 <Row
                   key={record.pk}
@@ -190,6 +209,15 @@ export function SubscriptionsView({
             )}
           </ul>
         )}
+
+        <Pager
+          page={page}
+          pages={pages}
+          total={filtered.length}
+          start={start}
+          shown={visible.length}
+          onPage={setPage}
+        />
       </section>
     </>
   );

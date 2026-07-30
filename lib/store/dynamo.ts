@@ -11,6 +11,38 @@ import type { EventRecord, SubmissionRecord, SubmissionType } from "@/lib/types"
 import type { Store } from "./types";
 
 /**
+ * Reads every page, not just the first.
+ *
+ * DynamoDB caps a Scan or Query response at 1MB and hands back a
+ * LastEvaluatedKey to continue from. Neither reader followed it, so once the
+ * table outgrew a megabyte the app silently saw a prefix of it: counts short,
+ * exports missing people, and, worst of all, lookups by address missing rows
+ * that were genuinely there. A returning guest past the boundary would have
+ * looked like a new signup, and an unsubscribe for one would have marked
+ * nothing at all.
+ *
+ * Nothing failed and nothing logged, which is exactly what makes it dangerous.
+ * A few thousand records is where it starts.
+ */
+async function readAll<T>(
+  send: (cursor: Record<string, unknown> | undefined) => Promise<{
+    Items?: Record<string, unknown>[];
+    LastEvaluatedKey?: Record<string, unknown>;
+  }>,
+): Promise<T[]> {
+  const items: Record<string, unknown>[] = [];
+  let cursor: Record<string, unknown> | undefined;
+
+  do {
+    const page = await send(cursor);
+    items.push(...(page.Items ?? []));
+    cursor = page.LastEvaluatedKey;
+  } while (cursor);
+
+  return items as T[];
+}
+
+/**
  * DynamoDB driver.
  *
  * Table shapes (see infra/1127-infra.yaml):
@@ -83,8 +115,14 @@ export const dynamoStore: Store = {
   },
 
   async listEvents() {
-    const out = await client().send(new ScanCommand({ TableName: EVENTS_TABLE() }));
-    return (out.Items ?? []) as EventRecord[];
+    return readAll<EventRecord>((cursor) =>
+      client().send(
+        new ScanCommand({
+          TableName: EVENTS_TABLE(),
+          ExclusiveStartKey: cursor,
+        }),
+      ),
+    );
   },
 
   async getEvent(id) {
@@ -121,26 +159,31 @@ export const dynamoStore: Store = {
 
   async listSubmissions(type?: SubmissionType) {
     if (type) {
-      const out = await client().send(
-        new QueryCommand({
-          TableName: SUBMISSIONS_TABLE(),
-          IndexName: "byType",
-          KeyConditionExpression: "#t = :t",
-          ExpressionAttributeNames: { "#t": "type" },
-          ExpressionAttributeValues: { ":t": type },
-          // Newest first
-          ScanIndexForward: false,
-        }),
+      return readAll<SubmissionRecord>((cursor) =>
+        client().send(
+          new QueryCommand({
+            TableName: SUBMISSIONS_TABLE(),
+            IndexName: "byType",
+            KeyConditionExpression: "#t = :t",
+            ExpressionAttributeNames: { "#t": "type" },
+            ExpressionAttributeValues: { ":t": type },
+            // Newest first
+            ScanIndexForward: false,
+            ExclusiveStartKey: cursor,
+          }),
+        ),
       );
-      return (out.Items ?? []) as SubmissionRecord[];
     }
 
-    const out = await client().send(
-      new ScanCommand({ TableName: SUBMISSIONS_TABLE() }),
+    const rows = await readAll<SubmissionRecord>((cursor) =>
+      client().send(
+        new ScanCommand({
+          TableName: SUBMISSIONS_TABLE(),
+          ExclusiveStartKey: cursor,
+        }),
+      ),
     );
-    return ((out.Items ?? []) as SubmissionRecord[]).sort((a, b) =>
-      b.createdAt.localeCompare(a.createdAt),
-    );
+    return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
 
   async deleteSubmission(pk) {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { PAGE_SIZE, Pager } from "@/components/admin/Paginate";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { toUrlId } from "@/lib/ids";
 import { describeSource } from "@/lib/request-meta";
@@ -85,7 +86,7 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
     [rows],
   );
 
-  const visible = useMemo(() => {
+  const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return rows
       .filter((row) => row.type === tab)
@@ -140,6 +141,22 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
       ? ["all", ...LIST_STATUSES]
       : ["all", "open", ...APPLICATION_STATUSES];
 
+  /**
+   * Paging.
+   *
+   * The table rendered every matching row. At a few hundred that is merely
+   * slow; at ten thousand the page ships megabytes of markup and lays out a row
+   * per person before anything is readable. Filtering still runs over the whole
+   * set, so a search finds somebody on page forty rather than only among the
+   * rows currently on screen.
+   */
+  const [requested, setRequested] = useState(0);
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const clampPage = (value: number) => Math.min(Math.max(value, 0), pages - 1);
+  const page = clampPage(requested);
+  const start = page * PAGE_SIZE;
+  const visible = filtered.slice(start, start + PAGE_SIZE);
+
   // Always scoped to the visible tab, so an export is one kind of record with
   // one meaning per column rather than a mix.
   const exportHref = `/api/admin/subscribers?type=${tab}&format=csv`;
@@ -157,6 +174,7 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
               // The status vocabularies do not overlap, so a filter carried
               // across tabs would silently show nothing.
               setStatusFilter("all");
+              setRequested(0);
             }}
             aria-pressed={tab === item.value}
             className={`rounded-full px-4 py-2 text-[0.875rem] transition-colors duration-200 ${
@@ -209,7 +227,10 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
             id="sub-search"
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setRequested(0);
+            }}
             placeholder="Search names, emails, messages, notes…"
             className="border-ink/15 bg-bone placeholder:text-ink/50 hover:border-ink/30 w-full rounded-xl border px-4 py-3 text-[0.9375rem]"
           />
@@ -222,7 +243,7 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
         </a>
       </div>
 
-      {visible.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="border-ink/25 bg-bone/60 mt-8 rounded-2xl border border-dashed p-10 text-center">
           <p className="font-display text-xl">
             {query ? "Nothing matches that search." : "Nothing here yet."}
@@ -344,10 +365,20 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
         </div>
       )}
 
+      <Pager
+        page={page}
+        pages={pages}
+        total={filtered.length}
+        start={start}
+        shown={visible.length}
+        onPage={setRequested}
+      />
+
       <p className="text-ink/65 mt-5 text-[0.8125rem] leading-relaxed">
-        Showing {visible.length} of {counts[tab]}{" "}
-        {TABS.find((t) => t.value === tab)?.label.toLowerCase()}. Export gives you a
-        UTF-8 CSV of this tab, including status and notes.
+        {filtered.length} of {counts[tab]}{" "}
+        {TABS.find((t) => t.value === tab)?.label.toLowerCase()} match the current
+        filters. Export gives you a UTF-8 CSV of this tab, including status and
+        notes, and is never limited to the page on screen.
       </p>
     </div>
   );
