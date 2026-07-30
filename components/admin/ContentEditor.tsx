@@ -23,12 +23,17 @@ import { resolveImageSrc } from "@/lib/images";
  * Rendered entirely from lib/content-schema.ts, so adding a newly editable
  * field is one entry in that file and nothing here.
  *
- * Every input shows the committed default as its placeholder. That is what
- * makes "clear the box to go back to the standard wording" discoverable, and it
- * means somebody editing can always see what they are replacing.
+ * Boxes are pre-filled with what the page says today, so editing is editing
+ * rather than retyping. A value equal to the committed default is saved as no
+ * override at all, which keeps the store to genuine edits and means a later copy
+ * change in the repo still reaches the live page.
  */
 
 type Values = Record<string, string>;
+
+const FIELD_BY_KEY = new Map(
+  CONTENT_GROUPS.flatMap((g) => g.fields.map((f) => [f.key, f] as const)),
+);
 
 function toFormValue(field: ContentField, stored: unknown): string {
   if (stored === undefined || stored === null) return "";
@@ -89,7 +94,6 @@ function FieldRow({
 }) {
   const id = `content-${field.key.replace(/\./g, "-")}`;
   const placeholder = defaultAsText(field, fallback);
-  const isOverridden = value.trim() !== "";
 
   if (field.kind === "image") {
     return (
@@ -125,14 +129,14 @@ function FieldRow({
             </p>
           ) : null}
 
-          {isOverridden ? (
+          {value.trim() !== String(fallback ?? "").trim() ? (
             <button
               type="button"
-              onClick={() => onChange("")}
+              onClick={() => onChange(String(fallback ?? ""))}
               disabled={busy || uploading}
               className="text-terracotta-deep text-[0.8125rem] underline-offset-4 hover:underline disabled:opacity-50"
             >
-              Remove this photograph
+              Undo this change
             </button>
           ) : null}
         </div>
@@ -142,30 +146,33 @@ function FieldRow({
 
   const Input =
     field.kind === "textarea" || field.kind === "list" ? TextArea : TextInput;
+  const differsFromDefault = value.trim() !== placeholder.trim();
 
   return (
-    <Field
-      id={id}
-      label={field.label}
-      error={error}
-      hint={
-        field.hint ??
-        (isOverridden
-          ? "Clear this to go back to the standard wording."
-          : undefined)
-      }
-    >
-      <Input
-        id={id}
-        name={field.key}
-        rows={field.kind === "list" ? 5 : 3}
-        placeholder={placeholder}
-        value={value}
-        disabled={busy}
-        onChange={(event: { target: { value: string } }) =>
-          onChange(event.target.value)
-        }
-      />
+    <Field id={id} label={field.label} error={error} hint={field.hint}>
+      <div className="space-y-2">
+        <Input
+          id={id}
+          name={field.key}
+          rows={field.kind === "list" ? 5 : 3}
+          placeholder={placeholder}
+          value={value}
+          disabled={busy}
+          onChange={(event: { target: { value: string } }) =>
+            onChange(event.target.value)
+          }
+        />
+        {differsFromDefault ? (
+          <button
+            type="button"
+            onClick={() => onChange(placeholder)}
+            disabled={busy}
+            className="text-ink/65 hover:text-ink text-[0.75rem] underline-offset-4 hover:underline disabled:opacity-50"
+          >
+            Reset to the standard wording
+          </button>
+        ) : null}
+      </div>
     </Field>
   );
 }
@@ -180,15 +187,29 @@ export function ContentEditor({
 }) {
   const router = useRouter();
 
-  const [values, setValues] = useState<Values>(() => {
+  /**
+   * Boxes start filled with what the page actually says today: the override if
+   * there is one, otherwise the committed default.
+   *
+   * They used to start empty with the default as a placeholder, which was
+   * technically "no override set" but read as "nothing loaded". Showing the real
+   * text means editing is editing, not retyping from scratch.
+   */
+  const initialValues = useMemo(() => {
     const next: Values = {};
     for (const group of CONTENT_GROUPS) {
       for (const field of group.fields) {
-        next[field.key] = toFormValue(field, initialOverrides[field.key]);
+        const override = initialOverrides[field.key];
+        next[field.key] =
+          override === undefined || override === null
+            ? defaultAsText(field, defaults[field.key])
+            : toFormValue(field, override);
       }
     }
     return next;
-  });
+  }, [initialOverrides, defaults]);
+
+  const [values, setValues] = useState<Values>(initialValues);
 
   const [open, setOpen] = useState<string>(CONTENT_GROUPS[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
@@ -197,16 +218,13 @@ export function ContentEditor({
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const changed = useMemo(() => {
-    let n = 0;
-    for (const group of CONTENT_GROUPS) {
-      for (const field of group.fields) {
-        const before = toFormValue(field, initialOverrides[field.key]);
-        if ((values[field.key] ?? "") !== before) n += 1;
-      }
-    }
-    return n;
-  }, [values, initialOverrides]);
+  const changed = useMemo(
+    () =>
+      Object.keys(initialValues).filter(
+        (key) => (values[key] ?? "") !== initialValues[key],
+      ).length,
+    [values, initialValues],
+  );
 
   const set = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -269,7 +287,20 @@ export function ContentEditor({
       const response = await fetch("/api/admin/content", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        // A box left exactly matching the committed default is sent as empty,
+        // which the API reads as "no override". That keeps the store to genuine
+        // edits and means a later copy change in the repo still reaches the page.
+        body: JSON.stringify(
+          Object.fromEntries(
+            Object.entries(values).map(([key, value]) => {
+              const field = FIELD_BY_KEY.get(key);
+              const asDefault = field
+                ? defaultAsText(field, defaults[key])
+                : undefined;
+              return [key, value === asDefault ? "" : value];
+            }),
+          ),
+        ),
       });
       const data = (await response.json().catch(() => null)) as {
         ok?: boolean;

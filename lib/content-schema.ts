@@ -100,23 +100,27 @@ export const CONTENT_GROUPS: ContentGroup[] = [
   },
   {
     id: "sunClub",
-    title: "Sun Club intro",
-    description: "The section introducing the series, below the events.",
+    title: "Series intro",
+    description:
+      "Follows whichever event is marked Featured: its title, summary and photograph are used here, so there is one place to change them. Edit those under Events. Only the fallback copy below is set here, and it shows when no event is featured.",
     fields: [
-      { key: "sunClub.eyebrow", label: "Eyebrow", kind: "text" },
-      { key: "sunClub.title", label: "Title", kind: "text" },
+      {
+        key: "sunClub.eyebrow",
+        label: "Eyebrow (fallback)",
+        kind: "text",
+        hint: "Used only when the featured event has no series name.",
+      },
+      {
+        key: "sunClub.title",
+        label: "Title (fallback)",
+        kind: "text",
+        hint: "Used only when no event is featured.",
+      },
       {
         key: "sunClub.paragraphs",
-        label: "Paragraphs",
+        label: "Paragraphs (fallback)",
         kind: "list",
-        hint: "One paragraph per line.",
-      },
-      { key: "sunClub.image", label: "Photograph", kind: "image" },
-      {
-        key: "sunClub.imageAlt",
-        label: "Photograph description",
-        kind: "text",
-        altFor: "sunClub.image",
+        hint: "One paragraph per line. The featured event's summary replaces these.",
       },
     ],
   },

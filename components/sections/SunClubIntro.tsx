@@ -3,12 +3,50 @@ import { Media } from "@/components/ui/Media";
 import { Reveal } from "@/components/ui/Reveal";
 import { Eyebrow, Section } from "@/components/ui/Section";
 import { sunClub } from "@/content/site";
+import type { EventRecord } from "@/lib/types";
 
+/**
+ * The series intro, driven by whichever event is marked Featured.
+ *
+ * This section used to be a second, separate copy of the event's own wording in
+ * content/site.ts, which meant changing the featured event in the dashboard left
+ * the intro talking about the old one. Now there is one source of truth: mark an
+ * event featured and this follows it.
+ *
+ * The static copy remains the fallback for anything the event does not carry, so
+ * the section still reads properly before any event exists and while fields are
+ * being filled in. `details` stays editorial: it describes the format of the
+ * series rather than a single date, and events have no equivalent field.
+ */
 export function SunClubIntro({
   content = sunClub,
+  event = null,
 }: {
   content?: typeof sunClub;
+  event?: EventRecord | null;
 } = {}) {
+  const eyebrow = event?.series?.trim() || content.eyebrow;
+  const title = event?.tagline?.trim() || event?.name?.trim() || content.title;
+  const paragraphs = event?.summary?.trim()
+    ? [event.summary.trim()]
+    : content.paragraphs;
+  const image = event?.image ?? content.image;
+  const imageAlt = event?.imageAlt?.trim() || content.imageAlt;
+  const shotNote = event?.shotNote?.trim() || content.shotNote;
+
+  // Date, location and venue come from the event when there is one, so they can
+  // never contradict the card for the same event further up the page.
+  const details = event
+    ? [
+        { label: "Date", value: event.date },
+        { label: "Setting", value: event.location },
+        ...(event.venue ? [{ label: "Venue", value: event.venue }] : []),
+        ...content.details.filter(
+          (d) => !["Date", "Setting", "Venue"].includes(d.label),
+        ),
+      ]
+    : content.details;
+
   return (
     <Section id="sun-club" tone="sand" size="lg" labelledBy="sun-club-title">
       <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-16">
@@ -17,9 +55,9 @@ export function SunClubIntro({
             <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl sm:aspect-[3/2] lg:aspect-[4/5]">
               <Media
                 tone="pool"
-                src={content.image}
-                alt={content.imageAlt}
-                shotNote={content.shotNote}
+                src={image}
+                alt={imageAlt}
+                shotNote={shotNote}
                 sizes="(max-width: 1024px) 100vw, 40vw"
                 className="h-full w-full"
               />
@@ -29,7 +67,7 @@ export function SunClubIntro({
 
         <div className="lg:col-span-6 lg:col-start-7">
           <Reveal>
-            <Eyebrow>{content.eyebrow}</Eyebrow>
+            <Eyebrow>{eyebrow}</Eyebrow>
           </Reveal>
 
           <Reveal delay={60}>
@@ -37,11 +75,11 @@ export function SunClubIntro({
               id="sun-club-title"
               className="mt-5 text-[2.1rem] leading-[1.05] sm:text-5xl lg:text-[3.4rem]"
             >
-              {content.title}
+              {title}
             </h2>
           </Reveal>
 
-          {content.paragraphs.map((paragraph, index) => (
+          {paragraphs.map((paragraph, index) => (
             <Reveal key={index} delay={110 + index * 60}>
               <p className="text-ink/70 mt-6 text-[1.0625rem] leading-relaxed">
                 {paragraph}
@@ -51,7 +89,7 @@ export function SunClubIntro({
 
           <Reveal delay={240}>
             <dl className="border-ink/15 mt-10 border-t">
-              {content.details.map((detail) => (
+              {details.map((detail) => (
                 <div
                   key={detail.label}
                   className="border-ink/15 flex flex-col gap-1 border-b py-4 sm:flex-row sm:items-baseline sm:gap-8"

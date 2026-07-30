@@ -92,7 +92,10 @@ export default async function HomePage() {
       <main id="main">
         <Hero content={content.hero} />
         <UpcomingEvents events={events} />
-        <SunClubIntro content={content.sunClub} />
+        <SunClubIntro
+          content={content.sunClub}
+          event={events.find((e) => e.featured) ?? events[0] ?? null}
+        />
         <Ambassadors content={content.ambassadors} />
         <MediaGrid section={content.mediaSection} slots={content.mediaSlots} />
         <Partner content={content.partner} />

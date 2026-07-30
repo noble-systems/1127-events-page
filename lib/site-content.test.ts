@@ -32,7 +32,15 @@ describe("the schema matches the real content", () => {
     // search. Pairing them in the schema is what makes the editor show them
     // together.
     const images = [...CONTENT_FIELDS.values()].filter((f) => f.kind === "image");
-    assert.ok(images.length >= 11, `only ${images.length} image fields`);
+    // Hero, ambassadors, and the eight media tiles. The series intro photograph
+    // is deliberately NOT here: it comes from whichever event is featured, so
+    // offering it in the content editor too would be two places to change one
+    // thing. If this count drops, check that was intentional.
+    assert.equal(
+      images.length,
+      10,
+      `expected 10 image fields, got ${images.length}`,
+    );
     for (const image of images) {
       const alt = [...CONTENT_FIELDS.values()].find((f) => f.altFor === image.key);
       assert.ok(alt, `no alt-text field for ${image.key}`);
@@ -153,5 +161,29 @@ describe("normaliseValue", () => {
 
   test("accepts an array for a list", () => {
     assert.deepEqual(normaliseValue("list", ["a", " b ", ""]), ["a", "b"]);
+  });
+});
+
+describe("the series intro follows the featured event", () => {
+  test("no field the featured event owns is also editable as content", () => {
+    // Two places to change one thing is how the intro ends up describing last
+    // month's event. The event record owns these; the content editor must not.
+    for (const key of [
+      "sunClub.image",
+      "sunClub.imageAlt",
+      "sunClub.shotNote",
+      "sunClub.details",
+    ]) {
+      assert.equal(
+        CONTENT_FIELDS.has(key),
+        false,
+        `${key} is owned by the featured event and must not be editable here`,
+      );
+    }
+  });
+
+  test("the fallback copy is still editable for when nothing is featured", () => {
+    assert.equal(CONTENT_FIELDS.has("sunClub.title"), true);
+    assert.equal(CONTENT_FIELDS.has("sunClub.paragraphs"), true);
   });
 });
