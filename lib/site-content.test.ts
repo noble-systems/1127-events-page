@@ -208,7 +208,17 @@ describe("the hero follows the featured event", () => {
   });
 
   test("brand framing that is not event-specific stays editable", () => {
-    assert.equal(CONTENT_FIELDS.has("hero.eyebrow"), true);
     assert.equal(CONTENT_FIELDS.has("hero.body"), true);
+  });
+
+  test("the line above the event name is a constant, not content", () => {
+    // "1127 Events Presents" is the company introducing a night, and it is the
+    // same sentence on every screen that shows one. It used to come from
+    // hero.eyebrow here and from the event's own `series` field on the cards,
+    // which meant the same event could be introduced two different ways. Both
+    // are gone; see PRESENTS in content/site.ts.
+    for (const key of ["hero.eyebrow", "sunClub.eyebrow"]) {
+      assert.equal(CONTENT_FIELDS.has(key), false, `${key} is a constant now`);
+    }
   });
 });

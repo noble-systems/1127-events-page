@@ -118,7 +118,6 @@ describe("message bodies", () => {
   const event: EventRecord = {
     id: "sun-club",
     name: "Sun Club",
-    series: "1127 Events",
     tagline: "",
     summary: "",
     status: "",

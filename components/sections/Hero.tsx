@@ -1,6 +1,6 @@
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Media } from "@/components/ui/Media";
-import { hero } from "@/content/site";
+import { hero, PRESENTS } from "@/content/site";
 import type { EventRecord } from "@/lib/types";
 
 /**
@@ -66,7 +66,7 @@ export function Hero({
             className="animate-rise label-sm text-sun-soft"
             style={{ ["--rise-delay" as string]: "80ms" }}
           >
-            {content.eyebrow}
+            {PRESENTS}
           </p>
 
           <h1

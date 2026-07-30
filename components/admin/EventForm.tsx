@@ -210,21 +210,6 @@ export function EventForm({
             />
           </Field>
 
-          <Field
-            id="ev-series"
-            label="Series"
-            error={errors.series}
-            hint="Shown above the name on the card."
-          >
-            <TextInput
-              id="ev-series"
-              name="series"
-              value={values.series}
-              error={errors.series}
-              disabled={busy}
-              onChange={(e) => set("series", e.target.value)}
-            />
-          </Field>
 
           <Field
             id="ev-tagline"

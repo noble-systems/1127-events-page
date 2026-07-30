@@ -154,12 +154,48 @@ export async function listAllEventsSafe(): Promise<{
   }
 }
 
+/**
+ * The featured event, or null when nothing is featured.
+ *
+ * There is deliberately no positional fallback here. Every call site used to
+ * end in `?? events[0]`, which meant unticking Featured changed nothing you
+ * could see: the first event by display order quietly took over, and Sun Club
+ * sorts first, so Sun Club appeared to be permanently featured. Nothing
+ * featured now means nothing featured, and the hero and series intro fall back
+ * to their static copy, which is the honest reading of it.
+ */
+export async function featuredEvent(): Promise<EventRecord | null> {
+  return (await listPublicEvents()).find((event) => event.featured) ?? null;
+}
+
 export async function getEvent(id: string): Promise<EventRecord | null> {
   return store().getEvent(id);
 }
 
+/**
+ * Clears Featured everywhere except `keepId`.
+ *
+ * Featured is a single slot, not a label. It drives the hero, /rsvp and the
+ * confirmation email, all of which talk about "the next one" in the singular,
+ * so two featured events would make each of those reads arbitrary. Ticking it
+ * on one event therefore unticks it on the rest instead of letting the admin
+ * create a state the site cannot render.
+ */
+async function claimFeatured(keepId: string): Promise<void> {
+  const others = (await listAllEvents()).filter(
+    (event) => event.featured && event.id !== keepId,
+  );
+  const now = new Date().toISOString();
+  await Promise.all(
+    others.map((event) =>
+      store().putEvent({ ...event, featured: false, updatedAt: now }),
+    ),
+  );
+}
+
 export async function createEvent(input: NewEventInput): Promise<EventRecord> {
   const now = new Date().toISOString();
+  if (input.featured) await claimFeatured(input.id);
   return store().putEvent({ ...input, createdAt: now, updatedAt: now });
 }
 
@@ -167,6 +203,7 @@ export async function updateEvent(
   existing: EventRecord,
   input: NewEventInput,
 ): Promise<EventRecord> {
+  if (input.featured) await claimFeatured(existing.id);
   return store().putEvent({
     ...input,
     id: existing.id,
@@ -212,11 +249,28 @@ function submissionKey(type: SubmissionType, email: string): string {
   return `${type}#${randomUUID()}`;
 }
 
+/**
+ * What a submission actually changed.
+ *
+ * The route used to infer "is this new" by comparing createdAt to updatedAt,
+ * which is only true for a first-ever signup. RSVPs are keyed by email, so
+ * somebody signing up for a second event updated their row and got no
+ * confirmation at all. Reporting it here means the caller does not have to
+ * reverse-engineer intent from timestamps.
+ */
+export type SubmissionOutcome = {
+  record: SubmissionRecord;
+  /** No record for this address existed before. */
+  isNew: boolean;
+  /** They signed up from an event they had not signed up from before. */
+  isNewEvent: boolean;
+};
+
 export async function recordSubmission(
   type: SubmissionType,
   values: Record<string, string>,
   meta?: RequestMeta,
-): Promise<SubmissionRecord> {
+): Promise<SubmissionOutcome> {
   // Resolve the event this signup came from, so its genres can be recorded
   // against the person. Failure here must not lose the signup, so it degrades
   // to "no attribution" rather than throwing.
@@ -274,7 +328,15 @@ export async function recordSubmission(
     meta: meta ?? existing?.meta,
   };
 
-  return store().putSubmission(record);
+  const saved = await store().putSubmission(record);
+
+  return {
+    record: saved,
+    isNew: !existing,
+    // A first signup is trivially a new event for them. A repeat only counts if
+    // it brought an event they were not already attributed to.
+    isNewEvent: Boolean(event && !(existing?.eventIds ?? []).includes(event.id)),
+  };
 }
 
 export async function listSubmissions(

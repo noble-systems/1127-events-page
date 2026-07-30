@@ -2,7 +2,7 @@ import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Media } from "@/components/ui/Media";
 import { Reveal } from "@/components/ui/Reveal";
 import { Eyebrow, Section } from "@/components/ui/Section";
-import { sunClub } from "@/content/site";
+import { sunClub, PRESENTS } from "@/content/site";
 import type { EventRecord } from "@/lib/types";
 
 /**
@@ -25,7 +25,8 @@ export function SunClubIntro({
   content?: typeof sunClub;
   event?: EventRecord | null;
 } = {}) {
-  const eyebrow = event?.series?.trim() || content.eyebrow;
+  // Always the company line. See PRESENTS.
+  const eyebrow = PRESENTS;
   // Deliberately NOT the event's name or tagline: both are already large on
   // screen in the hero directly above. This heading is the editorial line about
   // the series, and it stays editable in the dashboard.

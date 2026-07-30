@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SiteHeader } from "@/components/SiteHeader";
-import { RsvpForm } from "@/components/forms/RsvpForm";
-import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
-import { Media } from "@/components/ui/Media";
-import { Reveal } from "@/components/ui/Reveal";
-import { Eyebrow, Section } from "@/components/ui/Section";
-import { hero, sunClub } from "@/content/site";
+import { redirect } from "next/navigation";
+import { RsvpPageView } from "@/components/RsvpPageView";
 import { listPublicEvents } from "@/lib/store";
 
 export const revalidate = 60;
 
-const title = "RSVP for Sun Club";
+const title = "RSVP";
 const description =
-  "Join the Sun Club list and hear about the next date in Old Town Scottsdale before it's public. House music, poolside, afternoon into golden hour.";
+  "Join the list and hear about the next 1127 Events date in Old Town Scottsdale before it's public.";
 
 export const metadata: Metadata = {
   title,
@@ -28,25 +22,19 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title, description },
 };
 
-const WHAT_TO_EXPECT = [
-  {
-    title: "House music, all day",
-    body: "Hometown DJs programmed to build with the light rather than peak in the first hour.",
-  },
-  {
-    title: "A pool you're meant to use",
-    body: "Swim, dry off, find your group, go again. Shade when you want it.",
-  },
-  {
-    title: "Afternoon into golden hour",
-    body: "Doors in the heat of the day, best hour right as the sun drops.",
-  },
-  {
-    title: "No door theater",
-    body: "No table minimum standing between you and the music. Resort wear and good swimwear.",
-  },
-];
-
+/**
+ * The general RSVP address, which forwards to whichever event is featured.
+ *
+ * Every event has its own page at /rsvp/<id>. This one exists because "1127
+ * .events/rsvp" is what you say out loud and print on a flyer, and because it
+ * should keep working when the featured slot moves to the next night. It
+ * redirects rather than rendering a copy of the form so there is exactly one
+ * URL per event: signups are attributed by which page they came from, and two
+ * addresses feeding the same event would make that history harder to read.
+ *
+ * With nothing featured there is nowhere to forward to, so the page renders the
+ * series copy and a general signup form instead of 404ing.
+ */
 export default async function RsvpPage({
   searchParams,
 }: {
@@ -55,186 +43,17 @@ export default async function RsvpPage({
   const [events, params] = await Promise.all([listPublicEvents(), searchParams]);
 
   /**
-   * Which event to attribute this signup to.
-   *
-   * ?event= comes from the card somebody clicked. It is resolved against the
-   * published events rather than trusted, so a crafted link cannot attribute a
-   * signup to an event that does not exist, or to an unpublished draft.
-   * Landing on /rsvp directly falls back to whatever is featured.
+   * ?event= is the older form of the per-event link, still honoured so shared
+   * and printed links keep working. It is resolved against the published
+   * events rather than trusted, so a crafted link cannot attribute a signup to
+   * an event that does not exist, or open a form for an unpublished draft.
    */
   const requested = params.event
     ? events.find((event) => event.id === params.event)
     : undefined;
-  const featured = requested ?? events.find((event) => event.featured) ?? events[0];
+  const target = requested ?? events.find((event) => event.featured);
 
-  return (
-    <>
-      <SiteHeader overlay={false} />
+  if (target) redirect(`/rsvp/${encodeURIComponent(target.id)}`);
 
-      <main id="main" className="bg-bone pt-[4.5rem] lg:pt-20">
-        {/* ---------------------------------------------------------------- */}
-        {/* Sign-up                                                           */}
-        {/* ---------------------------------------------------------------- */}
-        <section
-          aria-labelledby="rsvp-title"
-          className="bg-deep text-bone relative isolate overflow-hidden"
-        >
-          <div className="absolute inset-0 -z-10">
-            <Media
-              tone="dusk"
-              src={hero.image}
-              alt={hero.imageAlt}
-              hideNote
-              priority
-              sizes="100vw"
-              overlay="strong"
-              className="h-full w-full"
-            />
-          </div>
-
-          <div className="shell grid gap-12 py-16 md:py-24 lg:grid-cols-12 lg:gap-16">
-            <div className="on-dark lg:col-span-6">
-              <Eyebrow className="text-sun-soft">1127 Events Presents</Eyebrow>
-
-              <h1
-                id="rsvp-title"
-                className="font-display mt-6 text-[2.75rem] leading-[0.95] font-semibold tracking-[-0.02em] uppercase sm:text-6xl lg:text-7xl"
-              >
-                {featured?.name ?? "Sun Club"}
-              </h1>
-
-              <p className="font-display text-bone/90 mt-6 text-[1.5rem] leading-tight sm:text-[1.9rem]">
-                {featured?.tagline ?? hero.tagline}
-              </p>
-
-              <p className="text-bone/75 mt-6 max-w-lg text-[1.0625rem] leading-relaxed">
-                Dates aren&apos;t public yet. Leave your details and you&apos;ll
-                hear about the next one before anyone else, and get first access
-                when the guest list opens.
-              </p>
-
-              <dl className="border-bone/15 bg-bone/15 mt-10 grid gap-px overflow-hidden rounded-2xl border sm:grid-cols-2">
-                <div className="bg-deep px-5 py-5">
-                  <dt className="label-xs text-bone/55">Next date</dt>
-                  <dd className="font-display mt-2 text-xl">
-                    {featured?.date ?? hero.date}
-                  </dd>
-                </div>
-                <div className="bg-deep px-5 py-5">
-                  <dt className="label-xs text-bone/55">Location</dt>
-                  <dd className="font-display mt-2 text-xl">
-                    {featured?.location ?? hero.location}
-                  </dd>
-                </div>
-                <div className="bg-deep px-5 py-5">
-                  <dt className="label-xs text-bone/55">Venue</dt>
-                  <dd className="font-display mt-2 text-xl">
-                    {featured?.venue ?? "Announcing soon"}
-                  </dd>
-                </div>
-                <div className="bg-deep px-5 py-5">
-                  <dt className="label-xs text-bone/55">Music</dt>
-                  <dd className="font-display mt-2 text-xl">House</dd>
-                </div>
-              </dl>
-            </div>
-
-            <div className="lg:col-span-6">
-              <div className="border-ink/10 bg-bone text-ink rounded-3xl border p-6 shadow-[0_40px_90px_-50px_rgba(4,12,32,0.9)] sm:p-9">
-                <h2 className="text-3xl leading-tight sm:text-4xl">
-                  Get on the list
-                </h2>
-                <p className="text-ink/65 mt-3 text-[0.9375rem] leading-relaxed">
-                  Takes about fifteen seconds. We only email about 1127 events.
-                </p>
-
-                <div className="mt-7">
-                  <RsvpForm eventId={featured?.id ?? ""} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* What to expect                                                    */}
-        {/* ---------------------------------------------------------------- */}
-        <Section tone="bone" size="md" labelledBy="expect-title">
-          <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
-            <div className="lg:col-span-5">
-              <Reveal>
-                <Eyebrow>What to expect</Eyebrow>
-              </Reveal>
-              <Reveal delay={60}>
-                <h2
-                  id="expect-title"
-                  className="mt-5 text-[2rem] leading-[1.05] sm:text-4xl lg:text-[2.9rem]"
-                >
-                  {sunClub.title}
-                </h2>
-              </Reveal>
-              <Reveal delay={120}>
-                <p className="text-ink/70 mt-6 max-w-md text-[1.0625rem] leading-relaxed">
-                  {sunClub.paragraphs[0]}
-                </p>
-              </Reveal>
-              <Reveal delay={180}>
-                <div className="mt-8">
-                  <ButtonLink href="/#sun-club" variant="outline" size="md">
-                    More about Sun Club
-                    <ArrowIcon />
-                  </ButtonLink>
-                </div>
-              </Reveal>
-            </div>
-
-            <div className="lg:col-span-7">
-              <dl className="border-ink/12 bg-ink/12 grid gap-px overflow-hidden rounded-2xl border sm:grid-cols-2">
-                {WHAT_TO_EXPECT.map((item, index) => (
-                  <Reveal key={item.title} delay={index * 70}>
-                    <div className="bg-bone h-full px-6 py-7">
-                      <dt className="font-display text-xl leading-snug">
-                        {item.title}
-                      </dt>
-                      <dd className="text-ink/65 mt-3 text-[0.9375rem] leading-relaxed">
-                        {item.body}
-                      </dd>
-                    </div>
-                  </Reveal>
-                ))}
-              </dl>
-            </div>
-          </div>
-        </Section>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Partner cross-link                                                */}
-        {/* ---------------------------------------------------------------- */}
-        <Section tone="sand" size="sm">
-          <Reveal>
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="label-xs text-ink/65">Not here as a guest?</p>
-                <p className="font-display mt-3 max-w-xl text-xl leading-snug sm:text-2xl">
-                  1127 partners with venues, brands and local artists across
-                  Arizona.
-                </p>
-              </div>
-              <ButtonLink
-                href="/partner"
-                variant="primary"
-                size="lg"
-                className="shrink-0 self-start sm:self-auto"
-              >
-                Partner With 1127
-                <ArrowIcon />
-              </ButtonLink>
-            </div>
-          </Reveal>
-        </Section>
-      </main>
-
-      <SiteFooter />
-    </>
-  );
+  return <RsvpPageView />;
 }

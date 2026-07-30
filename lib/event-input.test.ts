@@ -53,9 +53,15 @@ describe("validateEvent", () => {
 
   test("requires the fields the card renders", () => {
     const errors = validateEvent({ ...EMPTY_EVENT, name: "", tagline: "" });
-    for (const field of ["name", "tagline", "summary", "imageAlt"]) {
+    for (const field of ["name", "tagline", "summary"]) {
       assert.ok(errors[field], `expected ${field} to be required`);
     }
+  });
+
+  test("does not require alt text", () => {
+    // Most events are created before there is a photograph to describe, and
+    // blocking the save on alt text meant the event could not be drafted at all.
+    assert.equal(validateEvent({ ...valid, imageAlt: "" }).imageAlt, undefined);
   });
 
   test("only allows known palettes and CTA targets", () => {
@@ -148,7 +154,6 @@ describe("readEventBody", () => {
     for (const body of [null, undefined, 42, "string", []]) {
       const values = readEventBody(body, GENRE_LIST);
       assert.equal(typeof values.name, "string");
-      assert.equal(values.series, "1127 Events");
     }
   });
 

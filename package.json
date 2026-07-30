@@ -11,7 +11,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test \"lib/**/*.test.ts\"",
+    "test": "node --import ./test/alias-hook.mjs --test \"lib/**/*.test.ts\"",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build"
   },
   "dependencies": {

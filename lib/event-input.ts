@@ -15,7 +15,6 @@ import type { FormErrors } from "./validation.ts";
 
 export type EventFormValues = {
   name: string;
-  series: string;
   tagline: string;
   summary: string;
   status: string;
@@ -40,7 +39,6 @@ export type EventFormValues = {
 
 export const EMPTY_EVENT: EventFormValues = {
   name: "",
-  series: "1127 Events",
   tagline: "",
   summary: "",
   status: "Announcing Soon",
@@ -65,19 +63,16 @@ export const EMPTY_EVENT: EventFormValues = {
 
 const REQUIRED: Array<[keyof EventFormValues, string]> = [
   ["name", "Name"],
-  ["series", "Series"],
   ["tagline", "Tagline"],
   ["summary", "Summary"],
   ["status", "Status badge"],
   ["date", "Date"],
   ["location", "Location"],
-  ["imageAlt", "Image alt text"],
   ["ctaLabel", "Button label"],
 ];
 
 const MAX: Partial<Record<keyof EventFormValues, number>> = {
   name: 120,
-  series: 80,
   tagline: 160,
   summary: 600,
   status: 40,
@@ -154,7 +149,6 @@ export function toEventInput(
   return {
     id,
     name: values.name.trim(),
-    series: values.series.trim(),
     tagline: values.tagline.trim(),
     summary: values.summary.trim(),
     status: values.status.trim(),
@@ -196,7 +190,6 @@ export function readEventBody(
 
   return {
     name: str("name"),
-    series: str("series") || "1127 Events",
     tagline: str("tagline"),
     summary: str("summary"),
     status: str("status"),
@@ -223,7 +216,6 @@ export function readEventBody(
 export function eventToFormValues(
   event: {
     name: string;
-    series: string;
     tagline: string;
     summary: string;
     status: string;
@@ -249,7 +241,6 @@ export function eventToFormValues(
 ): EventFormValues {
   return {
     name: event.name,
-    series: event.series,
     tagline: event.tagline,
     summary: event.summary,
     status: event.status,

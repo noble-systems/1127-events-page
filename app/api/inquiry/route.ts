@@ -96,10 +96,10 @@ export async function POST(request: Request) {
     );
   }
 
-  let record;
+  let outcome;
   try {
     const meta = buildRequestMeta(request.headers, context ?? {});
-    record = await recordSubmission(formType, clean, meta);
+    outcome = await recordSubmission(formType, clean, meta);
   } catch (error) {
     console.error("[1127] could not save submission", error);
     return NextResponse.json(
@@ -111,18 +111,30 @@ export async function POST(request: Request) {
     );
   }
 
+  const { record, isNew, isNewEvent } = outcome;
+
   // Email is best-effort and deliberately after the write: the submission is
   // already safe, so a bounced or misconfigured send must never fail the
-  // request. A repeat RSVP (createdAt !== updatedAt) doesn't re-notify.
-  const isFirstTime = record.createdAt === record.updatedAt;
+  // request.
+  //
+  // An RSVP confirms when it is genuinely new to the person: their first ever
+  // signup, or a signup for an event they had not signed up for before. This
+  // used to be "createdAt === updatedAt", which meant somebody RSVPing for a
+  // second event got silence, because RSVPs are keyed by email and their row
+  // was merely updated. Signing up for a different night is not a duplicate.
+  //
+  // A true duplicate, the same person and the same event again, still says
+  // nothing. Re-sending the same confirmation trains people to ignore them.
+  const shouldConfirmRsvp = isNew || isNewEvent;
+  const isFirstTime = isNew;
 
   try {
-    if (formType === "rsvp" && isFirstTime) {
+    if (formType === "rsvp" && shouldConfirmRsvp) {
       const [events, list] = await Promise.all([
         listPublicEvents(),
         listSubmissions("rsvp"),
       ]);
-      const featured = events.find((event) => event.featured) ?? events[0] ?? null;
+      const featured = events.find((event) => event.featured) ?? null;
       await notifyRsvp(record, featured, list.length);
     } else if (formType === "ambassador") {
       const list = await listSubmissions("ambassador");
@@ -148,10 +160,11 @@ export async function POST(request: Request) {
   // looked correct.
   //
   // Its own try/catch so a text failure cannot mask an email that did send.
-  if (isFirstTime) {
+  // Text confirmation follows the same rule as the email.
+  if (formType === "rsvp" ? shouldConfirmRsvp : isFirstTime) {
     try {
       const events = await listPublicEvents();
-      const featured = events.find((event) => event.featured) ?? events[0] ?? null;
+      const featured = events.find((event) => event.featured) ?? null;
       await notifySmsOptIn(record, featured);
     } catch (error) {
       console.error("[1127] text confirmation failed", error);

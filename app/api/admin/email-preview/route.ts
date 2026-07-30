@@ -97,7 +97,7 @@ export async function GET(request: Request) {
   const events = await listAllEvents();
   const featured = requestedId
     ? (events.find((event) => event.id === requestedId) ?? null)
-    : (events.find((event) => event.featured) ?? events[0] ?? null);
+    : (events.find((event) => event.featured) ?? null);
 
   if (requestedId && !featured) {
     return NextResponse.json(

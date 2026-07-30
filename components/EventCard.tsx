@@ -1,4 +1,5 @@
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
+import { PRESENTS } from "@/content/site";
 import { Media } from "@/components/ui/Media";
 import type { EventRecord } from "@/lib/types";
 
@@ -40,9 +41,10 @@ export function EventCard({ event }: { event: EventRecord }) {
 
   const cta = (
     <ButtonLink
-      // Carries which event drew them, so the signup can be attributed and
-      // their genre affinity recorded. See lib/genres.ts.
-      href={rsvp ? `/rsvp?event=${encodeURIComponent(event.id)}` : "/partner"}
+      // The event's own RSVP page, so the signup is attributed to this night
+      // and their genre affinity recorded even when another event is featured.
+      // See lib/genres.ts.
+      href={rsvp ? `/rsvp/${encodeURIComponent(event.id)}` : "/partner"}
       variant={rsvp ? "primary" : "outline"}
       size={featured ? "lg" : "md"}
     >
@@ -84,7 +86,7 @@ export function EventCard({ event }: { event: EventRecord }) {
       <div
         className={`flex flex-1 flex-col p-6 sm:p-8 ${featured ? "lg:p-10" : ""}`}
       >
-        <p className="label-xs text-ink/65">{event.series}</p>
+        <p className="label-xs text-ink/65">{PRESENTS}</p>
 
         <h3
           className={`mt-3 leading-[1.02] ${

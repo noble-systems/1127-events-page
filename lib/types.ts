@@ -25,7 +25,6 @@ export type CtaAction = "rsvp" | "partner";
 export type EventRecord = {
   id: string;
   name: string;
-  series: string;
   tagline: string;
   summary: string;
   /** Small badge on the card, e.g. "Featured series". */

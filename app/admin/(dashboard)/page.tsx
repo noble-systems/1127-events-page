@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SeedButton } from "@/components/admin/SeedButton";
+import { mailingList, tallyByEvent, unattributed } from "@/lib/audience";
 import { emailStatus } from "@/lib/email";
 import { smsStatus } from "@/lib/sms";
 import { listAllEvents, listSubmissions, storeKind } from "@/lib/store";
@@ -39,6 +40,18 @@ export default async function AdminOverviewPage() {
   const ambassadors = submissions.filter((row) => row.type === "ambassador");
   const partners = submissions.filter((row) => row.type === "partner");
   const live = events.filter((event) => event.published);
+
+  /**
+   * RSVPs per event.
+   *
+   * One person can RSVP to several events, so these numbers add up to more than
+   * the RSVP list total. That is the point of showing both: the list is how many
+   * people you hold, and this is how many of them each night actually brought
+   * in. Counting signups instead would double-count your regulars, who are the
+   * people you least want to be confused about.
+   */
+  const perEvent = tallyByEvent(mailingList(submissions), events);
+  const noEvent = unattributed(mailingList(submissions)).length;
 
   const recent = rsvps.slice(0, 6);
   const kind = storeKind();
@@ -112,7 +125,7 @@ export default async function AdminOverviewPage() {
         <Stat
           label="RSVP list"
           value={rsvps.length}
-          hint="Unique email addresses on the Sun Club list"
+          hint="People, not signups. One person can RSVP to several events."
           href="/admin/list"
         />
         <Stat
@@ -134,6 +147,49 @@ export default async function AdminOverviewPage() {
           href="/admin/events"
         />
       </div>
+
+      <section className="mt-12">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="font-display text-2xl">RSVPs by event</h2>
+          <Link
+            href="/admin/audience"
+            className="text-cobalt text-[0.875rem] underline-offset-4 hover:underline"
+          >
+            Segment and export
+          </Link>
+        </div>
+
+        {perEvent.length === 0 ? (
+          <p className="border-ink/25 bg-bone/60 text-ink/65 mt-5 rounded-2xl border border-dashed px-6 py-10 text-center text-[0.9375rem]">
+            No RSVPs attributed to an event yet.
+          </p>
+        ) : (
+          <ul className="border-ink/12 bg-bone divide-ink/10 mt-5 divide-y overflow-hidden rounded-2xl border">
+            {perEvent.map((row) => (
+              <li
+                key={row.key}
+                className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-5 py-4"
+              >
+                <span className="min-w-0 flex-1 truncate">{row.label}</span>
+                <span className="text-ink/65 text-[0.8125rem]">
+                  {row.mailable} mailable
+                </span>
+                <span className="font-display w-14 text-right text-2xl leading-none">
+                  {row.total}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {noEvent > 0 ? (
+          <p className="text-ink/65 mt-3 text-[0.8125rem] leading-relaxed">
+            {noEvent} {noEvent === 1 ? "person is" : "people are"} on the list with
+            no event attached, so they fall outside every segment above. Anyone who
+            signed up before events had their own RSVP pages lands here.
+          </p>
+        ) : null}
+      </section>
 
       <div className="mt-12 grid gap-6 lg:grid-cols-3">
         <section className="lg:col-span-2">

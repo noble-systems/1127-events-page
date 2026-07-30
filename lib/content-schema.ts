@@ -76,14 +76,8 @@ export const CONTENT_GROUPS: ContentGroup[] = [
     id: "hero",
     title: "Hero",
     description:
-      "The full-height block at the top of the homepage. Its name, tagline, date, location and photograph all come from whichever event is marked Featured, so edit those under Events. Only the two fields below are set here.",
+      "The full-height block at the top of the homepage. Its name, tagline, date, location and photograph all come from whichever event is marked Featured, so edit those under Events. The line above the name is always \"1127 Events Presents\" and is not editable.",
     fields: [
-      {
-        key: "hero.eyebrow",
-        label: "Eyebrow",
-        kind: "text",
-        hint: "Brand framing above the event name. Not event-specific.",
-      },
       {
         key: "hero.body",
         label: "Body",
@@ -98,12 +92,6 @@ export const CONTENT_GROUPS: ContentGroup[] = [
     description:
       "Follows whichever event is marked Featured: its title, summary and photograph are used here, so there is one place to change them. Edit those under Events. Only the fallback copy below is set here, and it shows when no event is featured.",
     fields: [
-      {
-        key: "sunClub.eyebrow",
-        label: "Eyebrow (fallback)",
-        kind: "text",
-        hint: "Used only when the featured event has no series name.",
-      },
       {
         key: "sunClub.title",
         label: "Title (fallback)",

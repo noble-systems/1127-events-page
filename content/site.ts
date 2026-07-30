@@ -30,6 +30,17 @@ export type { MediaTone };
 export const DATE_TBA = "Dates Announcing Soon";
 
 /**
+ * The line above an event name, everywhere one appears.
+ *
+ * 1127 Events is the company. Sun Club is a concept it produces, and there will
+ * be others, so the line that introduces a night is about the company and never
+ * changes. Events used to carry their own `series` string, which meant an admin
+ * could put anything there and the same night could be introduced two ways on
+ * two screens. It is a constant now, not content, so it cannot drift.
+ */
+export const PRESENTS = "1127 Events Presents";
+
+/**
  * Version of the terms, privacy and cookie policies. Stored against every
  * submission so you can tell which wording someone actually agreed to.
  * Bump it whenever any of the three documents changes materially, and update
@@ -189,7 +200,6 @@ export const seedEvents: EventRecord[] = [
   {
     id: "sun-club",
     name: "Sun Club",
-    series: "1127 Events",
     tagline: "House music under the desert sun.",
     summary:
       "A poolside house series in Old Town Scottsdale. Hometown DJs, water you're meant to get into, and a room that builds from afternoon into golden hour.",
@@ -217,7 +227,6 @@ export const seedEvents: EventRecord[] = [
   {
     id: "in-development",
     name: "More concepts in development",
-    series: "1127 Events",
     tagline: "Sun Club is the first series, not the last.",
     summary:
       "1127 builds event concepts around music, community and production. If you run a venue or brand with a room worth filling, the next one can start with a conversation.",

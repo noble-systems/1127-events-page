@@ -45,7 +45,7 @@ function StructuredData({ events }: { events: EventRecord[] }) {
     ],
   };
 
-  const featured = events.find((event) => event.featured) ?? events[0];
+  const featured = events.find((event) => event.featured) ?? null;
 
   const series = featured && {
     "@context": "https://schema.org",
@@ -98,7 +98,7 @@ export default async function HomePage() {
 
   // One featured event drives both the hero and the series intro, so they can
   // never describe different events.
-  const featured = events.find((e) => e.featured) ?? events[0] ?? null;
+  const featured = events.find((e) => e.featured) ?? null;
 
   return (
     <>
