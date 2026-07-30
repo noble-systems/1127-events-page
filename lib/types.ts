@@ -35,6 +35,15 @@ export type EventRecord = {
   location: string;
   venue: string | null;
   tags: string[];
+  /**
+   * Musical genres from the controlled list in lib/genres.ts.
+   *
+   * Distinct from `tags`, which is free-text display copy. Segmentation is built
+   * on these, so they must be exact members of that list: "house" and "House
+   * music" would each become a separate audience nobody notices until a promo
+   * reaches the wrong people.
+   */
+  genres: string[];
   tone: MediaTone;
   /** Large two-column card treatment. */
   featured: boolean;
@@ -166,6 +175,17 @@ export type SubmissionRecord = {
   marketingOptIn?: boolean;
   /** Ticked the box allowing day-of text messages. Only asked when a phone is given. */
   smsOptIn?: boolean;
+
+  /**
+   * Every event this person has signed up from, oldest first.
+   *
+   * RSVPs are keyed by email, so a repeat signup updates one row. These
+   * accumulate rather than replace: somebody who came for house in June and
+   * bass in August belongs to both audiences.
+   */
+  eventIds?: string[];
+  /** Union of the genres of every event above. What promo segments filter on. */
+  genres?: string[];
   /** IP, device and campaign captured at submit time. See lib/request-meta.ts. */
   meta?: RequestMeta;
 };

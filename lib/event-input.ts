@@ -1,4 +1,5 @@
 import { isValidImageRef } from "./images.ts";
+import { normaliseGenres } from "./genres.ts";
 import {
   MEDIA_TONES,
   type CtaAction,
@@ -22,6 +23,7 @@ export type EventFormValues = {
   location: string;
   venue: string;
   tags: string;
+  genres: string[];
   tone: string;
   featured: boolean;
   published: boolean;
@@ -46,6 +48,7 @@ export const EMPTY_EVENT: EventFormValues = {
   location: "Old Town Scottsdale, Arizona",
   venue: "",
   tags: "",
+  genres: [],
   tone: "dusk",
   featured: false,
   published: false,
@@ -159,6 +162,9 @@ export function toEventInput(id: string, values: EventFormValues): NewEventInput
       .map((tag) => tag.trim())
       .filter(Boolean)
       .slice(0, 8),
+    // Anything off the controlled list is dropped rather than stored, so a
+    // crafted payload cannot invent an audience segment.
+    genres: normaliseGenres(values.genres),
     tone: values.tone as MediaTone,
     featured: Boolean(values.featured),
     published: Boolean(values.published),
@@ -191,6 +197,7 @@ export function readEventBody(body: unknown): EventFormValues {
     location: str("location"),
     venue: str("venue"),
     tags: Array.isArray(raw.tags) ? raw.tags.join(", ") : str("tags"),
+    genres: normaliseGenres(raw.genres),
     tone: str("tone") || "dusk",
     featured: raw.featured === true || raw.featured === "true",
     published: raw.published === true || raw.published === "true",
@@ -216,6 +223,7 @@ export function eventToFormValues(event: {
   location: string;
   venue: string | null;
   tags: string[];
+  genres: string[];
   tone: MediaTone;
   featured: boolean;
   published: boolean;
@@ -239,6 +247,7 @@ export function eventToFormValues(event: {
     location: event.location,
     venue: event.venue ?? "",
     tags: event.tags.join(", "),
+    genres: normaliseGenres(event.genres),
     tone: event.tone,
     featured: event.featured,
     published: event.published,

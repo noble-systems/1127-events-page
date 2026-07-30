@@ -18,6 +18,7 @@ import {
   type EventFormValues,
   validateEvent,
 } from "@/lib/event-input";
+import { GENRES } from "@/lib/genres";
 import { MEDIA_TONES } from "@/lib/types";
 import type { FormErrors } from "@/lib/validation";
 
@@ -518,6 +519,43 @@ export function EventForm({
               </p>
             )}
           </div>
+
+          <Field
+            id="ev-genres"
+            label="Genres"
+            error={errors.genres}
+            hint="Drives who gets promo email. Somebody who signs up from this event joins these audiences, so a bass night should not be tagged House."
+          >
+            <div className="border-ink/15 bg-bone-soft grid gap-2 rounded-xl border p-4 sm:grid-cols-2">
+              {GENRES.map((genre) => {
+                const on = values.genres.includes(genre);
+                return (
+                  <label
+                    key={genre}
+                    htmlFor={`ev-genre-${genre}`}
+                    className="flex cursor-pointer items-center gap-2.5 text-[0.875rem]"
+                  >
+                    <input
+                      id={`ev-genre-${genre}`}
+                      type="checkbox"
+                      checked={on}
+                      disabled={busy}
+                      onChange={(e) =>
+                        set(
+                          "genres",
+                          e.target.checked
+                            ? [...values.genres, genre]
+                            : values.genres.filter((g) => g !== genre),
+                        )
+                      }
+                      className="accent-cobalt h-4 w-4 shrink-0"
+                    />
+                    {genre}
+                  </label>
+                );
+              })}
+            </div>
+          </Field>
 
           <Field
             id="ev-image-alt"

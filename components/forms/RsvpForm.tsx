@@ -21,6 +21,7 @@ const INITIAL = {
   agreeTerms: "false",
   // Joining this list is the email opt-in, so it is recorded rather than asked.
   marketingOptIn: "true",
+  eventId: "",
 };
 
 /**
@@ -28,10 +29,21 @@ const INITIAL = {
  * field: a group counted on one form is a group of email addresses we never
  * got. The success state asks people to pass the link on instead.
  */
-export function RsvpForm({ onDone }: { onDone?: () => void }) {
+export function RsvpForm({
+  onDone,
+  eventId = "",
+}: {
+  onDone?: () => void;
+  /**
+   * Which event this signup should be attributed to. Resolved on the server
+   * from ?event= or, failing that, whichever event is featured. Never shown to
+   * the guest: the form stays three fields.
+   */
+  eventId?: string;
+}) {
   const [trap, setTrap] = useState("");
   const { values, errors, status, errorMessage, setField, reset, handleSubmit } =
-    useForm("rsvp", INITIAL);
+    useForm("rsvp", { ...INITIAL, eventId });
 
   if (status === "success") {
     return (

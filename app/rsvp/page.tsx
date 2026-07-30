@@ -47,9 +47,25 @@ const WHAT_TO_EXPECT = [
   },
 ];
 
-export default async function RsvpPage() {
-  const events = await listPublicEvents();
-  const featured = events.find((event) => event.featured) ?? events[0];
+export default async function RsvpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ event?: string }>;
+}) {
+  const [events, params] = await Promise.all([listPublicEvents(), searchParams]);
+
+  /**
+   * Which event to attribute this signup to.
+   *
+   * ?event= comes from the card somebody clicked. It is resolved against the
+   * published events rather than trusted, so a crafted link cannot attribute a
+   * signup to an event that does not exist, or to an unpublished draft.
+   * Landing on /rsvp directly falls back to whatever is featured.
+   */
+  const requested = params.event
+    ? events.find((event) => event.id === params.event)
+    : undefined;
+  const featured = requested ?? events.find((event) => event.featured) ?? events[0];
 
   return (
     <>
@@ -133,7 +149,7 @@ export default async function RsvpPage() {
                 </p>
 
                 <div className="mt-7">
-                  <RsvpForm />
+                  <RsvpForm eventId={featured?.id ?? ""} />
                 </div>
               </div>
             </div>

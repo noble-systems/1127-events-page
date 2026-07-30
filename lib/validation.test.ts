@@ -79,6 +79,10 @@ describe("validate", () => {
       "phone",
       "agreeTerms",
       "marketingOptIn",
+      // Which event drew them. Not a field the guest fills in: the RSVP page
+      // resolves it from the link they followed, and it is what makes promo
+      // segmentation by genre possible.
+      "eventId",
     ]);
     assert.ok(!fields.includes("groupSize"));
     // smsOptIn is deliberately absent: text consent is derived from the phone

@@ -126,6 +126,7 @@ describe("message bodies", () => {
     location: "Old Town Scottsdale",
     venue: null,
     tags: [],
+    genres: [],
     tone: "dusk",
     featured: true,
     published: true,

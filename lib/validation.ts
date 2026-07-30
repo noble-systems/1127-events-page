@@ -129,6 +129,10 @@ export const RULES: Record<FormType, readonly Rule[]> = {
     // required "do you want the emails" box on a form whose only purpose is the
     // emails would be theatre. Recorded as true by the form instead.
     { field: "marketingOptIn", label: "Email opt-in", kind: "checkbox" },
+    // Which event this signup came from. Not shown to the guest; the RSVP page
+    // reads it from the link they followed. Optional, because somebody landing
+    // on /rsvp directly still needs to be able to sign up.
+    { field: "eventId", label: "Event", max: 80 },
   ],
   ambassador: [
     { field: "name", label: "Name", required: true, max: 120 },

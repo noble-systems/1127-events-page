@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { LEGAL_VERSION, seedEvents } from "@/content/site";
 import type { RequestMeta } from "@/lib/request-meta";
+import { mergeEventIds, mergeGenres } from "@/lib/genres";
 import { smsConsentFrom } from "@/lib/sms";
 import { defaultStatusFor } from "@/lib/types";
 import type {
@@ -216,6 +217,18 @@ export async function recordSubmission(
   values: Record<string, string>,
   meta?: RequestMeta,
 ): Promise<SubmissionRecord> {
+  // Resolve the event this signup came from, so its genres can be recorded
+  // against the person. Failure here must not lose the signup, so it degrades
+  // to "no attribution" rather than throwing.
+  let event: EventRecord | null = null;
+  const eventId = (values.eventId ?? "").trim();
+  if (eventId) {
+    try {
+      event = await store().getEvent(eventId);
+    } catch (error) {
+      console.error("[1127] could not resolve the signup's event", error);
+    }
+  }
   const now = new Date().toISOString();
   const email = (values.email ?? "").trim().toLowerCase();
   const pk = submissionKey(type, email);
@@ -237,6 +250,13 @@ export async function recordSubmission(
     termsVersion: values.agreeTerms === "true" ? LEGAL_VERSION : undefined,
     marketingOptIn: values.marketingOptIn === "true",
     smsOptIn: smsConsentFrom(values.phone),
+    // Union, never replacement. Somebody who signed up for a house night in
+    // June and a bass night in August belongs to both audiences; overwriting
+    // would erase the first and drop them out of the segment they came for.
+    eventIds: event
+      ? mergeEventIds(existing?.eventIds, [event.id])
+      : existing?.eventIds,
+    genres: event ? mergeGenres(existing?.genres, event.genres) : existing?.genres,
     company: values.company || undefined,
     inquiryType: values.inquiryType || undefined,
     message: values.message || undefined,

@@ -40,7 +40,9 @@ export function EventCard({ event }: { event: EventRecord }) {
 
   const cta = (
     <ButtonLink
-      href={rsvp ? "/rsvp" : "/partner"}
+      // Carries which event drew them, so the signup can be attributed and
+      // their genre affinity recorded. See lib/genres.ts.
+      href={rsvp ? `/rsvp?event=${encodeURIComponent(event.id)}` : "/partner"}
       variant={rsvp ? "primary" : "outline"}
       size={featured ? "lg" : "md"}
     >

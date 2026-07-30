@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/admin", label: "Overview", exact: true },
   { href: "/admin/events", label: "Events" },
   { href: "/admin/list", label: "People" },
+  { href: "/admin/audience", label: "Audience" },
   { href: "/admin/content", label: "Page content" },
 ];
 

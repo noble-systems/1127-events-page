@@ -196,6 +196,7 @@ describe("per-event email customisation", () => {
     location: "Old Town Scottsdale",
     venue: null,
     tags: [],
+    genres: [],
     tone: "dusk" as const,
     featured: true,
     published: true,
