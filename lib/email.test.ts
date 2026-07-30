@@ -78,19 +78,27 @@ describe("public-facing email compliance", () => {
     });
 
     test(`${label}: carries a working unsubscribe link`, () => {
-      const { html, text, listUnsubscribe } = render() as {
-        html: string;
-        text: string;
-        listUnsubscribe?: string;
-      };
+      const { html, text } = render();
       assert.match(html, /\/unsubscribe\?token=/, `${label} HTML`);
       assert.match(text, /\/unsubscribe\?token=/, `${label} text`);
-      // RFC 8058: the header is what makes Gmail and Outlook show their own
-      // one-click button, which is what actually gets used.
-      assert.ok(listUnsubscribe, `${label} has no List-Unsubscribe header`);
-      assert.match(
-        listUnsubscribe as string,
-        /^<https?:\/\/.*\/unsubscribe\?token=.+>$/,
+    });
+
+    test(`${label}: does not claim to be bulk mail`, () => {
+      const { listUnsubscribe } = render() as { listUnsubscribe?: string };
+      /**
+       * These four are acknowledgements, not campaigns: each answers a form
+       * somebody just submitted. RFC 8058's List-Unsubscribe with One-Click is
+       * the machine-readable marker for bulk mail, and Gmail files mail
+       * carrying it under Promotions, where a confirmation goes unread.
+       *
+       * The footer link above still opts people out, so nothing is lost by
+       * leaving the header off. A real campaign send must set it: Google
+       * requires one-click unsubscribe above 5,000 messages a day to Gmail.
+       */
+      assert.equal(
+        listUnsubscribe,
+        undefined,
+        `${label} sets List-Unsubscribe, which marks it as bulk`,
       );
     });
 
@@ -188,7 +196,6 @@ describe("per-event email customisation", () => {
   const baseEvent = {
     id: "sun-club",
     name: "Sun Club",
-    series: "1127 Events",
     tagline: "",
     summary: "",
     status: "",
@@ -216,7 +223,7 @@ describe("per-event email customisation", () => {
 
   test("falls back to the standard wording when nothing is customised", () => {
     const { subject, html } = renderGuestEmail(rsvp, baseEvent);
-    assert.match(subject, /You're on the Sun Club list/);
+    assert.match(subject, /You're confirmed for Sun Club/);
     assert.match(html, /Thanks Alex, you're on the Sun Club list/);
   });
 
@@ -254,7 +261,7 @@ describe("per-event email customisation", () => {
       emailHeading: "",
       emailBody: "\n  \n",
     });
-    assert.match(subject, /You're on the Sun Club list/);
+    assert.match(subject, /You're confirmed for Sun Club/);
     assert.match(html, /Thanks Alex/);
   });
 

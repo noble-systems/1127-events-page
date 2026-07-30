@@ -151,6 +151,18 @@ async function send(input: {
           Html: { Data: input.html, Charset: "UTF-8" },
           Text: { Data: input.text, Charset: "UTF-8" },
         },
+        // Set this on campaign sends only.
+        //
+        // List-Unsubscribe with One-Click is the machine-readable "this is bulk
+        // mail" marker, and Gmail files mail carrying it under Promotions. The
+        // four acknowledgements this app sends are not bulk: each one answers a
+        // form somebody just submitted, and a confirmation nobody sees is a
+        // confirmation that failed. They carry a plain unsubscribe link in the
+        // footer instead, which opts people out just as well without asserting
+        // to the receiving server that this was a mailshot.
+        //
+        // Google requires one-click unsubscribe above 5,000 messages a day to
+        // Gmail. A real campaign send must set this.
         Headers: input.listUnsubscribe
           ? [
               { Name: "List-Unsubscribe", Value: input.listUnsubscribe },
@@ -305,9 +317,10 @@ export function renderGuestEmail(
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(25,23,19,0.10);">
       ${factRows(facts)}
     </table>
-    <p style="margin:26px 0 0;">
-      <a href="${siteUrl()}" style="display:inline-block;background:${INK};color:${BONE};text-decoration:none;font:500 15px/1 Helvetica,Arial,sans-serif;padding:14px 24px;border-radius:999px;">See what 1127 does</a>
-    </p>`;
+    <!-- No call-to-action button here on purpose. A pill button pointing at the
+         marketing site is the other half of what makes a confirmation read as an
+         advert, both to the reader and to Gmail's classifier. This message has
+         one job: confirm the signup. -->`;
 
   const footer = `
     <p style="margin:0 0 8px;">${escapeHtml(postalLine())}</p>
@@ -333,16 +346,15 @@ export function renderGuestEmail(
   return {
     subject: event?.emailSubject?.trim()
       ? fill(event.emailSubject.trim())
-      : `You're on the ${name} list`,
+      : `You're confirmed for ${name}`,
     html: shell({
       preheader: `We'll email you the next ${name} date before it's public.`,
       eyebrow: "1127 Events",
-      heading: "You're on the list.",
+      heading: "You're confirmed.",
       body,
       footer,
     }),
     text,
-    listUnsubscribe: `<${unsubUrl}>`,
   };
 }
 
@@ -394,7 +406,6 @@ export function renderAmbassadorApplicantEmail(record: SubmissionRecord) {
       footer,
     }),
     text,
-    listUnsubscribe: `<${unsubUrl}>`,
   };
 }
 
@@ -632,7 +643,6 @@ export function renderTalentApplicantEmail(record: SubmissionRecord) {
       footer,
     }),
     text,
-    listUnsubscribe: `<${unsubUrl}>`,
   };
 }
 
@@ -755,7 +765,6 @@ export function renderPartnerInquirerEmail(record: SubmissionRecord) {
       footer,
     }),
     text,
-    listUnsubscribe: `<${unsubUrl}>`,
   };
 }
 
