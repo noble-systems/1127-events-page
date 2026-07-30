@@ -8,7 +8,6 @@ import {
   FormAlert,
   FormSuccess,
   Honeypot,
-  MarketingCheckbox,
   SmsDisclosure,
   Spinner,
   TextArea,
@@ -25,7 +24,6 @@ const INITIAL = {
   social: "",
   message: "",
   agreeTerms: "false",
-  marketingOptIn: "false",
 };
 
 /** Hint shown under the free-text field, tuned to the selected role. */
@@ -209,13 +207,6 @@ export function TalentForm() {
           disabled={busy}
           error={errors.agreeTerms}
           onChange={(checked) => setField("agreeTerms", String(checked))}
-        />
-
-        <MarketingCheckbox
-          idPrefix="tal"
-          checked={values.marketingOptIn === "true"}
-          disabled={busy}
-          onChange={(checked) => setField("marketingOptIn", String(checked))}
         />
       </div>
 

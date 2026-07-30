@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
   isMailable,
+  mailingList,
   matches,
   selectAudience,
   tallyByEvent,
@@ -41,18 +42,22 @@ describe("isMailable", () => {
     assert.equal(isMailable(person({ status: "bounced" })), false);
   });
 
-  test("an applicant who opted in is mailable", () => {
-    assert.equal(
-      isMailable(person({ type: "talent", status: "new", marketingOptIn: true })),
-      true,
-    );
+  test("an applicant is never mailable, even having opted in", () => {
+    // The mailing list is RSVPs. Somebody who applied to DJ, or wrote in about
+    // their venue, is a working contact rather than an audience for a promo.
+    // Marketing to them because they filled in a form is how a business contact
+    // becomes a spam complaint.
+    for (const type of ["talent", "ambassador", "partner"] as const) {
+      assert.equal(
+        isMailable(person({ type, status: "new", marketingOptIn: true })),
+        false,
+        `${type} was treated as mailable`,
+      );
+    }
   });
 
-  test("an applicant who did not opt in is not", () => {
-    assert.equal(
-      isMailable(person({ type: "talent", status: "new", marketingOptIn: false })),
-      false,
-    );
+  test("an RSVP that opted in still is", () => {
+    assert.equal(isMailable(person({ type: "rsvp", marketingOptIn: true })), true);
   });
 });
 
@@ -190,5 +195,38 @@ describe("tallies", () => {
     ];
     const orphans = unattributed(withOld).map((r) => r.email);
     assert.deepEqual(orphans, ["old@x.co"]);
+  });
+});
+
+describe("the mailing list is RSVPs only", () => {
+  const mixed = [
+    person({ email: "guest@x.co", type: "rsvp" }),
+    person({ email: "dj@x.co", type: "talent", status: "new" }),
+    person({ email: "venue@x.co", type: "partner", status: "new" }),
+    person({ email: "amb@x.co", type: "ambassador", status: "new" }),
+  ];
+
+  test("mailingList keeps only RSVPs", () => {
+    assert.deepEqual(
+      mailingList(mixed).map((r) => r.email),
+      ["guest@x.co"],
+    );
+  });
+
+  test("an applicant cannot appear in any segment", () => {
+    // Even unfiltered. This is the check that stops a promo reaching somebody
+    // who came to us looking for work.
+    for (const segment of [{}, { genres: ["House"] }, { eventIds: ["sun-club"] }]) {
+      const got = selectAudience(mixed, segment).map((r) => r.email);
+      assert.ok(!got.includes("dj@x.co"), JSON.stringify(segment));
+      assert.ok(!got.includes("venue@x.co"), JSON.stringify(segment));
+      assert.ok(!got.includes("amb@x.co"), JSON.stringify(segment));
+    }
+  });
+
+  test("an applicant cannot inflate a count", () => {
+    const tally = tallyByEvent(mixed, [{ id: "sun-club", name: "Sun Club" }]);
+    // All four carry sun-club in the fixture, but only the RSVP is mailable.
+    assert.equal(tally[0]?.mailable, 1);
   });
 });

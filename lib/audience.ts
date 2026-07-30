@@ -30,12 +30,23 @@ export type Segment = {
 /**
  * Whether we may send marketing email to this person.
  *
- * Three separate conditions, and all of them matter:
- *   - they asked for it (marketingOptIn)
+ * The mailing list is RSVPs, and only RSVPs. Somebody who applied to DJ, or who
+ * wrote in about hosting an event at their venue, came to us for something
+ * specific: they are a working contact, not an audience for a promo. Marketing
+ * to them because they filled in a form is how a business contact becomes a
+ * spam complaint, and it is the sort of thing that reads as sharp practice even
+ * when it is technically permitted.
+ *
+ * Applications and inquiries still live in People, where the team works them.
+ * They are simply not a send target.
+ *
+ * Three conditions, all required:
+ *   - it is an RSVP, so they asked to hear about events
+ *   - they opted in
  *   - they have not since unsubscribed or hard-bounced
- *   - they are on the mailing list rather than an applicant who never opted in
  */
 export function isMailable(record: SubmissionRecord): boolean {
+  if (record.type !== "rsvp") return false;
   if (record.marketingOptIn !== true) return false;
   const status = normaliseStatus(record.type, record.status);
   return status !== "unsubscribed" && status !== "bounced";
@@ -68,6 +79,18 @@ export function selectAudience(
   segment: Segment,
 ): SubmissionRecord[] {
   return records.filter((record) => matches(record, segment));
+}
+
+/**
+ * The mailing list: RSVPs only.
+ *
+ * Every count on the Audience screen runs through this first, so an applicant
+ * can never inflate a number that is used to decide who gets a send.
+ */
+export function mailingList(
+  records: readonly SubmissionRecord[],
+): SubmissionRecord[] {
+  return records.filter((record) => record.type === "rsvp");
 }
 
 /* -------------------------------------------------------------------------- */

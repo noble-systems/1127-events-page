@@ -115,6 +115,9 @@ export const TALENT_ROLES = [
 ] as const;
 
 export const RULES: Record<FormType, readonly Rule[]> = {
+  // Only the RSVP form carries a marketing opt-in. The other three collect a
+  // working contact, not an audience: asking them to join a list we would never
+  // send to would be collecting consent for nothing.
   rsvp: [
     { field: "name", label: "Name", required: true, max: 120 },
     { field: "email", label: "Email", required: true, kind: "email", max: 200 },
@@ -159,7 +162,6 @@ export const RULES: Record<FormType, readonly Rule[]> = {
       required: true,
       kind: "checkbox",
     },
-    { field: "marketingOptIn", label: "Email opt-in", kind: "checkbox" },
   ],
   talent: [
     { field: "name", label: "Name", required: true, max: 120 },
@@ -186,7 +188,6 @@ export const RULES: Record<FormType, readonly Rule[]> = {
       required: true,
       kind: "checkbox",
     },
-    { field: "marketingOptIn", label: "Email opt-in", kind: "checkbox" },
   ],
   partner: [
     { field: "name", label: "Name", required: true, max: 120 },
@@ -212,7 +213,6 @@ export const RULES: Record<FormType, readonly Rule[]> = {
       required: true,
       kind: "checkbox",
     },
-    { field: "marketingOptIn", label: "Email opt-in", kind: "checkbox" },
   ],
 };
 

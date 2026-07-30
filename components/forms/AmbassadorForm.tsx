@@ -9,7 +9,6 @@ import {
   FormSuccess,
   Honeypot,
   Select,
-  MarketingCheckbox,
   SmsDisclosure,
   Spinner,
   TextArea,
@@ -26,7 +25,6 @@ const INITIAL = {
   community: "",
   message: "",
   agreeTerms: "false",
-  marketingOptIn: "false",
 };
 
 export function AmbassadorForm({ onDone }: { onDone?: () => void }) {
@@ -159,13 +157,6 @@ export function AmbassadorForm({ onDone }: { onDone?: () => void }) {
           disabled={busy}
           error={errors.agreeTerms}
           onChange={(checked) => setField("agreeTerms", String(checked))}
-        />
-
-        <MarketingCheckbox
-          idPrefix="amb"
-          checked={values.marketingOptIn === "true"}
-          disabled={busy}
-          onChange={(checked) => setField("marketingOptIn", String(checked))}
         />
       </div>
 

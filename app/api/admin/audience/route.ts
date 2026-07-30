@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-api";
-import { selectAudience } from "@/lib/audience";
+import { mailingList, selectAudience } from "@/lib/audience";
 import { submissionsToCsv } from "@/lib/csv";
 import { listSubmissions } from "@/lib/store";
 
@@ -22,7 +22,12 @@ export async function GET(request: Request) {
   const eventIds = url.searchParams.getAll("event").filter(Boolean);
   const genres = url.searchParams.getAll("genre").filter(Boolean);
 
-  const audience = selectAudience(await listSubmissions(), { eventIds, genres });
+  // mailingList first, matching the screen exactly. isMailable already excludes
+  // non-RSVPs, but filtering here too means the two can never drift apart.
+  const audience = selectAudience(mailingList(await listSubmissions()), {
+    eventIds,
+    genres,
+  });
 
   const stamp = new Date().toISOString().slice(0, 10);
   const label =

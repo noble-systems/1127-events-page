@@ -9,7 +9,6 @@ import {
   FormSuccess,
   Honeypot,
   Select,
-  MarketingCheckbox,
   SmsDisclosure,
   Spinner,
   TextArea,
@@ -26,7 +25,6 @@ const INITIAL = {
   inquiryType: "",
   message: "",
   agreeTerms: "false",
-  marketingOptIn: "false",
 };
 
 export function InquiryForm() {
@@ -157,13 +155,6 @@ export function InquiryForm() {
           disabled={busy}
           error={errors.agreeTerms}
           onChange={(checked) => setField("agreeTerms", String(checked))}
-        />
-
-        <MarketingCheckbox
-          idPrefix="inq"
-          checked={values.marketingOptIn === "true"}
-          disabled={busy}
-          onChange={(checked) => setField("marketingOptIn", String(checked))}
         />
       </div>
 
