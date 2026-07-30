@@ -155,17 +155,25 @@ of the root, which is precisely what keeps the two mail systems independent.
 - SES send: 4 messages delivered, no errors
 - Full round trip: 1.16s
 
-## SES sandbox: less limiting than it sounds
+## SES: production access granted
 
-The account is in sandbox (200/day). But because the **whole domain** is a
-verified identity, sandbox permits any recipient at `@1127.events`. So internal
-notifications to daniel@, taylor@ and ethan@ work **today**. Only confirmations
-to outside addresses (gmail and so on) are blocked until production access.
+Out of the sandbox in **us-west-1** as of 30 July 2026. Quota 50,000 messages a
+day, 14 a second, enforcement status HEALTHY. Confirmed by delivering to
+`success@simulator.amazonses.com`, which is outside the verified domain and
+would have been refused in the sandbox.
+
+Confirmation emails now reach real recipients.
+
+The earlier us-west-2 request was correctly refused: that region's identity was
+deleted with the stack, and AWS requires a verified identity before granting.
+That case can be closed.
 
 ## Signing in to the dashboard
 
-There is no password. Go to `/admin`, enter your address, and a six-digit code
-arrives by email. Accounts exist for:
+There is no password. Go to `/admin`, enter your address, and an **8-digit**
+code arrives by email. Cognito sets that length, not us; much of the
+documentation implies six, and the code input deliberately accepts up to eight
+so a change at Cognito's end cannot silently truncate and lock everybody out. Accounts exist for:
 
 - daniel@1127.events
 - ethan@1127.events

@@ -16,7 +16,7 @@ export type { AuthMode };
  * Admin authentication
  * ====================
  *
- * Passwordless. Staff enter an email address, Cognito emails a six-digit code,
+ * Passwordless. Staff enter an email address, Cognito emails a numeric code,
  * and the code is exchanged for an access token stored in an HTTP-only cookie
  * and verified against the pool's JWKS on every admin request.
  *
@@ -181,7 +181,12 @@ function devVerify(token: string): string | null {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Step one: ask Cognito to email a six-digit code.
+ * Step one: ask Cognito to email a login code.
+ *
+ * Cognito decides the length, and it is 8 digits, not the 6 that most of the
+ * documentation implies. Nothing here asserts a length: the input accepts up to
+ * 8 and the form only requires enough characters to be a plausible attempt, so
+ * a change at Cognito's end cannot lock everybody out.
  *
  * Deliberately returns the same shape whether or not the address belongs to a
  * real account. Saying "no such user" here would turn this endpoint into a way

@@ -105,7 +105,7 @@ export const RATE_LIMITS = {
   form: { limit: 6, windowSeconds: 10 * 60 },
   /** Requesting a login code. Each one emails a member of staff. */
   loginRequest: { limit: 4, windowSeconds: 15 * 60 },
-  /** Submitting a login code. Guards against guessing the six digits. */
+  /** Submitting a login code. Guards against guessing the digits. */
   loginVerify: { limit: 8, windowSeconds: 15 * 60 },
   /**
    * Unsubscribing. Unauthenticated, and each call scans the submissions table

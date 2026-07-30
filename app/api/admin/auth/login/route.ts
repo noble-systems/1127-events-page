@@ -7,7 +7,7 @@ import { clientIp } from "@/lib/request-meta";
 /**
  * POST /api/admin/auth/login
  *
- *   { email }                  → email a six-digit code, return a session
+ *   { email }                  → email a login code, return a session
  *   { email, code, session }   → exchange the code for a signed-in cookie
  *
  * There is no password step. See lib/auth.ts.
@@ -15,7 +15,7 @@ import { clientIp } from "@/lib/request-meta";
  * Both steps are rate limited, and more tightly than the public forms:
  *   - requesting a code sends a real email to a real member of staff, so it is
  *     an amplification vector as well as an enumeration one
- *   - submitting a code is a guess at six digits, so the number of guesses is
+ *   - submitting a code is a guess at the digits, so the number of guesses is
  *     the entire security margin
  *
  * Limits are keyed on IP *and* on the email address. IP alone lets one attacker

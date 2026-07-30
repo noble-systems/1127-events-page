@@ -50,7 +50,7 @@ export function LoginForm({ next }: { next: string }) {
       return;
     }
     if (stage.kind === "code" && code.trim().length < 6) {
-      setError("Enter the six-digit code from your email.");
+      setError("Enter the code from your email.");
       return;
     }
 
@@ -160,7 +160,7 @@ export function LoginForm({ next }: { next: string }) {
 
       {stage.kind === "code" ? (
         <p className="border-ink/15 bg-sand/60 text-ink/75 rounded-xl border px-4 py-3 text-[0.875rem] leading-relaxed">
-          We sent a six-digit code to{" "}
+          We sent an 8-digit code to{" "}
           <strong className="font-medium">
             {stage.destination ?? "your email"}
           </strong>
@@ -187,7 +187,7 @@ export function LoginForm({ next }: { next: string }) {
         <Field
           id="admin-code"
           label="Code"
-          hint="Six digits, from the email we just sent."
+          hint="Eight digits, from the email we just sent."
         >
           <TextInput
             id="admin-code"
@@ -199,13 +199,14 @@ export function LoginForm({ next }: { next: string }) {
             autoComplete="one-time-code"
             pattern="[0-9]*"
             maxLength={8}
-            placeholder="123456"
+            placeholder="12345678"
             value={code}
             disabled={busy}
             onChange={(event) =>
-              // Cognito sends six digits today. Accepting eight costs nothing
-              // and avoids silently truncating a longer code, which would
-              // present as an unexplainable rejection.
+              // Cognito sends eight digits. Widening this to 8 before knowing
+              // that was luck: at maxLength 6 the input would have silently
+              // truncated every code and login would have been impossible with
+              // no visible reason.
               setCode(event.target.value.replace(/\D/g, "").slice(0, 8))
             }
           />
