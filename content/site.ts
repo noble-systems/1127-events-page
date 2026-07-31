@@ -669,7 +669,7 @@ export const footer = {
       title: "Events",
       links: [
         { label: "Upcoming events", href: "/#events" },
-        { label: "RSVP for Sun Club", href: "/rsvp" },
+        { label: "RSVP", href: "/rsvp" },
         { label: "Sun Club", href: "/#sun-club" },
       ],
     },
