@@ -8,6 +8,7 @@ import { EditProvider, type EditApi } from "@/components/edit/EditContext";
 import {
   FIELD_BY_KEY,
   defaultAsText,
+  normaliseField,
   toFormValue,
   type Values,
 } from "@/lib/content-values";
@@ -15,7 +16,6 @@ import { CONTENT_GROUPS } from "@/lib/content-schema";
 import {
   defaultContent,
   mergeContent,
-  normaliseValue,
   readPath,
   type ContentOverrides,
   type SiteContent,
@@ -62,12 +62,10 @@ function draftFrom(values: Values): SiteContent {
     const field = FIELD_BY_KEY.get(key);
     if (!field) continue;
 
-    // normaliseValue is what the save endpoint applies. Re-implementing the
-    // trimming and splitting here would let the preview and the saved page
-    // disagree in exactly the cases nobody checks, such as a list whose lines
-    // are all blank. null means "no override", so the default shows through.
-    const value = normaliseValue(field.kind, raw);
-    if (value === null) continue;
+    // The same function the save endpoint calls, not a copy of it. null means
+    // "no override", so the committed default shows through.
+    const value = normaliseField(key, raw);
+    if (value === null || value === undefined) continue;
 
     overrides[key] = value;
   }

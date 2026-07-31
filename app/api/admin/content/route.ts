@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { readJson, requireAdmin } from "@/lib/admin-api";
 import { CONTENT_FIELDS, isEditableKey } from "@/lib/content-schema";
 import { isValidImageRef } from "@/lib/images";
-import { normaliseValue } from "@/lib/site-content";
+import { normaliseField } from "@/lib/content-values";
 import { getContentOverrides, saveContentOverrides } from "@/lib/store";
 
 /**
@@ -47,10 +47,8 @@ export async function PUT(request: Request) {
     const field = CONTENT_FIELDS.get(key);
     if (!field) continue;
 
-    // pairKeys matters: partner.brings stores title/body, the details table
-    // stores label/value, and normalising without it would rename the
-    // properties the section reads.
-    const value = normaliseValue(field.kind, raw, field.pairKeys);
+    // Shared with the live preview, so the two cannot normalise differently.
+    const value = normaliseField(key, raw);
 
     // null means "no override": the field falls back to the committed default.
     // That is how a field gets reset, so it is stored as an absence.
