@@ -10,7 +10,7 @@ import {
   defaultAsText,
   toFormValue,
   type Values,
-} from "@/components/admin/ContentField";
+} from "@/lib/content-values";
 import { CONTENT_GROUPS } from "@/lib/content-schema";
 import {
   defaultContent,
@@ -38,8 +38,13 @@ import type { EventRecord } from "@/lib/types";
  * Every section is pure and synchronous, which is what lets a keystroke
  * re-render the page without a round trip.
  *
- * The form at /admin/content still exists and edits the same fields. It is the
- * better tool on a phone, and for anything with no obvious place to click.
+ * The form editor this replaced is gone. Two screens editing the same fields
+ * meant two places to look and two things to keep in step, and the one with
+ * forty labelled boxes was the one nobody could navigate. Every field it
+ * offered is reachable here by clicking the thing it changes.
+ *
+ * The consequence is that this needs a pointer and a reasonable screen. The
+ * banner says so on a narrow one rather than pretending otherwise.
  */
 
 /**
@@ -273,7 +278,7 @@ export function LiveEditor({
               </button>
 
               <Link
-                href="/admin/content"
+                href="/admin"
                 onClick={leave}
                 className="text-bone/70 hover:text-bone px-2 text-[0.8125rem] underline-offset-4 hover:underline"
               >

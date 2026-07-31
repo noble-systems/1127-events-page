@@ -287,19 +287,19 @@ function noReplyNote(): string {
 /**
  * The layout for an acknowledgement.
  *
- * Deliberately plain. `shell` below is a designed template: dark banner, accent
- * stripe, rounded card on a tinted background, nested tables. That is what a
- * newsletter looks like, and Gmail classifies on structure as much as wording,
- * so a confirmation wearing it gets filed under Promotions where nobody reads
- * it. A receipt from a bank or a ticket seller is close to plain text, and it
- * lands in the inbox.
+ * Branded, but not a mailshot. The first version of this stripped every colour
+ * out to escape Promotions, which worked and looked like a bank statement. The
+ * heavy signals were never the palette: they were List-Unsubscribe, a
+ * pill-shaped call-to-action pointing at the marketing site, and a subject
+ * about joining a list. Those stay gone.
  *
- * So: one table, no background fill, no banner, no accent colour, a wordmark in
- * text rather than a coloured bar. It still looks like it came from 1127, but
- * it looks like a receipt rather than a mailshot.
+ * What comes back is the wordmark on the brand colour and the accent rule under
+ * it, on a plain background with no rounded card and no tinted page. It reads as
+ * 1127 at a glance and still reads as a receipt.
  *
- * Keep `shell` for genuine campaign sends, where Promotions is the right tab
- * and the design is worth having.
+ * Placement is per-recipient and adaptive, so this is a judgement rather than a
+ * guarantee. If confirmations start landing in Promotions again, the header
+ * block here is the first thing to try removing.
  */
 function receiptShell(options: {
   preheader: string;
@@ -314,15 +314,23 @@ function receiptShell(options: {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(options.heading)}</title>
 </head>
-<body style="margin:0;padding:0;">
+<body style="margin:0;padding:0;background:${BONE};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(options.preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BONE};padding:24px 16px;">
   <tr><td align="center">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
       <tr>
-        <td style="padding:0 0 20px;font:600 15px/1 Georgia,'Times New Roman',serif;color:${INK};">
-          1127 Events
+        <td style="background:${DEEP};padding:18px 22px;border-radius:10px 10px 0 0;">
+          <span style="font:700 19px/1 Georgia,'Times New Roman',serif;color:${BONE};letter-spacing:-0.4px;">1127</span>
+          <span style="display:inline-block;width:1px;height:12px;background:rgba(247,242,233,0.4);margin:0 9px;vertical-align:middle;"></span>
+          <span style="font:500 10px/1 Helvetica,Arial,sans-serif;letter-spacing:0.18em;text-transform:uppercase;color:rgba(247,242,233,0.75);">Events</span>
         </td>
+      </tr>
+      <tr>
+        <td style="height:3px;background:${SUN};"></td>
+      </tr>
+      <tr>
+        <td style="height:20px;"></td>
       </tr>
       <tr>
         <td style="padding:0 0 4px;">
@@ -422,7 +430,9 @@ export function renderGuestEmail(
 
   const bodyText = event?.emailBody?.trim()
     ? fill(event.emailBody.trim())
-    : "We'll email you as soon as the next date is set. Nothing else, and never more than we'd want to receive ourselves.";
+    : mayEmail(record)
+      ? "We'll email you as soon as the next date is set. Nothing else, and never more than we'd want to receive ourselves."
+      : "You're off the email list, so this is the only message you'll get about it. Sign up again any time you want the next date.";
 
   const body = `
     <p style="margin:0 0 16px;font:400 16px/1.65 Helvetica,Arial,sans-serif;color:${INK};">${escapeHtml(openingText)}</p>
@@ -638,8 +648,30 @@ type Rendered = {
  * notifications are not affected, because a bounced guest address is exactly
  * the sort of thing the team still needs to be told about.
  */
+/**
+ * May we send this person marketing?
+ *
+ * An opt-out and a dead address both mean no.
+ */
 export function mayEmail(record: SubmissionRecord): boolean {
   return record.status !== "unsubscribed" && record.status !== "bounced";
+}
+
+/**
+ * May we send this person a receipt for something they just did?
+ *
+ * Yes, unless the address is dead. Unsubscribing from event announcements is
+ * not a request to stop being told that a form went through, any more than
+ * leaving a shop's newsletter cancels your order confirmations.
+ *
+ * This mattered: somebody who had unsubscribed and then RSVPed to a different
+ * night got nothing at all. The form said it worked, no email arrived, and from
+ * their side an RSVP had silently failed. They are still not on the mailing
+ * list, and the confirmation drops the line promising future emails, because
+ * for them it would not be true.
+ */
+export function mayAcknowledge(record: SubmissionRecord): boolean {
+  return record.status !== "bounced";
 }
 
 async function trySend(
@@ -670,7 +702,7 @@ export async function notifyRsvp(
 ): Promise<void> {
   const status = emailStatus();
 
-  if (status.guest && mayEmail(record)) {
+  if (status.guest && mayAcknowledge(record)) {
     await trySend(
       "RSVP confirmation",
       [record.email],
@@ -697,7 +729,7 @@ export async function notifyAmbassador(
 ): Promise<void> {
   const status = emailStatus();
 
-  if (status.guest && mayEmail(record)) {
+  if (status.guest && mayAcknowledge(record)) {
     await trySend(
       "Ambassador acknowledgement",
       [record.email],
@@ -821,7 +853,7 @@ export async function notifyTalent(
 ): Promise<void> {
   const status = emailStatus();
 
-  if (status.guest && mayEmail(record)) {
+  if (status.guest && mayAcknowledge(record)) {
     await trySend(
       "Talent acknowledgement",
       [record.email],
@@ -951,7 +983,7 @@ export async function notifyPartner(
 ): Promise<void> {
   const status = emailStatus();
 
-  if (status.guest && mayEmail(record)) {
+  if (status.guest && mayAcknowledge(record)) {
     await trySend(
       "Partner acknowledgement",
       [record.email],

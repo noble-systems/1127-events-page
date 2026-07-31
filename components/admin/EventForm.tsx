@@ -441,12 +441,12 @@ export function EventForm({
               label="Subject line"
               optional
               error={errors.emailSubject}
-              hint="Default: You're on the Sun Club list"
+              hint="Default: You're confirmed for {event}"
             >
               <TextInput
                 id="ev-email-subject"
                 name="emailSubject"
-                placeholder="You're on the {event} list"
+                placeholder="You're confirmed for {event}"
                 value={values.emailSubject}
                 error={errors.emailSubject}
                 disabled={busy}
@@ -459,12 +459,12 @@ export function EventForm({
               label="Opening line"
               optional
               error={errors.emailHeading}
-              hint="Default: Thanks {name}, you're on the {event} list."
+              hint="Default: Thanks {name}, your RSVP for {event} is confirmed."
             >
               <TextInput
                 id="ev-email-heading"
                 name="emailHeading"
-                placeholder="Thanks {name}, you're on the {event} list."
+                placeholder="Thanks {name}, your RSVP for {event} is confirmed."
                 value={values.emailHeading}
                 error={errors.emailHeading}
                 disabled={busy}

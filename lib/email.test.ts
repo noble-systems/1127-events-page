@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, test } from "node:test";
 import { contact, notifications } from "../content/site.ts";
 import {
@@ -9,6 +10,7 @@ import {
   renderTalentApplicantEmail,
   renderTeamEmail,
   mayEmail,
+  mayAcknowledge,
   emailStatus,
 } from "./email.ts";
 import type { SubmissionRecord } from "./types.ts";
@@ -462,5 +464,113 @@ describe("every form alerts somebody", () => {
         `${type} submissions notify nobody, so they arrive silently`,
       );
     }
+  });
+});
+
+const baseEventForHints = {
+  id: "x",
+  name: "X",
+  tagline: "",
+  summary: "",
+  status: "",
+  date: "",
+  location: "",
+  venue: null,
+  tags: [],
+  genres: [],
+  tone: "dusk" as const,
+  featured: true,
+  published: true,
+  rsvpEnabled: true,
+  order: 0,
+  shotNote: "",
+  image: null,
+  imageAlt: "",
+  ctaLabel: "",
+  ctaAction: "rsvp" as const,
+  emailSubject: null,
+  emailHeading: null,
+  emailBody: null,
+  createdAt: new Date(0).toISOString(),
+  updatedAt: new Date(0).toISOString(),
+};
+
+describe("the dashboard hints match the real defaults", () => {
+  /**
+   * These strings live in the event form as placeholders and "Default: ..."
+   * hints, and they had gone stale: the form still promised "You're on the Sun
+   * Club list" long after the subject became "You're confirmed for <event>",
+   * and named Sun Club specifically on a site with several events.
+   *
+   * Nothing breaks when they drift, which is why they drifted. An admin simply
+   * gets told the wrong thing about what leaving a box empty will do.
+   */
+  const form = readFileSync("components/admin/EventForm.tsx", "utf8");
+
+  test("the subject hint matches what renderGuestEmail actually sends", () => {
+    const { subject } = renderGuestEmail(rsvp, {
+      ...baseEventForHints,
+      name: "Ibiza Nights",
+    });
+    assert.equal(subject, "You're confirmed for Ibiza Nights");
+    assert.ok(
+      form.includes("You're confirmed for {event}"),
+      "the form advertises a different default subject",
+    );
+  });
+
+  test("no dashboard hint names one event as though it were the only one", () => {
+    assert.ok(
+      !form.includes("Sun Club list"),
+      "a hint still names Sun Club as the default",
+    );
+  });
+});
+
+describe("an opt-out stops marketing, not receipts", () => {
+  /**
+   * The gap this closes.
+   *
+   * Somebody who had unsubscribed and then RSVPed to a different night got
+   * nothing at all: the form reported success, no email arrived, and from their
+   * side the RSVP had silently failed. Leaving an event mailing list is not a
+   * request to stop being told that a form went through.
+   *
+   * They stay off the list either way. Only the receipt changes.
+   */
+  const gone: SubmissionRecord = {
+    ...rsvp,
+    status: "unsubscribed",
+    marketingOptIn: false,
+    unsubscribedAt: "2026-07-01T00:00:00.000Z",
+    unsubscribedSource: "self",
+  };
+  const dead: SubmissionRecord = { ...rsvp, status: "bounced" };
+
+  test("an unsubscribed address still gets its confirmation", () => {
+    assert.equal(mayEmail(gone), false, "still not marketable");
+    assert.equal(mayAcknowledge(gone), true, "but a receipt is fine");
+  });
+
+  test("a dead address gets nothing", () => {
+    // Not a preference. There is nobody at the other end.
+    assert.equal(mayAcknowledge(dead), false);
+  });
+
+  test("their confirmation does not promise emails they will not get", () => {
+    const { text } = renderGuestEmail(gone, null);
+    assert.ok(
+      !text.includes("We'll email you as soon as the next date is set"),
+      "promises mail to somebody who opted out",
+    );
+    assert.match(text, /only message you'll get/);
+  });
+
+  test("a subscriber's confirmation still says what happens next", () => {
+    const { text } = renderGuestEmail(
+      { ...rsvp, status: "subscribed", marketingOptIn: true },
+      null,
+    );
+    assert.match(text, /We'll email you as soon as the next date is set/);
   });
 });

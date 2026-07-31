@@ -11,7 +11,7 @@ const LINKS = [
   { href: "/admin/list", label: "People" },
   { href: "/admin/subscriptions", label: "Subscriptions" },
   { href: "/admin/audience", label: "Audience" },
-  { href: "/admin/content", label: "Page content" },
+  { href: "/admin/preview", label: "Page content" },
 ];
 
 export function AdminNav({ email, mode }: { email: string; mode: string }) {
