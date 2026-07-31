@@ -1,5 +1,6 @@
 "use client";
 
+import { hero } from "@/content/site";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -250,13 +251,19 @@ export function EventForm({
             id="ev-hero-body"
             label="Hero paragraph"
             error={errors.heroBody}
-            hint="Shown under the tagline in the hero, but only while this event is Featured. Leave it blank to use the standard line about the series. Deliberately not the summary above, which already appears in full further down the page."
+            hint="Shown under the tagline in the hero, while this event is Featured. Deliberately not the summary above, which already appears in full further down the page. Leave it blank and the greyed-out line below shows instead, which is about the series rather than this night."
             className="sm:col-span-2"
           >
             <TextArea
               id="ev-hero-body"
               name="heroBody"
               rows={3}
+              // The real fallback, so an empty box shows exactly what the
+              // homepage will say rather than a description of it. Saying "the
+              // standard line about the series" told an admin there was a
+              // default without telling them what it was, so a new event got a
+              // paragraph about Sun Club and nobody knew where it came from.
+              placeholder={hero.body}
               value={values.heroBody}
               error={errors.heroBody}
               disabled={busy}

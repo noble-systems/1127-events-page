@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, test } from "node:test";
 import { CONTENT_FIELDS, CONTENT_GROUPS, isEditableKey } from "./content-schema.ts";
 import {
@@ -332,5 +333,38 @@ describe("every event can be the featured one", () => {
       "hero.rsvpCta",
       "hero.secondaryCta.label",
     ]);
+  });
+});
+
+describe("a borrowed default is not silent", () => {
+  /**
+   * An event with no hero paragraph falls back to the committed line, which is
+   * about the series rather than about that night. That is a reasonable
+   * fallback and a terrible surprise: a new event called Mirage at Solaya
+   * rendered a paragraph about a curated poolside series, and nothing anywhere
+   * said where it had come from.
+   *
+   * Two places have to say so, because they are the two places somebody looks:
+   * the field they would type it into, and the page where they can see it.
+   */
+  const form = readFileSync("components/admin/EventForm.tsx", "utf8");
+  const notice = readFileSync("components/edit/EditNotice.tsx", "utf8");
+  const heroSection = readFileSync("components/sections/Hero.tsx", "utf8");
+
+  test("the event form shows the actual fallback, not a description of it", () => {
+    // A placeholder bound to hero.body, so an empty box renders the real
+    // sentence. "the standard line about the series" is a description.
+    assert.match(form, /placeholder=\{hero\.body\}/);
+  });
+
+  test("the live editor says when the standard line is what is showing", () => {
+    assert.match(notice, /no hero paragraph/);
+    assert.match(heroSection, /heroDefaultBody/);
+  });
+
+  test("it only says so when an event is actually borrowing it", () => {
+    // With nothing featured the whole hero is placeholder copy and the general
+    // notice already covers it; this warning would be noise.
+    assert.match(heroSection, /Boolean\(event\) && !ownBody/);
   });
 });

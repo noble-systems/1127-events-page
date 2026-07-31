@@ -22,6 +22,11 @@ const NOTICES = {
     href: "/admin/events",
     link: "Edit events",
   },
+  heroDefaultBody: {
+    text: "This event has no hero paragraph, so the standard line about the series is showing instead. Write one on the event.",
+    href: "/admin/events",
+    link: "Edit events",
+  },
   seriesPhoto: {
     text: "This photograph comes from the featured event, so it is changed there rather than here.",
     href: "/admin/events",

@@ -42,7 +42,12 @@ export function Hero({
    * as page content for the same reason hero.title and hero.date are not: two
    * places to change one thing is how the hero ends up describing last month.
    */
-  const body = event?.heroBody?.trim() || content.body;
+  const ownBody = event?.heroBody?.trim();
+  const body = ownBody || content.body;
+  // A featured event with no paragraph of its own silently borrows the series
+  // line, which is about Sun Club rather than about this night. Worth saying so
+  // where somebody is looking at it.
+  const borrowingDefault = Boolean(event) && !ownBody;
   return (
     <section
       id="top"
@@ -107,7 +112,7 @@ export function Hero({
             {body}
           </p>
 
-          <EditNotice kind="hero" />
+          <EditNotice kind={borrowingDefault ? "heroDefaultBody" : "hero"} />
 
           <div
             className="animate-rise mt-10 flex flex-wrap items-center gap-3"
