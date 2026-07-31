@@ -164,31 +164,19 @@ describe("normaliseValue", () => {
   });
 });
 
-describe("the series intro follows the featured event", () => {
-  test("no field the featured event owns is also editable as content", () => {
-    // Two places to change one thing is how the intro ends up describing last
-    // month's event. The event record owns these; the content editor must not.
-    // sunClub.details is deliberately NOT in this list. The section replaces
-    // Date, Setting and Venue with the event's own values and keeps the rest,
-    // so what is stored here is series-level (Music, Talent, Arc, Dress,
-    // Energy) and has no event to contradict. Those rows were otherwise
-    // uneditable anywhere.
-    for (const key of [
-      "sunClub.image",
-      "sunClub.imageAlt",
-      "sunClub.shotNote",
-    ]) {
-      assert.equal(
-        CONTENT_FIELDS.has(key),
-        false,
-        `${key} is owned by the featured event and must not be editable here`,
-      );
-    }
-  });
-
-  test("the fallback copy is still editable for when nothing is featured", () => {
-    assert.equal(CONTENT_FIELDS.has("sunClub.title"), true);
-    assert.equal(CONTENT_FIELDS.has("sunClub.paragraphs"), true);
+describe("the series intro section is gone", () => {
+  /**
+   * It followed the featured event, so by the end everything it rendered was
+   * already on screen: the hero had the name and photograph, the event card
+   * had the summary, both had the date, and it was a fourth RSVP button. It
+   * was cut as redundant; these pin that its fields did not linger in the
+   * schema as orphans nothing renders.
+   */
+  test("no sunClub field is editable content", () => {
+    const lingering = [...CONTENT_FIELDS.keys()].filter((key) =>
+      key.startsWith("sunClub."),
+    );
+    assert.deepEqual(lingering, [], "orphaned fields nothing renders");
   });
 });
 
@@ -294,7 +282,6 @@ describe("the schema covers what the page actually renders", () => {
     "upcoming.eyebrow",
     "upcoming.title",
     "upcoming.intro",
-    "sunClub.details",
     "ambassadors.doTitle",
     "ambassadors.does",
     "ambassadors.forTitle",

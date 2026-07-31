@@ -154,7 +154,7 @@ export function RsvpPageView({ featured }: { featured?: EventRecord }) {
               </Reveal>
               <Reveal delay={180}>
                 <div className="mt-8">
-                  <ButtonLink href="/#sun-club" variant="outline" size="md">
+                  <ButtonLink href="/" variant="outline" size="md">
                     More about 1127 Events
                     <ArrowIcon />
                   </ButtonLink>

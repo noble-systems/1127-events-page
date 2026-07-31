@@ -5,7 +5,6 @@ import { FinalCta } from "@/components/sections/FinalCta";
 import { Hero } from "@/components/sections/Hero";
 import { MediaGrid } from "@/components/sections/MediaGrid";
 import { Partner } from "@/components/sections/Partner";
-import { SunClubIntro } from "@/components/sections/SunClubIntro";
 import { UpcomingEvents } from "@/components/sections/UpcomingEvents";
 import type { SiteContent } from "@/lib/site-content";
 import type { EventRecord } from "@/lib/types";
@@ -43,7 +42,6 @@ export function HomeSections({
           copy={content.upcoming}
           factRows={content.facts}
         />
-        <SunClubIntro content={content.sunClub} event={featured} />
         <Ambassadors content={content.ambassadors} />
         <MediaGrid section={content.mediaSection} slots={content.mediaSlots} />
         <Partner content={content.partner} />

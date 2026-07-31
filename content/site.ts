@@ -188,7 +188,7 @@ export const hero = {
   body: "A curated poolside series bringing together hometown DJs, Scottsdale sunshine, thoughtful production, and the people who make the city move.",
   location: "Old Town Scottsdale, Arizona",
   date: DATE_TBA,
-  primaryCta: { label: "Explore Sun Club", href: "#sun-club" },
+  primaryCta: { label: "Explore the events", href: "#events" },
   secondaryCta: { label: "Partner With 1127", href: "/partner" },
   // Was written into the component, so it was the one button label nobody
   // could change.
@@ -670,7 +670,6 @@ export const footer = {
       links: [
         { label: "Upcoming events", href: "/#events" },
         { label: "RSVP", href: "/rsvp" },
-        { label: "The series", href: "/#sun-club" },
       ],
     },
     {

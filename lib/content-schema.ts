@@ -113,32 +113,6 @@ export const CONTENT_GROUPS: ContentGroup[] = [
     ],
   },
   {
-    id: "sunClub",
-    title: "Series intro",
-    description:
-      "Follows whichever event is marked Featured: its title, summary and photograph are used here, so there is one place to change them. Edit those under Events. Only the fallback copy below is set here, and it shows when no event is featured.",
-    fields: [
-      {
-        key: "sunClub.title",
-        label: "Title (fallback)",
-        kind: "text",
-        hint: "Used only when no event is featured.",
-      },
-      {
-        key: "sunClub.paragraphs",
-        label: "Paragraphs (fallback)",
-        kind: "list",
-        hint: "One paragraph per line. The featured event's summary replaces these.",
-      },
-      {
-        key: "sunClub.details",
-        label: "Details table",
-        kind: "pairs",
-        hint: 'One row per line, written "Label: value". These are about the series, not one date.',
-      },
-    ],
-  },
-  {
     id: "ambassadors",
     title: "Ambassadors",
     description: "The ambassador programme section and its application form.",

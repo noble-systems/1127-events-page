@@ -27,11 +27,6 @@ const NOTICES = {
     href: "/admin/events",
     link: "Edit events",
   },
-  seriesPhoto: {
-    text: "This photograph comes from the featured event, so it is changed there rather than here.",
-    href: "/admin/events",
-    link: "Edit events",
-  },
 } as const;
 
 export function EditNotice({ kind }: { kind: keyof typeof NOTICES }) {
