@@ -18,7 +18,7 @@ import { useEdit } from "./EditContext";
  */
 const NOTICES = {
   hero: {
-    text: "The name, tagline, date, location and photograph here all come from whichever event is Featured, so they are not editable on this page. The paragraph above is set under Page content.",
+    text: "The name, tagline, date and photograph above come from whichever event is Featured, so they change there. Everything else here you can click.",
     href: "/admin/events",
     link: "Edit events",
   },

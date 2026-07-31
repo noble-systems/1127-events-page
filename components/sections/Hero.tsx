@@ -1,3 +1,4 @@
+import { Editable } from "@/components/edit/Editable";
 import { EditNotice } from "@/components/edit/EditNotice";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Media } from "@/components/ui/Media";
@@ -92,7 +93,7 @@ export function Hero({
             className="animate-rise text-bone/70 mt-6 max-w-xl text-[1.0625rem] leading-relaxed"
             style={{ ["--rise-delay" as string]: "340ms" }}
           >
-            {content.body}
+            <Editable path="hero.body">{content.body}</Editable>
           </p>
 
           <EditNotice kind="hero" />
@@ -102,7 +103,9 @@ export function Hero({
             style={{ ["--rise-delay" as string]: "420ms" }}
           >
             <ButtonLink href={content.primaryCta.href} variant="sun" size="lg">
-              {content.primaryCta.label}
+              <Editable path="hero.primaryCta.label">
+                {content.primaryCta.label}
+              </Editable>
               <ArrowIcon />
             </ButtonLink>
             <ButtonLink
@@ -111,7 +114,9 @@ export function Hero({
               size="lg"
               className="text-bone"
             >
-              {content.secondaryCta.label}
+              <Editable path="hero.secondaryCta.label">
+                {content.secondaryCta.label}
+              </Editable>
             </ButtonLink>
             <ButtonLink
               href="/rsvp"
@@ -119,7 +124,7 @@ export function Hero({
               size="lg"
               className="text-bone/80 hover:text-bone"
             >
-              RSVP
+              <Editable path="hero.rsvpCta">{content.rsvpCta}</Editable>
             </ButtonLink>
           </div>
         </div>

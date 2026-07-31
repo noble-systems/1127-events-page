@@ -190,6 +190,9 @@ export const hero = {
   date: DATE_TBA,
   primaryCta: { label: "Explore Sun Club", href: "#sun-club" },
   secondaryCta: { label: "Partner With 1127", href: "/partner" },
+  // Was written into the component, so it was the one button label nobody
+  // could change.
+  rsvpCta: "RSVP",
   /** Swap for a real hero still or poster frame: "/media/hero.jpg" */
   image: null as string | null,
   imageAlt: "Poolside at golden hour in Old Town Scottsdale",
