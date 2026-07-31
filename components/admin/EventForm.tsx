@@ -654,17 +654,9 @@ export function EventForm({
 
           <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
             <Toggle
-              id="ev-featured"
-              label="Featured"
-              hint="Drives the hero, the header RSVP button and /rsvp. Only one event can be featured, so turning this on turns it off everywhere else."
-              checked={values.featured}
-              disabled={busy}
-              onChange={(value) => set("featured", value)}
-            />
-            <Toggle
               id="ev-published"
               label="Published"
-              hint="Off keeps it as a draft, hidden from the public site."
+              hint="Off keeps it as a draft, hidden from the public site. Unpublishing the featured event hands the hero to the next one in order."
               checked={values.published}
               disabled={busy}
               onChange={(value) => set("published", value)}

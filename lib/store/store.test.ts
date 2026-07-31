@@ -17,10 +17,12 @@ const { isMailable, isSuppressed, subscriptionState } = await import(
 
 const {
   createEvent,
+  deleteEvent,
   featuredEvent,
   listAllEvents,
   recordSubmission,
   store,
+  setFeaturedEvent,
   suppressEmail,
   updateEvent,
   updateSubmissionMeta,
@@ -59,11 +61,27 @@ const event = (id: string, over: Partial<typeof EVENT> = {}) => ({
   ...over,
 });
 
-/** The local driver has no truncate, so clear both tables by hand. */
+/**
+ * The local driver has no truncate, so clear both tables by hand.
+ *
+ * The marker row is written back deliberately. loadEvents() re-imports the
+ * launch content whenever the events table is empty and unmarked, so a test
+ * that cleared everything got Sun Club and the rest handed back on its first
+ * read, and then asserted against seed data it never created.
+ */
 async function reset() {
   const s = store();
   for (const row of await s.listEvents()) await s.deleteEvent(row.id);
   for (const row of await s.listSubmissions()) await s.deleteSubmission(row.pk);
+
+  await s.putEvent({
+    ...event("__seed__"),
+    name: "seed marker",
+    published: false,
+    order: 999,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+  });
 }
 
 describe("featured is a single slot", () => {
@@ -383,5 +401,105 @@ describe("resubscribing actually puts somebody back", () => {
 
     await recordSubmission("rsvp", values);
     assert.equal(isMailable((await store().listSubmissions())[0]), true);
+  });
+});
+
+describe("featured moves on when the event does", () => {
+  beforeEach(reset);
+
+  /** Display order decides who is next, since that is the page's own order. */
+  const three = async () => {
+    await createEvent(event("first", { featured: true, order: 0 }));
+    await createEvent(event("second", { order: 1 }));
+    await createEvent(event("third", { order: 2 }));
+  };
+
+  const featuredId = async () =>
+    (await listAllEvents()).find((e) => e.featured)?.id ?? null;
+
+  test("unpublishing the featured event promotes the next one", async () => {
+    // Otherwise the site is left with no hero and /rsvp pointing nowhere,
+    // because somebody hid a draft.
+    await three();
+    const first = (await listAllEvents()).find((e) => e.id === "first")!;
+    await updateEvent(first, event("first", { featured: true, published: false, order: 0 }));
+
+    assert.equal(await featuredId(), "second");
+  });
+
+  test("the unpublished event does not keep the slot", async () => {
+    await three();
+    const first = (await listAllEvents()).find((e) => e.id === "first")!;
+    await updateEvent(first, event("first", { featured: true, published: false, order: 0 }));
+
+    const back = (await listAllEvents()).find((e) => e.id === "first")!;
+    assert.equal(back.featured, false, "a draft cannot be the featured event");
+  });
+
+  test("deleting the featured event promotes the next one", async () => {
+    await three();
+    await deleteEvent("first");
+    assert.equal(await featuredId(), "second");
+  });
+
+  test("it skips drafts when promoting", async () => {
+    await createEvent(event("first", { featured: true, order: 0 }));
+    await createEvent(event("draft", { published: false, order: 1 }));
+    await createEvent(event("live", { order: 2 }));
+
+    await deleteEvent("first");
+    assert.equal(await featuredId(), "live");
+  });
+
+  test("with nothing left to promote, nothing is featured", async () => {
+    await createEvent(event("only", { featured: true }));
+    await deleteEvent("only");
+    assert.equal(await featuredId(), null);
+  });
+
+  test("unpublishing an event that was not featured changes nothing", async () => {
+    await three();
+    const third = (await listAllEvents()).find((e) => e.id === "third")!;
+    await updateEvent(third, event("third", { published: false, order: 2 }));
+    assert.equal(await featuredId(), "first");
+  });
+});
+
+describe("featured is chosen from the list", () => {
+  beforeEach(reset);
+
+  test("choosing one takes it from the other", async () => {
+    await createEvent(event("a", { featured: true, order: 0 }));
+    await createEvent(event("b", { order: 1 }));
+
+    await setFeaturedEvent("b");
+    const featured = (await listAllEvents()).filter((e) => e.featured);
+    assert.deepEqual(featured.map((e) => e.id), ["b"]);
+  });
+
+  test("it can be cleared", async () => {
+    await createEvent(event("a", { featured: true }));
+    await setFeaturedEvent(null);
+    assert.equal((await listAllEvents()).filter((e) => e.featured).length, 0);
+  });
+
+  test("a draft cannot be featured", async () => {
+    // The list must not be able to create the state that unpublishing exists to
+    // prevent.
+    await createEvent(event("live", { featured: true, order: 0 }));
+    await createEvent(event("draft", { published: false, order: 1 }));
+
+    await setFeaturedEvent("draft");
+    assert.equal(
+      (await listAllEvents()).find((e) => e.featured)?.id,
+      "live",
+      "a draft took the slot",
+    );
+  });
+
+  test("an id that does not exist is a no-op", async () => {
+    await createEvent(event("a", { featured: true }));
+    await setFeaturedEvent("nope");
+    assert.equal((await listAllEvents()).find((e) => e.featured)?.id, "a");
   });
 });

@@ -195,6 +195,31 @@ async function claimFeatured(keepId: string): Promise<void> {
   }
 }
 
+/**
+ * Hands Featured to the next event in line.
+ *
+ * The featured event drives the hero, /rsvp and the confirmation email, so
+ * unpublishing it used to leave the site with no hero and the RSVP address
+ * pointing nowhere, which is a strange thing to happen because somebody hid a
+ * draft. Display order decides who is next, since that is the order the page
+ * already presents them in.
+ *
+ * `exclude` is the event on its way out: it is passed in because the caller has
+ * not written the change yet, so the store still says it is published.
+ */
+async function promoteNextFeatured(exclude: string): Promise<void> {
+  const next = (await listAllEvents()).find(
+    (event) => event.published && event.id !== exclude,
+  );
+  if (!next) return;
+
+  await store().putEvent({
+    ...next,
+    featured: true,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
 export async function createEvent(input: NewEventInput): Promise<EventRecord> {
   const now = new Date().toISOString();
   if (input.featured) await claimFeatured(input.id);
@@ -206,16 +231,55 @@ export async function updateEvent(
   input: NewEventInput,
 ): Promise<EventRecord> {
   if (input.featured) await claimFeatured(existing.id);
+
+  // A draft cannot be the featured event: the hero would describe something no
+  // visitor can reach.
+  const losingTheSlot = existing.featured && !input.published;
+  if (losingTheSlot) await promoteNextFeatured(existing.id);
+
   return store().putEvent({
     ...input,
     id: existing.id,
+    featured: input.published ? input.featured : false,
     createdAt: existing.createdAt,
     updatedAt: new Date().toISOString(),
   });
 }
 
 export async function deleteEvent(id: string): Promise<void> {
+  // Same reasoning as unpublishing. Deleting the featured event should not
+  // leave the homepage without a hero.
+  const existing = await store().getEvent(id);
+  if (existing?.featured) await promoteNextFeatured(id);
   return store().deleteEvent(id);
+}
+
+/**
+ * Moves Featured to one event, or clears it when `id` is null.
+ *
+ * Used by the events list, where Featured is a choice between events rather
+ * than a box on each one. A tick per event let you set two, or none, and left
+ * the hero to guess.
+ */
+export async function setFeaturedEvent(id: string | null): Promise<void> {
+  if (id === null) {
+    await claimFeatured("");
+    return;
+  }
+
+  const event = await store().getEvent(id);
+  // Refuses to feature a draft, so the list cannot create the state the rule
+  // above exists to prevent.
+  if (!event || !event.published) return;
+
+  await claimFeatured(id);
+  if (!event.featured) {
+    await store().putEvent({
+      ...event,
+      featured: true,
+      updatedAt: new Date().toISOString(),
+    });
+  }
 }
 
 /**

@@ -11,6 +11,31 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Featured is one slot shared by every event, so choosing it here is a radio
+   * rather than a tick on each. A tick per event let you set two, or none, and
+   * left the hero to pick.
+   */
+  const feature = async (id: string | null) => {
+    setBusyId(id ?? "__none__");
+    setError(null);
+
+    const response = await fetch("/api/admin/events/featured", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+
+    if (!response.ok) {
+      setError("Couldn't change the featured event.");
+      setBusyId(null);
+      return;
+    }
+
+    setBusyId(null);
+    router.refresh();
+  };
+
   const togglePublished = async (event: EventRecord) => {
     setBusyId(event.id);
     setError(null);
@@ -86,6 +111,24 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
         </p>
       ) : null}
 
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-ink/65 text-[0.875rem] leading-relaxed">
+          The featured event fills the hero, drives{" "}
+          <span className="whitespace-nowrap">/rsvp</span> and names the
+          confirmation email. Only one at a time, and only a published one.
+        </p>
+        {events.some((event) => event.featured) ? (
+          <button
+            type="button"
+            onClick={() => feature(null)}
+            disabled={busyId !== null}
+            className="text-ink/65 hover:text-ink shrink-0 text-[0.8125rem] underline-offset-4 hover:underline disabled:opacity-50"
+          >
+            Feature nothing
+          </button>
+        ) : null}
+      </div>
+
       <ul className="space-y-3">
         {events.map((event) => (
           <li
@@ -122,6 +165,28 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
             </div>
 
             <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <label
+                className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors duration-200 ${
+                  event.published
+                    ? "border-ink/20 hover:border-ink/45 cursor-pointer"
+                    : "border-ink/10 text-ink/40 cursor-not-allowed"
+                }`}
+                title={
+                  event.published
+                    ? "Show this event in the hero"
+                    : "A draft cannot be featured: the hero would describe something nobody can reach"
+                }
+              >
+                <input
+                  type="radio"
+                  name="featured-event"
+                  checked={event.featured}
+                  disabled={!event.published || busyId !== null}
+                  onChange={() => feature(event.id)}
+                  className="accent-sun-deep h-3.5 w-3.5"
+                />
+                Feature
+              </label>
               <button
                 type="button"
                 onClick={() => togglePublished(event)}
