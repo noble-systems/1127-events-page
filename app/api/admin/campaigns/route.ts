@@ -41,17 +41,10 @@ export async function POST(request: Request) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  const status = emailStatus();
-  if (!status.guest) {
-    return NextResponse.json(
-      { ok: false, message: `Email is not ready to send: ${status.detail}` },
-      { status: 503 },
-    );
-  }
-
   const body = (await readJson(request)) as Record<string, unknown> | null;
 
-  const mode = body?.mode === "send" ? "send" : "test";
+  const mode =
+    body?.mode === "send" ? "send" : body?.mode === "preview" ? "preview" : "test";
   const input: CampaignInput = {
     subject: typeof body?.subject === "string" ? body.subject.trim() : "",
     heading: typeof body?.heading === "string" ? body.heading.trim() : "",
@@ -84,6 +77,41 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ok: false, message: "Keep the heading under 120 characters." },
       { status: 400 },
+    );
+  }
+
+  /**
+   * Renders exactly what a recipient gets, with a stand-in name so {name}
+   * visibly fills, and sends nothing. Same function as the real send, not a
+   * lookalike: the facts-strip scramble happened because a preview normalised
+   * one way and the save another, and this screen does not repeat that.
+   *
+   * Deliberately before the email-readiness gate, so wording can be drafted
+   * before SES is even configured.
+   */
+  if (mode === "preview") {
+    const message = renderCampaignEmail(input, {
+      pk: "rsvp#preview@example.com",
+      type: "rsvp",
+      email: "preview@example.com",
+      name: "Alex Moreno",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    return NextResponse.json({
+      ok: true,
+      mode,
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+    });
+  }
+
+  const status = emailStatus();
+  if (!status.guest) {
+    return NextResponse.json(
+      { ok: false, message: `Email is not ready to send: ${status.detail}` },
+      { status: 503 },
     );
   }
 

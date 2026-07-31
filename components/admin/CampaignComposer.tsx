@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Field, TextArea, TextInput } from "@/components/forms/Fields";
 
 /**
@@ -36,14 +36,65 @@ export function CampaignComposer({
   const [progress, setProgress] = useState<{ sent: number; total: number } | null>(
     null,
   );
+  const [preview, setPreview] = useState<{ subject: string; html: string } | null>(
+    null,
+  );
 
   const ready = subject.trim() !== "" && body.trim() !== "";
+
+  /**
+   * The preview beside the fields, rendered by the same function that renders
+   * the real send, fetched as you type. A composer with no preview meant the
+   * first time anyone saw the email was in the test send's inbox, and the
+   * second was in everybody's.
+   */
+  // Shown only while the form has content; clearing a field hides the stale
+  // render without a state write inside the effect.
+  const shownPreview = ready ? preview : null;
+
+  useEffect(() => {
+    if (!ready) return;
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch("/api/admin/campaigns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "preview", subject, heading, body }),
+          signal: controller.signal,
+        });
+        const data = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          subject?: string;
+          html?: string;
+        } | null;
+        if (data?.ok && data.html) {
+          setPreview({ subject: data.subject ?? subject, html: data.html });
+        }
+      } catch {
+        /* A stale keystroke's fetch was aborted; the next one will land. */
+      }
+    }, 400);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [ready, subject, heading, body]);
 
   const post = async (payload: Record<string, unknown>) => {
     const response = await fetch("/api/admin/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, heading, body, eventIds, genres, ...payload }),
+      body: JSON.stringify({
+        subject,
+        heading,
+        body,
+        eventIds,
+        genres,
+        ...payload,
+      }),
     });
     const data = (await response.json().catch(() => null)) as {
       ok?: boolean;
@@ -65,7 +116,9 @@ export function CampaignComposer({
     setNote(null);
     try {
       await post({ mode: "test" });
-      setNote("Test sent to your own inbox. Read it there before sending for real.");
+      setNote(
+        "Test sent to your own inbox. Read it there before sending for real.",
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Test send failed.");
     } finally {
@@ -83,7 +136,8 @@ export function CampaignComposer({
       `This sends to ${count} ${count === 1 ? "person" : "people"} (${segmentLabel}) and cannot be recalled.\n\nType the number ${count} to confirm.`,
     );
     if (answer?.trim() !== String(count)) {
-      if (answer !== null) setError("The number didn't match, so nothing was sent.");
+      if (answer !== null)
+        setError("The number didn't match, so nothing was sent.");
       return;
     }
 
@@ -129,52 +183,86 @@ export function CampaignComposer({
     <section className="border-ink/12 bg-bone mt-12 rounded-2xl border p-6 sm:p-8">
       <h2 className="font-display text-2xl">Email this segment</h2>
       <p className="text-ink/65 mt-2 max-w-2xl text-[0.9375rem] leading-relaxed">
-        Goes to the {count} {count === 1 ? "person" : "people"} matching the
-        filters above ({segmentLabel}). Write it, send yourself the test, read
-        the test, then send. {"{name}"} becomes the reader&apos;s first name.
+        Goes to the {count} {count === 1 ? "person" : "people"} matching the filters
+        above ({segmentLabel}). Write it, send yourself the test, read the test,
+        then send. {"{name}"} becomes the reader&apos;s first name.
       </p>
 
-      <div className="mt-6 grid gap-5">
-        <Field id="camp-subject" label="Subject">
-          <TextInput
-            id="camp-subject"
-            name="subject"
-            value={subject}
-            disabled={busy !== null}
-            placeholder="The next date is live"
-            onChange={(e) => setSubject(e.target.value)}
-          />
-        </Field>
+      <div className="mt-6 grid items-start gap-8 lg:grid-cols-2">
+        <div className="grid gap-5">
+          <Field id="camp-subject" label="Subject">
+            <TextInput
+              id="camp-subject"
+              name="subject"
+              value={subject}
+              disabled={busy !== null}
+              placeholder="The next date is live"
+              onChange={(e) => setSubject(e.target.value)}
+            />
+          </Field>
 
-        <Field
-          id="camp-heading"
-          label="Heading"
-          hint="The large line at the top. Blank uses the subject."
-        >
-          <TextInput
+          <Field
             id="camp-heading"
-            name="heading"
-            value={heading}
-            disabled={busy !== null}
-            onChange={(e) => setHeading(e.target.value)}
-          />
-        </Field>
+            label="Heading"
+            hint="The large line at the top. Blank uses the subject."
+          >
+            <TextInput
+              id="camp-heading"
+              name="heading"
+              value={heading}
+              disabled={busy !== null}
+              onChange={(e) => setHeading(e.target.value)}
+            />
+          </Field>
 
-        <Field
-          id="camp-body"
-          label="Body"
-          hint="Plain text. Blank lines make paragraphs. Every message carries the unsubscribe link and postal address automatically."
-        >
-          <TextArea
+          <Field
             id="camp-body"
-            name="body"
-            rows={8}
-            value={body}
-            disabled={busy !== null}
-            placeholder={"Hey {name},\n\nThe next date is set..."}
-            onChange={(e) => setBody(e.target.value)}
-          />
-        </Field>
+            label="Body"
+            hint="Plain text. Blank lines make paragraphs. Every message carries the unsubscribe link and postal address automatically."
+          >
+            <TextArea
+              id="camp-body"
+              name="body"
+              rows={8}
+              value={body}
+              disabled={busy !== null}
+              placeholder={"Hey {name},\n\nThe next date is set..."}
+              onChange={(e) => setBody(e.target.value)}
+            />
+          </Field>
+        </div>
+
+        <div>
+          <p className="label-xs text-ink/65">Preview</p>
+          {shownPreview ? (
+            <>
+              <p className="border-ink/12 bg-bone-soft mt-2.5 truncate rounded-t-xl border border-b-0 px-4 py-2.5 text-[0.875rem]">
+                <span className="text-ink/50">Subject:</span> {shownPreview.subject}
+              </p>
+              {/*
+                sandbox with no allowances: the HTML is our own template, but
+                the body text inside it is typed by whoever is signed in, and a
+                preview pane that can run script is a door for trouble nobody
+                needs. Links inside are inert too, which stops a stray click on
+                the unsubscribe link opting out the preview address.
+              */}
+              <iframe
+                title="Email preview"
+                sandbox=""
+                srcDoc={shownPreview.html}
+                className="border-ink/12 bg-bone h-[480px] w-full rounded-b-xl border"
+              />
+              <p className="text-ink/50 mt-2 text-[0.75rem] leading-relaxed">
+                Rendered by the same code as the real send, with a stand-in reader
+                named Alex. The test send is this exact email in your inbox.
+              </p>
+            </>
+          ) : (
+            <div className="border-ink/25 bg-bone/60 text-ink/65 mt-2.5 flex h-[480px] items-center justify-center rounded-xl border border-dashed px-6 text-center text-[0.875rem]">
+              Write a subject and body and the email appears here as you type.
+            </div>
+          )}
+        </div>
       </div>
 
       {error ? (
