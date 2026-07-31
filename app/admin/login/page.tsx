@@ -29,7 +29,7 @@ export default async function AdminLoginPage({
         <div className="border-ink/12 bg-bone mt-8 rounded-3xl border p-7 shadow-[0_30px_70px_-50px_rgba(7,20,47,0.5)] sm:p-9">
           <h1 className="text-3xl leading-tight">Admin sign-in</h1>
           <p className="text-ink/65 mt-3 text-[0.9375rem] leading-relaxed">
-            Manage events and the Sun Club email list.
+            Manage events, page content and the email list.
           </p>
 
           {mode === "unconfigured" ? (

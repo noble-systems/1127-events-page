@@ -203,7 +203,7 @@ export function EventForm({
             <TextInput
               id="ev-name"
               name="name"
-              placeholder="Sun Club"
+              placeholder="The event's name"
               value={values.name}
               error={errors.name}
               disabled={busy}

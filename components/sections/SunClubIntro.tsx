@@ -126,7 +126,7 @@ export function SunClubIntro({
               <ButtonLink href="/rsvp" variant="primary" size="lg">
                 {/* The section follows the featured event; the button must too,
                     or it invites people to RSVP for a different night. */}
-                {event ? `RSVP for ${event.name}` : "RSVP for Sun Club"}
+                {event ? `RSVP for ${event.name}` : "RSVP"}
                 <ArrowIcon />
               </ButtonLink>
               <ButtonLink href="#ambassadors" variant="outline" size="lg">

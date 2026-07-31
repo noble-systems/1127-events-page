@@ -88,7 +88,7 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
         <p className="font-display text-xl">No events yet.</p>
         <p className="text-ink/65 mx-auto mt-3 max-w-sm text-[0.9375rem] leading-relaxed">
           Create one, or load the launch content from the overview page to start
-          with Sun Club already filled in.
+          with the launch events already filled in.
         </p>
         <Link
           href="/admin/events/new"

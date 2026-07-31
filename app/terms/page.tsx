@@ -70,7 +70,7 @@ const sections: readonly LegalSection[] = [
   {
     heading: "Our content",
     body: [
-      "The 1127 Events and Sun Club names, together with the text, design, photography and code on this site, belong to 1127 Events or are used with permission. You may share links freely. Please do not reproduce the material commercially without asking first.",
+      "The 1127 Events name and the names of our event series, together with the text, design, photography and code on this site, belong to 1127 Events or are used with permission. You may share links freely. Please do not reproduce the material commercially without asking first.",
     ],
   },
   {

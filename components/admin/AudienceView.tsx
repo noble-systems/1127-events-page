@@ -1,5 +1,6 @@
 "use client";
 
+import { CampaignComposer } from "@/components/admin/CampaignComposer";
 import { useMemo, useState } from "react";
 import {
   selectAudience,
@@ -253,6 +254,17 @@ export function AudienceView({
           </div>
         ) : null}
       </section>
+
+      <CampaignComposer
+        eventIds={eventIds}
+        genres={genres}
+        count={audience.length}
+        segmentLabel={
+          filtered
+            ? [...genres, ...eventIds].join(", ")
+            : "everyone mailable"
+        }
+      />
     </div>
   );
 }

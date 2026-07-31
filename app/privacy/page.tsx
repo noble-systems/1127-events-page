@@ -29,7 +29,7 @@ const sections: readonly LegalSection[] = [
   {
     heading: "What you give us",
     body: [
-      "This site has four forms: the Sun Club RSVP list, the talent application, the ambassador application, and the partnership inquiry. We keep what you type into them.",
+      "This site has four forms: the RSVP list, the talent application, the ambassador application, and the partnership inquiry. We keep what you type into them.",
     ],
     list: [
       "Your name",

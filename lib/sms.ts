@@ -137,7 +137,7 @@ export const SMS_SEGMENT_LIMIT = 160;
  * carriers expect both in the first message of a programme.
  */
 export function renderOptInSms(event: EventRecord | null): string {
-  const name = event?.name ?? "Sun Club";
+  const name = event?.name ?? "1127 Events";
   return `${brand.shortName}: you're set for ${name} texts. We'll message when a date lands. Msg&data rates may apply. Reply STOP to cancel, HELP for help.`;
 }
 

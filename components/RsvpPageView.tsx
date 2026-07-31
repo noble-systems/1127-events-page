@@ -17,24 +17,25 @@ import type { EventRecord } from "@/lib/types";
  * somebody arrived for.
  */
 
-const WHAT_TO_EXPECT = [
-  {
-    title: "House music, all day",
-    body: "Hometown DJs programmed to build with the light rather than peak in the first hour.",
-  },
-  {
-    title: "A pool you're meant to use",
-    body: "Swim, dry off, find your group, go again. Shade when you want it.",
-  },
-  {
-    title: "Afternoon into golden hour",
-    body: "Doors in the heat of the day, best hour right as the sun drops.",
-  },
-  {
-    title: "No door theater",
-    body: "No table minimum standing between you and the music. Resort wear and good swimwear.",
-  },
-];
+/**
+ * The details grid is built from the event itself, not written here.
+ *
+ * This used to be four hardcoded bullets about house music and the pool,
+ * shown identically on every event's RSVP page, so a bass night promised
+ * "House music, all day". Facts the event actually carries cannot say the
+ * wrong thing about it.
+ */
+function eventFacts(event?: EventRecord) {
+  return [
+    { title: event?.date?.trim() || "Announcing soon", body: "Date" },
+    { title: event?.location?.trim() || "Old Town Scottsdale", body: "Location" },
+    { title: event?.venue?.trim() || "Announcing soon", body: "Venue" },
+    {
+      title: event?.genres?.length ? event.genres.join(", ") : "Announcing soon",
+      body: "Music",
+    },
+  ];
+}
 
 export function RsvpPageView({ featured }: { featured?: EventRecord }) {
   return (
@@ -70,7 +71,7 @@ export function RsvpPageView({ featured }: { featured?: EventRecord }) {
                 id="rsvp-title"
                 className="font-display mt-6 text-[2.75rem] leading-[0.95] font-semibold tracking-[-0.02em] uppercase sm:text-6xl lg:text-7xl"
               >
-                {featured?.name ?? "Sun Club"}
+                {featured?.name ?? hero.title}
               </h1>
 
               <p className="font-display text-bone/90 mt-6 text-[1.5rem] leading-tight sm:text-[1.9rem]">
@@ -145,13 +146,13 @@ export function RsvpPageView({ featured }: { featured?: EventRecord }) {
               </Reveal>
               <Reveal delay={120}>
                 <p className="text-ink/70 mt-6 max-w-md text-[1.0625rem] leading-relaxed">
-                  {sunClub.paragraphs[0]}
+                  {featured?.summary?.trim() || sunClub.paragraphs[0]}
                 </p>
               </Reveal>
               <Reveal delay={180}>
                 <div className="mt-8">
                   <ButtonLink href="/#sun-club" variant="outline" size="md">
-                    More about Sun Club
+                    More about 1127 Events
                     <ArrowIcon />
                   </ButtonLink>
                 </div>
@@ -160,7 +161,7 @@ export function RsvpPageView({ featured }: { featured?: EventRecord }) {
 
             <div className="lg:col-span-7">
               <dl className="border-ink/12 bg-ink/12 grid gap-px overflow-hidden rounded-2xl border sm:grid-cols-2">
-                {WHAT_TO_EXPECT.map((item, index) => (
+                {eventFacts(featured).map((item, index) => (
                   <Reveal key={item.title} delay={index * 70}>
                     <div className="bg-bone h-full px-6 py-7">
                       <dt className="font-display text-xl leading-snug">

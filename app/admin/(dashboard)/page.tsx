@@ -281,7 +281,7 @@ export default async function AdminOverviewPage() {
                   Start from the launch content
                 </p>
                 <p className="text-ink/65 mt-1 text-[0.8125rem] leading-relaxed">
-                  Loads Sun Club and the in-development card so you can edit rather
+                  Loads the launch events so you can edit rather
                   than start blank.
                 </p>
                 <div className="mt-4">

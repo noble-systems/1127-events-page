@@ -16,9 +16,9 @@ const sans = Inter_Tight({
   display: "swap",
 });
 
-const title = "1127 Events. Sun Club | House music under the desert sun";
+const title = "1127 Events | Curated event concepts in Scottsdale, Arizona";
 const description =
-  "1127 Events is an Arizona event-production company. Sun Club is our poolside house-music series in Old Town Scottsdale. We bring the audience, marketing, media and technical production behind every date.";
+  "1127 Events is an Arizona event-production company. We create and produce curated event concepts in Old Town Scottsdale, and bring the audience, marketing, media and technical production behind every date.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(brand.domain),
@@ -30,7 +30,6 @@ export const metadata: Metadata = {
   applicationName: brand.name,
   keywords: [
     "1127 Events",
-    "Sun Club",
     "Old Town Scottsdale events",
     "Scottsdale house music",
     "Arizona event production",

@@ -11,7 +11,7 @@ import { ambassadors, opportunities } from "@/content/site";
 
 const title = "Opportunities";
 const description =
-  "Apply to work with 1127 Events in Scottsdale. DJs, audio technicians, promoters, photo and video, event staff and production crew, plus the Sun Club Ambassador Program.";
+  "Apply to work with 1127 Events in Scottsdale. DJs, audio technicians, promoters, photo and video, event staff and production crew, plus the 1127 Ambassador Program.";
 
 export const metadata: Metadata = {
   title,

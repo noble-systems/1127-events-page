@@ -60,7 +60,7 @@ export const brand = {
   region: "Old Town Scottsdale, Arizona",
   domain: "https://1127.events", // inferred from the team email addresses; confirm before launch
   description:
-    "1127 Events is an Arizona event-production company. We create and produce curated event concepts, starting with Sun Club, a poolside house-music series in Old Town Scottsdale. We bring the audience, marketing, media and technical production behind every date.",
+    "1127 Events is an Arizona event-production company. We create and produce curated event concepts in Old Town Scottsdale, and bring the audience, marketing, media and technical production behind every date.",
   shortDescription:
     "Arizona event production. Audience, marketing, media and technical production behind every date.",
 } as const;
@@ -174,7 +174,7 @@ export const upcoming = {
   eyebrow: "Upcoming",
   title: "What's next from 1127.",
   intro:
-    "1127 Events produces its own concepts. Sun Club is the series we're building right now, and the format we bring to venue partners.",
+    "1127 Events produces its own concepts, and brings the format to venue partners.",
 };
 
 /* -------------------------------------------------------------------------- */
@@ -183,7 +183,7 @@ export const upcoming = {
 
 export const hero = {
   eyebrow: "1127 Events Presents",
-  title: "Sun Club",
+  title: "1127 Events",
   tagline: "House music under the desert sun.",
   body: "A curated poolside series bringing together hometown DJs, Scottsdale sunshine, thoughtful production, and the people who make the city move.",
   location: "Old Town Scottsdale, Arizona",
@@ -226,7 +226,7 @@ export const seedEvents: EventRecord[] = [
   {
     id: "sun-club",
     rsvpEnabled: true,
-    name: "Sun Club",
+    name: "Mirage at Solaya",
     heroBody:
       "A curated poolside series bringing together hometown DJs, Scottsdale sunshine, thoughtful production, and the people who make the city move.",
     tagline: "House music under the desert sun.",
@@ -242,10 +242,10 @@ export const seedEvents: EventRecord[] = [
     featured: true,
     published: true,
     order: 0,
-    shotNote: "Sun Club: crowd at the water's edge, afternoon",
+    shotNote: "Crowd at the water's edge, afternoon",
     image: null,
-    imageAlt: "Guests dancing poolside at a Sun Club event",
-    ctaLabel: "RSVP for Sun Club",
+    imageAlt: "Guests dancing poolside",
+    ctaLabel: "RSVP",
     ctaAction: "rsvp",
     emailSubject: null,
     emailHeading: null,
@@ -259,7 +259,7 @@ export const seedEvents: EventRecord[] = [
     rsvpEnabled: false,
     name: "More concepts in development",
     heroBody: "",
-    tagline: "Sun Club is the first series, not the last.",
+    tagline: "The first concept is not the last.",
     summary:
       "1127 builds event concepts around music, community and production. If you run a venue or brand with a room worth filling, the next one can start with a conversation.",
     status: "In development",
@@ -286,14 +286,14 @@ export const seedEvents: EventRecord[] = [
 ];
 
 /* -------------------------------------------------------------------------- */
-/* Sun Club introduction                                                       */
+/* Series introduction (the sunClub content key, kept for stored overrides)    */
 /* -------------------------------------------------------------------------- */
 
 export const sunClub = {
   eyebrow: "The Series",
   title: "A different kind of Scottsdale pool party.",
   paragraphs: [
-    "Sun Club sits somewhere between a Mediterranean beach club and a long afternoon with your favorite people. House music from open to close, programmed to move with the light instead of peaking in the first hour.",
+    "The series sits somewhere between a Mediterranean beach club and a long afternoon with your favorite people. Music from open to close, programmed to move with the light instead of peaking in the first hour.",
     "Get in the water. Get back out. Order something cold, find your group, stay through golden hour. It's put together properly, from sound and lighting to hosting, without the door attitude or the table minimum standing between you and the music.",
   ],
   details: [
@@ -439,16 +439,16 @@ export const capabilities: readonly Capability[] = [
 /* -------------------------------------------------------------------------- */
 
 export const ambassadors = {
-  eyebrow: "Sun Club Ambassador Program",
+  eyebrow: "1127 Ambassador Program",
   title: "The people who move the city.",
   intro:
-    "Sun Club works with a curated network of local ambassadors who bring more than follower counts. They bring real relationships, real communities, and the kind of organic energy that turns an event into the place everyone wants to be.",
+    "1127 Events works with a curated network of local ambassadors who bring more than follower counts. They bring real relationships, real communities, and the kind of organic energy that turns an event into the place everyone wants to be.",
   doTitle: "What ambassadors do",
   does: [
     "Promote the date ahead of the event",
     "Bring socially relevant groups",
     "Create authentic event-day content",
-    "Introduce Sun Club to new local circles",
+    "Introduce our events to new local circles",
     "Help build a recurring community around the series",
   ],
   forTitle: "Who it's for",
@@ -465,14 +465,14 @@ export const ambassadors = {
     "Complimentary or priority event access",
     "Guest-list opportunities for your group",
     "Professional photography and social content",
-    "Access to future Sun Club dates",
+    "Access to future dates",
     "Performance-based event incentives",
     "A direct line into Scottsdale's music, nightlife and hospitality communities",
   ],
   cta: "Apply to Become an Ambassador",
   shotNote: "Ambassadors: group portrait, natural light",
   image: null as string | null,
-  imageAlt: "A group of Sun Club ambassadors poolside",
+  imageAlt: "A group of ambassadors poolside",
 } as const;
 
 /* -------------------------------------------------------------------------- */
@@ -555,7 +555,7 @@ export const mediaSlots: readonly MediaSlot[] = [
     shotNote: "DJ performing, booth in frame",
     tone: "ink",
     image: null,
-    imageAlt: "A DJ performing at a Sun Club event",
+    imageAlt: "A DJ performing at a 1127 event",
     span: "tall",
   },
   {
@@ -646,7 +646,7 @@ export const finalCta = {
   guests: {
     eyebrow: "For guests",
     title: "Join the next event",
-    body: "Get on the Sun Club list and hear about the date before it's public.",
+    body: "Get on the list and hear about the date before it's public.",
     cta: "RSVP for the next date",
   },
   partners: {
@@ -663,14 +663,14 @@ export const finalCta = {
 
 export const footer = {
   blurb:
-    "Event production and curated event concepts, made in Arizona. Sun Club is a 1127 Events series.",
+    "Event production and curated event concepts, made in Arizona.",
   columns: [
     {
       title: "Events",
       links: [
         { label: "Upcoming events", href: "/#events" },
         { label: "RSVP", href: "/rsvp" },
-        { label: "Sun Club", href: "/#sun-club" },
+        { label: "The series", href: "/#sun-club" },
       ],
     },
     {

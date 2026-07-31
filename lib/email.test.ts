@@ -12,6 +12,7 @@ import {
   mayEmail,
   mayAcknowledge,
   emailStatus,
+  renderCampaignEmail,
 } from "./email.ts";
 import type { SubmissionRecord } from "./types.ts";
 
@@ -575,5 +576,77 @@ describe("an opt-out stops marketing, not receipts", () => {
       null,
     );
     assert.match(text, /We'll email you as soon as the next date is set/);
+  });
+});
+
+describe("campaign email", () => {
+  const input = {
+    subject: "The next date is live",
+    heading: "See you at the pool.",
+    body: "Hey {name},\n\nDoors at two. Bring people.",
+  };
+  const recipient: SubmissionRecord = {
+    ...rsvp,
+    email: "guest@example.com",
+    name: "Alex Moreno",
+  };
+
+  /**
+   * Campaigns are the one genuinely bulk thing this app sends, so the rules are
+   * the acknowledgements' rules inverted. An acknowledgement hiding the bulk
+   * marker is honest; a campaign hiding it is how a domain gets burned.
+   */
+  test("carries the bulk-mail headers the acknowledgements must not", () => {
+    const message = renderCampaignEmail(input, recipient);
+    assert.match(
+      message.listUnsubscribe ?? "",
+      /^<https?:\/\/.*\/unsubscribe\?token=.+>$/,
+      "a campaign without List-Unsubscribe burns the domain",
+    );
+  });
+
+  test("carries the postal address and a working unsubscribe link", () => {
+    const { html, text } = renderCampaignEmail(input, recipient);
+    const address = contact.postalAddress as string;
+    for (const part of [html, text]) {
+      assert.ok(part.includes(address), "postal address missing");
+      assert.match(part, /\/unsubscribe\?token=/);
+    }
+  });
+
+  test("the unsubscribe token is the recipient's, not anybody else's", () => {
+    const a = renderCampaignEmail(input, recipient);
+    const b = renderCampaignEmail(input, { ...recipient, email: "other@example.com" });
+    const token = (m: { html: string }) =>
+      m.html.match(/token=([^"&]+)/)?.[1];
+    assert.notEqual(token(a), token(b), "two people got the same opt-out link");
+  });
+
+  test("fills {name} with the first name", () => {
+    const { html, text, subject } = renderCampaignEmail(
+      { ...input, subject: "For {name}" },
+      recipient,
+    );
+    assert.match(text, /Hey Alex,/);
+    assert.match(html, /Hey Alex,/);
+    assert.equal(subject, "For Alex");
+  });
+
+  test("a recipient with no name gets 'there', not a blank", () => {
+    const { text } = renderCampaignEmail(input, { ...recipient, name: "" });
+    assert.match(text, /Hey there,/);
+  });
+
+  test("body content is escaped, so a crafted name cannot inject markup", () => {
+    const { html } = renderCampaignEmail(input, {
+      ...recipient,
+      name: "<script>alert(1)</script>",
+    });
+    assert.ok(!html.includes("<script>alert(1)"), "raw script tag survived");
+  });
+
+  test("blank heading falls back to the subject", () => {
+    const { html } = renderCampaignEmail({ ...input, heading: "" }, recipient);
+    assert.ok(html.includes("The next date is live"));
   });
 });

@@ -36,7 +36,7 @@ export function AmbassadorForm({ onDone }: { onDone?: () => void }) {
     return (
       <FormSuccess
         title="Application received."
-        body="We review applications ahead of every Sun Club date and reach out directly to the people we'd like to work with."
+        body="We review applications ahead of every date and reach out directly to the people we'd like to work with."
         actionLabel={onDone ? "Close" : "Submit another"}
         onAction={() => {
           reset();

@@ -4,7 +4,7 @@ import {
   type SendEmailCommandInput,
 } from "@aws-sdk/client-sesv2";
 import { brand, contact, notifications } from "../content/site.ts";
-import { isSuppressed } from "./audience.ts";
+import { isMailable, isSuppressed } from "./audience.ts";
 import { hasRealSecret, unsubscribeToken } from "./tokens.ts";
 import type { EventRecord, SubmissionRecord } from "./types.ts";
 
@@ -156,6 +156,20 @@ let ses: SESv2Client | null = null;
 function client(): SESv2Client {
   if (!ses) ses = new SESv2Client({ region: region() });
   return ses;
+}
+
+/**
+ * Exported narrowly for the campaign test-send, which must reach the admin's
+ * own inbox even when that address is unsubscribed (isMailable would block it).
+ * Everything else goes through the typed notify functions above it.
+ */
+export async function sendDirect(input: {
+  to: string[];
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<void> {
+  return send(input);
 }
 
 async function send(input: {
@@ -407,7 +421,10 @@ export function renderGuestEmail(
 ) {
   const unsubUrl = unsubscribeUrl(record.email);
 
-  const name = event?.name ?? "Sun Club";
+  // With no event attached there is no name to borrow, and borrowing the
+  // series name went stale the moment the series was renamed. The no-event
+  // wording talks about "the list" instead.
+  const name = event?.name?.trim() || null;
   const firstName = record.name.trim().split(/\s+/)[0] || "there";
 
   const facts: Array<[string, string]> = [
@@ -423,11 +440,15 @@ export function renderGuestEmail(
   // {name} is substituted so a custom line can still greet people by name
   // without the admin needing to know anything about templating.
   const fill = (value: string) =>
-    value.replace(/\{name\}/g, firstName).replace(/\{event\}/g, name);
+    value
+      .replace(/\{name\}/g, firstName)
+      .replace(/\{event\}/g, name ?? "the next event");
 
   const openingText = event?.emailHeading?.trim()
     ? fill(event.emailHeading.trim())
-    : `Thanks ${firstName}, your RSVP for ${name} is confirmed.`;
+    : name
+      ? `Thanks ${firstName}, your RSVP for ${name} is confirmed.`
+      : `Thanks ${firstName}, you're on the list.`;
 
   const bodyText = event?.emailBody?.trim()
     ? fill(event.emailBody.trim())
@@ -448,7 +469,7 @@ export function renderGuestEmail(
 
   const footer = `
     <p style="margin:0 0 8px;">${escapeHtml(postalLine())}</p>
-    <p style="margin:0;">You're getting this because you asked to hear about ${escapeHtml(name)} dates.
+    <p style="margin:0;">You're getting this because you asked to hear about ${name ? escapeHtml(name) : "upcoming"} dates.
       <a href="${unsubUrl}" style="color:${MUTED};">Unsubscribe</a>.</p>`;
 
   // The plain-text part carries the same custom wording. Letting the two drift
@@ -471,11 +492,15 @@ export function renderGuestEmail(
   return {
     subject: event?.emailSubject?.trim()
       ? fill(event.emailSubject.trim())
-      : `You're confirmed for ${name}`,
+      : name
+        ? `You're confirmed for ${name}`
+        : "You're on the list",
     html: receiptShell({
       // This is the grey preview line next to the subject in an inbox list.
       // It should read as a receipt, because that is what this is.
-      preheader: `Your RSVP for ${name} is confirmed.`,
+      preheader: name
+        ? `Your RSVP for ${name} is confirmed.`
+        : "You're on the list.",
       heading: "You're confirmed.",
       body,
       footer,
@@ -490,7 +515,7 @@ export function renderAmbassadorApplicantEmail(record: SubmissionRecord) {
   const firstName = record.name.trim().split(/\s+/)[0] || "there";
 
   const body = `
-    <p style="margin:0 0 16px;font:400 16px/1.65 Helvetica,Arial,sans-serif;color:${INK};">Thanks ${escapeHtml(firstName)}, your Sun Club ambassador application is in.</p>
+    <p style="margin:0 0 16px;font:400 16px/1.65 Helvetica,Arial,sans-serif;color:${INK};">Thanks ${escapeHtml(firstName)}, your ambassador application is in.</p>
     <p style="margin:0 0 16px;font:400 16px/1.65 Helvetica,Arial,sans-serif;color:${MUTED};">We review applications ahead of every date and reach out directly to the people we'd like to work with. We work with a small group each season, so it may be a little while before you hear from us.</p>
     <p style="margin:0 0 26px;font:400 16px/1.65 Helvetica,Arial,sans-serif;color:${MUTED};">In the meantime you're on the list for date announcements.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(25,23,19,0.10);">
@@ -505,11 +530,11 @@ export function renderAmbassadorApplicantEmail(record: SubmissionRecord) {
 
   const footer = `
     <p style="margin:0 0 8px;">${escapeHtml(postalLine())}</p>
-    <p style="margin:0;">You're getting this because you applied to the Sun Club Ambassador Program.
+    <p style="margin:0;">You're getting this because you applied to the 1127 Ambassador Program.
       <a href="${unsubUrl}" style="color:${MUTED};">Unsubscribe</a>.</p>`;
 
   const text = [
-    `Thanks ${firstName}, your Sun Club ambassador application is in.`,
+    `Thanks ${firstName}, your ambassador application is in.`,
     "",
     "We review applications ahead of every date and reach out directly to the people we'd like to work with.",
     "",
@@ -524,7 +549,7 @@ export function renderAmbassadorApplicantEmail(record: SubmissionRecord) {
   ].join("\n");
 
   return {
-    subject: "Your Sun Club ambassador application",
+    subject: "Your 1127 ambassador application",
     html: receiptShell({
       preheader: "We have your ambassador application.",
       heading: "Application received.",
@@ -562,7 +587,7 @@ export function renderAmbassadorTeamEmail(record: SubmissionRecord, total: numbe
     </p>`;
 
   const text = [
-    "New Sun Club ambassador application",
+    "New ambassador application",
     "",
     ...facts.map(([label, value]) => `${label}: ${value}`),
     "",
@@ -603,7 +628,7 @@ export function renderTeamEmail(record: SubmissionRecord, total: number) {
     </p>`;
 
   const text = [
-    "New Sun Club RSVP",
+    "New RSVP",
     "",
     ...facts.map(([label, value]) => `${label}: ${value}`),
     "",
@@ -1001,5 +1026,126 @@ export async function notifyPartner(
     recipients("partner"),
     renderPartnerTeamEmail(record, total),
     record.email,
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Campaigns                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export type CampaignInput = {
+  subject: string;
+  /** Large line at the top. Blank falls back to the subject. */
+  heading: string;
+  /** Plain text; blank lines separate paragraphs. {name} and {event} fill in. */
+  body: string;
+};
+
+/**
+ * A campaign email for one recipient.
+ *
+ * This is the one kind of mail this app sends that IS bulk, so the rules are
+ * the acknowledgements' rules inverted, deliberately: the designed shell with
+ * the banner, because Promotions is the correct tab for a promo; the
+ * List-Unsubscribe header with One-Click, because Google requires it of bulk
+ * senders and hiding from it burns the domain; a per-recipient unsubscribe
+ * link, because CAN-SPAM requires a working opt-out in every message.
+ *
+ * Rendered per recipient rather than once, since the unsubscribe token and the
+ * {name} greeting differ for each.
+ */
+export function renderCampaignEmail(
+  input: CampaignInput,
+  record: SubmissionRecord,
+) {
+  const unsubUrl = unsubscribeUrl(record.email);
+  const firstName = record.name?.trim().split(/\s+/)[0] || "there";
+  const fill = (value: string) => value.replace(/\{name\}/g, firstName);
+
+  const subject = fill(input.subject.trim());
+  const heading = fill(input.heading.trim() || input.subject.trim());
+  const bodyText = fill(input.body.trim());
+
+  const footer = `
+    <p style="margin:0 0 8px;">${escapeHtml(postalLine())}</p>
+    <p style="margin:0;">You're getting this because you joined the 1127 Events list.
+      <a href="${unsubUrl}" style="color:${MUTED};">Unsubscribe</a>.</p>`;
+
+  const text = [
+    heading,
+    "",
+    bodyText,
+    "",
+    postalLine(),
+    `Unsubscribe: ${unsubUrl}`,
+  ].join("\n");
+
+  return {
+    subject,
+    html: shell({
+      preheader: bodyText.split("\n")[0]?.slice(0, 120) ?? subject,
+      eyebrow: "1127 Events",
+      heading,
+      body: paragraphs(bodyText, INK),
+      footer,
+    }),
+    text,
+    listUnsubscribe: `<${unsubUrl}>`,
+  };
+}
+
+/**
+ * Sends one campaign message. Returns false rather than throwing, so a batch
+ * reports how many failed instead of dying on the first.
+ *
+ * isMailable is re-checked here even though the audience was selected with it:
+ * a batched send takes time, and somebody can unsubscribe between the audience
+ * being computed and their message going out.
+ */
+export async function sendCampaignEmail(
+  input: CampaignInput,
+  record: SubmissionRecord,
+): Promise<boolean> {
+  if (!isMailable(record)) return false;
+
+  try {
+    const message = renderCampaignEmail(input, record);
+    await send({
+      to: [record.email],
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+      listUnsubscribe: message.listUnsubscribe,
+    });
+    return true;
+  } catch (error) {
+    console.error("[1127] campaign send failed", record.email, error);
+    return false;
+  }
+}
+
+/** The wrap-up note to the team once a campaign finishes. */
+export async function notifyCampaignSent(
+  input: CampaignInput,
+  sent: number,
+  failed: number,
+): Promise<void> {
+  await trySend(
+    "Campaign summary",
+    recipients("rsvp"),
+    {
+      subject: `Campaign sent: ${input.subject}`,
+      html: shell({
+        preheader: `${sent} sent, ${failed} failed.`,
+        eyebrow: "1127 Events",
+        heading: "Campaign sent.",
+        body: `
+          <p style="margin:0 0 14px;font:400 15px/1.65 Helvetica,Arial,sans-serif;color:${INK};">Subject: ${escapeHtml(input.subject)}</p>
+          <p style="margin:0 0 14px;font:400 15px/1.65 Helvetica,Arial,sans-serif;color:${INK};">${sent} delivered to the list. ${failed > 0 ? `${failed} failed and were logged.` : "None failed."}</p>
+          ${paragraphs(input.body, MUTED)}`,
+        footer: `<p style="margin:0;">Internal summary. It exists so there is a record of what was sent and when.</p>`,
+      }),
+      text: `Campaign sent: ${input.subject}\n${sent} delivered, ${failed} failed.\n\n${input.body}`,
+    },
   );
 }

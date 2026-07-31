@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const alt =
-  "1127 Events presents Sun Club, house music under the desert sun";
+  "1127 Events. Curated event concepts, made in Arizona";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

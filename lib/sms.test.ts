@@ -159,8 +159,11 @@ describe("message bodies", () => {
   });
 
   test("works before any event exists", () => {
+    // The fallback is the brand: a series can be renamed, the company cannot
+    // silently be.
     const body = renderOptInSms(null);
-    assert.match(body, /Sun Club/);
+    assert.match(body, /1127 Events/);
+    assert.ok(!body.includes("Sun Club"), "still naming a series");
     assert.ok(body.length <= SMS_SEGMENT_LIMIT);
   });
 
