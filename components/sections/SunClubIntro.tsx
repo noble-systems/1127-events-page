@@ -1,3 +1,4 @@
+import { Editable, EditableList } from "@/components/edit/Editable";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Media } from "@/components/ui/Media";
 import { Reveal } from "@/components/ui/Reveal";
@@ -79,17 +80,19 @@ export function SunClubIntro({
               id="sun-club-title"
               className="mt-5 text-[2.1rem] leading-[1.05] sm:text-5xl lg:text-[3.4rem]"
             >
-              {title}
+              <Editable path="sunClub.title">{title}</Editable>
             </h2>
           </Reveal>
 
-          {paragraphs.map((paragraph, index) => (
-            <Reveal key={index} delay={110 + index * 60}>
-              <p className="text-ink/70 mt-6 text-[1.0625rem] leading-relaxed">
-                {paragraph}
-              </p>
-            </Reveal>
-          ))}
+          <EditableList path="sunClub.paragraphs">
+            {paragraphs.map((paragraph, index) => (
+              <Reveal key={index} delay={110 + index * 60}>
+                <p className="text-ink/70 mt-6 text-[1.0625rem] leading-relaxed">
+                  {paragraph}
+                </p>
+              </Reveal>
+            ))}
+          </EditableList>
 
           <Reveal delay={240}>
             <dl className="border-ink/15 mt-10 border-t">

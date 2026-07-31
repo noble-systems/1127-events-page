@@ -1,3 +1,5 @@
+import { Editable } from "@/components/edit/Editable";
+import { EditableImage } from "@/components/edit/EditableImage";
 import { Media } from "@/components/ui/Media";
 import { Reveal } from "@/components/ui/Reveal";
 import { Section, SectionHeader } from "@/components/ui/Section";
@@ -56,9 +58,11 @@ export function MediaGrid({
     <Section tone="deep" size="lg" labelledBy="media-title">
       <SectionHeader
         id="media-title"
-        eyebrow={section.eyebrow}
-        title={section.title}
-        intro={section.intro}
+        eyebrow={
+          <Editable path="mediaSection.eyebrow">{section.eyebrow}</Editable>
+        }
+        title={<Editable path="mediaSection.title">{section.title}</Editable>}
+        intro={<Editable path="mediaSection.intro">{section.intro}</Editable>}
       />
 
       <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-5">
@@ -68,8 +72,10 @@ export function MediaGrid({
             delay={Math.min(index, 5) * 70}
             className={SPAN[slot.span]}
           >
-            <div
-              className={`relative w-full overflow-hidden rounded-2xl ${ASPECT[slot.span]}`}
+            <EditableImage
+              path={`mediaSlots.${index}.image`}
+              altPath={`mediaSlots.${index}.imageAlt`}
+              className={`w-full overflow-hidden rounded-2xl ${ASPECT[slot.span]}`}
             >
               <Media
                 tone={slot.tone}
@@ -80,7 +86,7 @@ export function MediaGrid({
                 className="h-full w-full"
               />
               {slot.badge ? <PlayBadge label={slot.badge} /> : null}
-            </div>
+            </EditableImage>
           </Reveal>
         ))}
       </div>

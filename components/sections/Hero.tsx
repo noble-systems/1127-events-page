@@ -1,3 +1,4 @@
+import { Editable } from "@/components/edit/Editable";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Media } from "@/components/ui/Media";
 import { hero, PRESENTS } from "@/content/site";
@@ -91,7 +92,7 @@ export function Hero({
             className="animate-rise text-bone/70 mt-6 max-w-xl text-[1.0625rem] leading-relaxed"
             style={{ ["--rise-delay" as string]: "340ms" }}
           >
-            {content.body}
+            <Editable path="hero.body">{content.body}</Editable>
           </p>
 
           <div

@@ -1,3 +1,4 @@
+import { Editable } from "@/components/edit/Editable";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { Eyebrow, Section } from "@/components/ui/Section";
@@ -17,7 +18,7 @@ export function Partner({
       <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
         <div className="lg:col-span-5">
           <Reveal>
-            <Eyebrow>{content.eyebrow}</Eyebrow>
+            <Eyebrow>{<Editable path="partner.eyebrow">{content.eyebrow}</Editable>}</Eyebrow>
           </Reveal>
 
           <Reveal delay={60}>
@@ -25,20 +26,20 @@ export function Partner({
               id="partner-title"
               className="mt-5 text-[2.1rem] leading-[1.04] sm:text-5xl lg:text-[3.5rem]"
             >
-              {content.title}
+              {<Editable path="partner.title">{content.title}</Editable>}
             </h2>
           </Reveal>
 
           <Reveal delay={120}>
             <p className="text-ink/70 mt-6 text-[1.0625rem] leading-relaxed">
-              {content.intro}
+              {<Editable path="partner.intro">{content.intro}</Editable>}
             </p>
           </Reveal>
 
           <Reveal delay={180}>
             <div className="mt-9 flex flex-wrap gap-3">
               <ButtonLink href="/partner" variant="primary" size="lg">
-                {content.cta}
+                {<Editable path="partner.cta">{content.cta}</Editable>}
                 <ArrowIcon />
               </ButtonLink>
               <ButtonLink href="/opportunities" variant="outline" size="lg">

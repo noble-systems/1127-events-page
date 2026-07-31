@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HomeSections } from "@/components/HomeSections";
+import { EditProvider, type EditApi } from "@/components/edit/EditContext";
 import {
   FIELD_BY_KEY,
-  FieldRow,
   defaultAsText,
   toFormValue,
   type Values,
@@ -23,15 +23,23 @@ import {
 import type { EventRecord } from "@/lib/types";
 
 /**
- * The homepage, editable in place.
+ * The homepage, edited on the homepage.
  *
- * The preview is the real page: HomeSections is the same tree the public route
- * mounts, handed a draft instead of the stored content. Rebuilding an
- * approximation of the page here would drift the moment a section changed, and
- * the drift would be invisible until something shipped looking wrong.
+ * There is no field panel. You click the sentence you want to change and type
+ * over it, and you click a photograph to replace it, because a list of forty
+ * boxes beside a preview is still a form: you read a label, guess which part of
+ * the page it controls, and check afterwards. The page is the label.
  *
- * Every section component is pure and synchronous, which is what lets a
- * keystroke re-render the page without a round trip.
+ * This is the real page, not a copy. HomeSections is the same tree the public
+ * route mounts, handed a draft instead of the stored content, and the Editable
+ * wrappers inside the sections render nothing at all when no edit context is
+ * present. So a visitor gets exactly the markup they got before this existed.
+ *
+ * Every section is pure and synchronous, which is what lets a keystroke
+ * re-render the page without a round trip.
+ *
+ * The form at /admin/content still exists and edits the same fields. It is the
+ * better tool on a phone, and for anything with no obvious place to click.
  */
 
 /**
@@ -87,8 +95,8 @@ export function LiveEditor({
   }, [stored]);
 
   const [values, setValues] = useState<Values>(initial);
-  const [panelOpen, setPanelOpen] = useState(true);
-  const [openGroup, setOpenGroup] = useState<string>(CONTENT_GROUPS[0]?.id ?? "");
+  // Which field has the caret, so only one shows as focused at a time.
+  const [active, setActive] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -208,189 +216,89 @@ export function LiveEditor({
       event.preventDefault();
     }
   };
+  const api = useMemo<EditApi>(
+    () => ({
+      value: (path) => values[path],
+      set,
+      upload,
+      uploading,
+      active,
+      setActive,
+    }),
+    [values, set, upload, uploading, active],
+  );
 
   return (
-    <div className="min-h-screen">
-      {/* ---------------------------------------------------------------- */}
-      {/* Banner                                                            */}
-      {/* ---------------------------------------------------------------- */}
-      <div className="bg-ink text-bone sticky top-0 z-[100] shadow-[0_1px_0_rgba(247,242,233,0.12)]">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 sm:px-6">
-          <span className="label-xs bg-sun/25 text-bone rounded-full px-2.5 py-1">
-            Edit mode
-          </span>
-
-          <p className="min-w-0 flex-1 text-[0.8125rem] leading-relaxed">
-            {dirty ? (
-              <>
-                <strong className="font-medium">Unsaved changes.</strong> Save
-                before you leave this page or they are lost.
-              </>
-            ) : saved ? (
-              "Saved. The live site is updated."
-            ) : (
-              "You are editing the live homepage. Nothing is public until you save."
-            )}
-          </p>
-
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPanelOpen((open) => !open)}
-              className="border-bone/25 hover:border-bone/50 rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors duration-200"
-            >
-              {panelOpen ? "Hide fields" : "Show fields"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setValues(initial)}
-              disabled={!dirty || saving}
-              className="border-bone/25 hover:border-bone/50 rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Discard
-            </button>
-
-            <button
-              type="button"
-              onClick={save}
-              disabled={!dirty || saving}
-              className="bg-bone text-ink rounded-full px-4 py-1.5 text-[0.8125rem] font-medium transition-opacity duration-200 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {saving ? "Saving…" : "Save changes"}
-            </button>
-
-            <Link
-              href="/admin/content"
-              onClick={leave}
-              className="text-bone/70 hover:text-bone px-2 text-[0.8125rem] underline-offset-4 hover:underline"
-            >
-              Exit
-            </Link>
-          </div>
-        </div>
-
-        {error ? (
-          <p className="bg-clay/90 text-bone px-4 py-2 text-[0.8125rem] sm:px-6">
-            {error}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex">
+    <EditProvider value={api}>
+      <div className="min-h-screen">
         {/* -------------------------------------------------------------- */}
-        {/* Fields                                                          */}
+        {/* Banner                                                          */}
         {/* -------------------------------------------------------------- */}
-        {panelOpen ? (
-          <aside className="border-ink/12 bg-bone sticky top-[3.25rem] hidden h-[calc(100vh-3.25rem)] w-[380px] shrink-0 overflow-y-auto border-r lg:block">
-            <div className="p-5">
-              <h2 className="font-display text-xl">Page content</h2>
-              <p className="text-ink/65 mt-2 text-[0.8125rem] leading-relaxed">
-                The page beside this updates as you type. Clearing a box restores
-                the wording the site ships with.
-              </p>
+        <div className="bg-ink text-bone sticky top-0 z-[100] shadow-[0_1px_0_rgba(247,242,233,0.12)]">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 sm:px-6">
+            <span className="label-xs bg-sun/25 text-bone rounded-full px-2.5 py-1">
+              Edit mode
+            </span>
 
-              <div className="mt-5 space-y-2">
-                {CONTENT_GROUPS.map((group) => {
-                  const isOpen = openGroup === group.id;
-                  const changed = group.fields.filter(
-                    (f) => values[f.key] !== initial[f.key],
-                  ).length;
+            <p className="min-w-0 flex-1 text-[0.8125rem] leading-relaxed">
+              {dirty ? (
+                <>
+                  <strong className="font-medium">Unsaved changes.</strong> Save
+                  before you leave this page or they are lost.
+                </>
+              ) : saved ? (
+                "Saved. The live site is updated."
+              ) : (
+                "Click any text or photograph to change it. Nothing is public until you save."
+              )}
+            </p>
 
-                  return (
-                    <div
-                      key={group.id}
-                      className="border-ink/12 overflow-hidden rounded-xl border"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setOpenGroup(isOpen ? "" : group.id)}
-                        aria-expanded={isOpen}
-                        className="hover:bg-bone-soft flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-200"
-                      >
-                        <span className="text-[0.9375rem] font-medium">
-                          {group.title}
-                          {changed > 0 ? (
-                            <span className="bg-sun/30 ml-2 rounded-full px-2 py-0.5 text-[0.6875rem]">
-                              {changed}
-                            </span>
-                          ) : null}
-                        </span>
-                        <span className="text-ink/50 text-[0.8125rem]">
-                          {isOpen ? "−" : "+"}
-                        </span>
-                      </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setValues(initial)}
+                disabled={!dirty || saving}
+                className="border-bone/25 hover:border-bone/50 rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Discard
+              </button>
 
-                      {isOpen ? (
-                        <div className="border-ink/10 space-y-4 border-t px-4 py-4">
-                          {group.description ? (
-                            <p className="text-ink/65 text-[0.8125rem] leading-relaxed">
-                              {group.description}
-                            </p>
-                          ) : null}
+              <button
+                type="button"
+                onClick={save}
+                disabled={!dirty || saving}
+                className="bg-bone text-ink rounded-full px-4 py-1.5 text-[0.8125rem] font-medium transition-opacity duration-200 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
 
-                          {group.fields.map((field) => (
-                            <FieldRow
-                              key={field.key}
-                              field={field}
-                              value={values[field.key] ?? ""}
-                              fallback={readPath(defaults, field.key)}
-                              busy={saving}
-                              uploading={uploading === field.key}
-                              onChange={(value) => set(field.key, value)}
-                              onUpload={(file) => upload(field.key, file)}
-                            />
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <p className="text-ink/65 mt-6 text-[0.8125rem] leading-relaxed">
-                The hero and series intro follow whichever event is Featured, so
-                their name, date and photograph are edited under{" "}
-                <Link
-                  href="/admin/events"
-                  onClick={leave}
-                  className="text-cobalt underline-offset-4 hover:underline"
-                >
-                  Events
-                </Link>
-                .
-              </p>
+              <Link
+                href="/admin/content"
+                onClick={leave}
+                className="text-bone/70 hover:text-bone px-2 text-[0.8125rem] underline-offset-4 hover:underline"
+              >
+                Exit
+              </Link>
             </div>
-          </aside>
-        ) : null}
+          </div>
+
+          {error ? (
+            <p className="bg-clay/90 text-bone px-4 py-2 text-[0.8125rem] sm:px-6">
+              {error}
+            </p>
+          ) : null}
+        </div>
 
         {/* -------------------------------------------------------------- */}
-        {/* The page itself                                                 */}
+        {/* The page, edited in place                                       */}
         {/* -------------------------------------------------------------- */}
-        <div className="min-w-0 flex-1">
-          {/* Pointer events are off so a click inside the preview cannot
-              navigate away and lose the edit. Scrolling still works. */}
-          <div className="[&_a]:pointer-events-none [&_button]:pointer-events-none">
-            <HomeSections content={draft} events={events} />
-          </div>
+        {/* Links and buttons are inert so a stray click cannot navigate away
+            and take an unsaved edit with it. The editing affordances add their
+            own pointer-events back. */}
+        <div className="[&_a]:pointer-events-none [&_button]:pointer-events-none [&_[data-edit-path]]:pointer-events-auto [&_[data-edit-control]]:pointer-events-auto [&_[data-edit-control]_*]:pointer-events-auto">
+          <HomeSections content={draft} events={events} />
         </div>
       </div>
-
-      <div className="border-ink/12 bg-bone border-t px-4 py-4 text-center lg:hidden">
-        <p className="text-ink/65 text-[0.875rem] leading-relaxed">
-          The field panel needs a wider screen. On a phone, edit from{" "}
-          <Link href="/admin/content" onClick={leave} className="text-cobalt underline">
-            Page content
-          </Link>
-          .
-        </p>
-      </div>
-
-      <noscript>
-        <p className="bg-clay text-bone px-4 py-3">
-          Live editing needs JavaScript. Use Page content instead.
-        </p>
-      </noscript>
-    </div>
+    </EditProvider>
   );
 }

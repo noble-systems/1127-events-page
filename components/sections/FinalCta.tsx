@@ -1,3 +1,4 @@
+import { Editable } from "@/components/edit/Editable";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { Section } from "@/components/ui/Section";
@@ -32,12 +33,12 @@ export function FinalCta({
         {/* Guests */}
         <Reveal>
           <div className="border-bone/15 bg-bone/[0.04] flex h-full flex-col rounded-3xl border p-8 sm:p-10">
-            <p className="label-xs text-sun/80">{content.guests.eyebrow}</p>
+            <p className="label-xs text-sun/80">{<Editable path="finalCta.guests.eyebrow">{content.guests.eyebrow}</Editable>}</p>
             <h3 className="mt-5 text-[2rem] leading-[1.06] sm:text-[2.6rem]">
-              {content.guests.title}
+              {<Editable path="finalCta.guests.title">{content.guests.title}</Editable>}
             </h3>
             <p className="text-bone/65 mt-4 max-w-sm text-[0.9375rem] leading-relaxed">
-              {content.guests.body}
+              {<Editable path="finalCta.guests.body">{content.guests.body}</Editable>}
             </p>
             <div className="mt-auto pt-8">
               <ButtonLink
@@ -46,7 +47,7 @@ export function FinalCta({
                 size="lg"
                 className="w-full sm:w-auto"
               >
-                {content.guests.cta}
+                {<Editable path="finalCta.guests.cta">{content.guests.cta}</Editable>}
                 <ArrowIcon />
               </ButtonLink>
             </div>
@@ -56,12 +57,12 @@ export function FinalCta({
         {/* Partners */}
         <Reveal delay={90}>
           <div className="border-bone/15 bg-bone/[0.04] flex h-full flex-col rounded-3xl border p-8 sm:p-10">
-            <p className="label-xs text-bone/60">{content.partners.eyebrow}</p>
+            <p className="label-xs text-bone/60">{<Editable path="finalCta.partners.eyebrow">{content.partners.eyebrow}</Editable>}</p>
             <h3 className="mt-5 text-[2rem] leading-[1.06] sm:text-[2.6rem]">
-              {content.partners.title}
+              {<Editable path="finalCta.partners.title">{content.partners.title}</Editable>}
             </h3>
             <p className="text-bone/65 mt-4 max-w-sm text-[0.9375rem] leading-relaxed">
-              {content.partners.body}
+              {<Editable path="finalCta.partners.body">{content.partners.body}</Editable>}
             </p>
             <div className="mt-auto pt-8">
               <ButtonLink
@@ -70,7 +71,7 @@ export function FinalCta({
                 size="lg"
                 className="text-bone w-full sm:w-auto"
               >
-                {content.partners.cta}
+                {<Editable path="finalCta.partners.cta">{content.partners.cta}</Editable>}
                 <ArrowIcon />
               </ButtonLink>
             </div>

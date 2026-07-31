@@ -1,3 +1,5 @@
+import { Editable } from "@/components/edit/Editable";
+import { EditableImage } from "@/components/edit/EditableImage";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Media } from "@/components/ui/Media";
 import { Reveal } from "@/components/ui/Reveal";
@@ -33,7 +35,9 @@ export function Ambassadors({
       <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-16">
         <div className="lg:col-span-6">
           <Reveal>
-            <Eyebrow>{content.eyebrow}</Eyebrow>
+            <Eyebrow>
+              <Editable path="ambassadors.eyebrow">{content.eyebrow}</Editable>
+            </Eyebrow>
           </Reveal>
 
           <Reveal delay={60}>
@@ -41,13 +45,13 @@ export function Ambassadors({
               id="ambassadors-title"
               className="mt-5 text-[2.1rem] leading-[1.04] sm:text-5xl lg:text-[3.75rem]"
             >
-              {content.title}
+              <Editable path="ambassadors.title">{content.title}</Editable>
             </h2>
           </Reveal>
 
           <Reveal delay={120}>
             <p className="text-ink/70 mt-6 max-w-xl text-[1.0625rem] leading-relaxed">
-              {content.intro}
+              <Editable path="ambassadors.intro">{content.intro}</Editable>
             </p>
           </Reveal>
 
@@ -90,7 +94,11 @@ export function Ambassadors({
 
         <div className="lg:col-span-6">
           <Reveal delay={100}>
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl sm:aspect-[16/10]">
+            <EditableImage
+              path="ambassadors.image"
+              altPath="ambassadors.imageAlt"
+              className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl sm:aspect-[16/10]"
+            >
               <Media
                 tone="terracotta"
                 src={content.image}
@@ -99,7 +107,7 @@ export function Ambassadors({
                 sizes="(max-width: 1024px) 100vw, 46vw"
                 className="h-full w-full"
               />
-            </div>
+            </EditableImage>
           </Reveal>
 
           <Reveal delay={160}>
@@ -124,7 +132,7 @@ export function Ambassadors({
                   size="lg"
                   className="w-full sm:w-auto"
                 >
-                  {content.cta}
+                  <Editable path="ambassadors.cta">{content.cta}</Editable>
                   <ArrowIcon />
                 </ButtonLink>
                 <p className="text-ink/65 mt-4 text-[0.8125rem] leading-relaxed">

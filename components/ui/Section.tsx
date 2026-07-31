@@ -80,9 +80,12 @@ export function SectionHeader({
   titleClassName = "",
   children,
 }: {
-  eyebrow?: string;
-  title: string;
-  intro?: string;
+  // ReactNode rather than string so the live editor can pass an Editable
+  // wrapper in place of the text. Outside edit mode that wrapper renders its
+  // children and nothing else, so the markup here is unchanged.
+  eyebrow?: React.ReactNode;
+  title: React.ReactNode;
+  intro?: React.ReactNode;
   id?: string;
   align?: "left" | "center";
   className?: string;
