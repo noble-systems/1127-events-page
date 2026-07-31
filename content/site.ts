@@ -139,8 +139,16 @@ export const notifications = {
   ambassador: TEAM as readonly string[],
   /** Override: TALENT_NOTIFY_ADDRESS */
   talent: TEAM as readonly string[],
-  /** Override: PARTNER_NOTIFY_ADDRESS. Nobody is alerted until this is filled in. */
-  partner: [] as readonly string[],
+  /**
+   * Override: PARTNER_NOTIFY_ADDRESS.
+   *
+   * This was an empty list while the other three went to the team, which read
+   * as a deliberate choice and was not: a venue enquiry from Anduril Industries
+   * sat in the table for a day with nobody told about it. Partner enquiries are
+   * the highest-value thing this site collects, so they alert the same people
+   * as everything else.
+   */
+  partner: TEAM as readonly string[],
 } as const;
 
 /* -------------------------------------------------------------------------- */

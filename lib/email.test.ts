@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { contact } from "../content/site.ts";
+import { contact, notifications } from "../content/site.ts";
 import {
   renderAmbassadorApplicantEmail,
   renderGuestEmail,
@@ -442,5 +442,25 @@ describe("the music line follows the event", () => {
 
   test("degrades honestly when no genre is set", () => {
     assert.match(withGenres([]).text, /Music: Announcing soon/);
+  });
+});
+
+describe("every form alerts somebody", () => {
+  /**
+   * The gap this closes.
+   *
+   * notifications.partner was an empty list while the other three went to the
+   * team. Nothing errored and nothing logged: a venue enquiry simply arrived,
+   * was stored correctly, and nobody was told. Partner enquiries are the
+   * highest-value thing the site collects, so silence there is the most
+   * expensive kind.
+   */
+  test("no form type is configured to notify nobody", () => {
+    for (const [type, list] of Object.entries(notifications)) {
+      assert.ok(
+        list.length > 0,
+        `${type} submissions notify nobody, so they arrive silently`,
+      );
+    }
   });
 });
