@@ -246,9 +246,17 @@ export function Media({
       className={`grain relative isolate overflow-hidden ${className}`}
       style={resolved ? undefined : { backgroundImage: spec.background }}
     >
-      {src ? (
+      {resolved ? (
         <Image
-          src={src}
+          // `resolved`, not `src`. Passing the raw value handed next/image the
+          // literal "s3:events/..." string, whose optimizer URL answered 404,
+          // so the first photograph ever uploaded rendered as a broken image.
+          // Development never caught it because IMAGES_BASE_URL is unset
+          // there: resolveImageSrc returned null and the designed gradient
+          // covered for the bug. The branch now keys on `resolved` too, so an
+          // unresolvable reference falls back to the gradient as documented
+          // rather than rendering a broken img.
+          src={resolved}
           alt={alt}
           fill
           sizes={sizes}
