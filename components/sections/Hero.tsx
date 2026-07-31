@@ -34,15 +34,15 @@ export function Hero({
   const shotNote = event?.shotNote?.trim() || content.shotNote;
 
   /**
-   * The paragraph belongs to the event when there is one.
+   * The paragraph belongs to the event, full stop.
    *
-   * `content.body` is the fallback for a site with nothing featured. Which of
-   * the two is winning decides whether this is editable here: offering a text
-   * box over a value the event supplies would let somebody type into it, watch
-   * nothing change, and reasonably conclude saving was broken.
+   * Every event has a hero, because every event can be the featured one, so
+   * this is written on the event like its name and its tagline. `content.body`
+   * is only what shows when nothing is featured at all, and it is not editable
+   * as page content for the same reason hero.title and hero.date are not: two
+   * places to change one thing is how the hero ends up describing last month.
    */
-  const eventBody = event?.heroBody?.trim();
-  const body = eventBody || content.body;
+  const body = event?.heroBody?.trim() || content.body;
   return (
     <section
       id="top"
@@ -104,14 +104,10 @@ export function Hero({
             className="animate-rise text-bone/70 mt-6 max-w-xl text-[1.0625rem] leading-relaxed"
             style={{ ["--rise-delay" as string]: "340ms" }}
           >
-            {eventBody ? (
-              body
-            ) : (
-              <Editable path="hero.body">{content.body}</Editable>
-            )}
+            {body}
           </p>
 
-          <EditNotice kind={eventBody ? "heroFromEvent" : "hero"} />
+          <EditNotice kind="hero" />
 
           <div
             className="animate-rise mt-10 flex flex-wrap items-center gap-3"

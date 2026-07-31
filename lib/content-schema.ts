@@ -87,14 +87,8 @@ export const CONTENT_GROUPS: ContentGroup[] = [
     id: "hero",
     title: "Hero",
     description:
-      "The full-height block at the top of the homepage. Its name, tagline, date, location and photograph all come from whichever event is marked Featured, so edit those under Events. The paragraph and the three button labels are set here. The line above the name is always \"1127 Events Presents\" and is not editable.",
+      "The full-height block at the top of the homepage. Its name, tagline, paragraph, date, location and photograph all come from whichever event is marked Featured, so edit those on the event. Only the three button labels are set here. The line above the name is always \"1127 Events Presents\" and is not editable.",
     fields: [
-      {
-        key: "hero.body",
-        label: "Body",
-        kind: "textarea",
-        hint: "Deliberately not the event summary, which already appears in full in the section below.",
-      },
       { key: "hero.primaryCta.label", label: "First button", kind: "text" },
       { key: "hero.secondaryCta.label", label: "Second button", kind: "text" },
       { key: "hero.rsvpCta", label: "Third button", kind: "text" },

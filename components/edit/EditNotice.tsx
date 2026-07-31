@@ -18,12 +18,7 @@ import { useEdit } from "./EditContext";
  */
 const NOTICES = {
   hero: {
-    text: "The name, tagline, date and photograph above come from whichever event is Featured, so they change there. Everything else here you can click.",
-    href: "/admin/events",
-    link: "Edit events",
-  },
-  heroFromEvent: {
-    text: "Everything in this hero comes from the featured event, this paragraph included. Change it on the event.",
+    text: "The name, tagline, paragraph, date and photograph all come from the featured event, so they are written on the event. The buttons below you can click.",
     href: "/admin/events",
     link: "Edit events",
   },

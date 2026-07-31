@@ -198,6 +198,11 @@ describe("the hero follows the featured event", () => {
     for (const key of [
       "hero.title",
       "hero.tagline",
+      // The paragraph belongs on the event with the rest of them. It was page
+      // content, so the hero described one specific night in four fields and
+      // the series in general in the fifth, and there was no way to write a
+      // line about the night being announced.
+      "hero.body",
       "hero.date",
       "hero.location",
       "hero.image",
@@ -211,8 +216,11 @@ describe("the hero follows the featured event", () => {
     }
   });
 
-  test("brand framing that is not event-specific stays editable", () => {
-    assert.equal(CONTENT_FIELDS.has("hero.body"), true);
+  test("the button labels stay editable, since they are not about a night", () => {
+    // What is left in the hero once the event owns the rest of it.
+    assert.equal(CONTENT_FIELDS.has("hero.primaryCta.label"), true);
+    assert.equal(CONTENT_FIELDS.has("hero.secondaryCta.label"), true);
+    assert.equal(CONTENT_FIELDS.has("hero.rsvpCta"), true);
   });
 
   test("the line above the event name is a constant, not content", () => {
@@ -305,4 +313,24 @@ describe("the schema covers what the page actually renders", () => {
       );
     });
   }
+});
+
+describe("every event can be the featured one", () => {
+  /**
+   * So everything the hero renders about a night is written on the event, and
+   * none of it is page content. Page content only supplies what shows when
+   * nothing is featured at all.
+   */
+  test("no hero field describing an event is editable as page content", () => {
+    const heroFields = [...CONTENT_FIELDS.keys()].filter((key) =>
+      key.startsWith("hero."),
+    );
+    // The three button labels are the only things in that block that belong to
+    // the site rather than to a night.
+    assert.deepEqual(heroFields.sort(), [
+      "hero.primaryCta.label",
+      "hero.rsvpCta",
+      "hero.secondaryCta.label",
+    ]);
+  });
 });
