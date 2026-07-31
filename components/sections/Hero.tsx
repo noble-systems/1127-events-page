@@ -32,6 +32,17 @@ export function Hero({
   const image = event?.image ?? content.image;
   const imageAlt = event?.imageAlt?.trim() || content.imageAlt;
   const shotNote = event?.shotNote?.trim() || content.shotNote;
+
+  /**
+   * The paragraph belongs to the event when there is one.
+   *
+   * `content.body` is the fallback for a site with nothing featured. Which of
+   * the two is winning decides whether this is editable here: offering a text
+   * box over a value the event supplies would let somebody type into it, watch
+   * nothing change, and reasonably conclude saving was broken.
+   */
+  const eventBody = event?.heroBody?.trim();
+  const body = eventBody || content.body;
   return (
     <section
       id="top"
@@ -93,10 +104,14 @@ export function Hero({
             className="animate-rise text-bone/70 mt-6 max-w-xl text-[1.0625rem] leading-relaxed"
             style={{ ["--rise-delay" as string]: "340ms" }}
           >
-            <Editable path="hero.body">{content.body}</Editable>
+            {eventBody ? (
+              body
+            ) : (
+              <Editable path="hero.body">{content.body}</Editable>
+            )}
           </p>
 
-          <EditNotice kind="hero" />
+          <EditNotice kind={eventBody ? "heroFromEvent" : "hero"} />
 
           <div
             className="animate-rise mt-10 flex flex-wrap items-center gap-3"

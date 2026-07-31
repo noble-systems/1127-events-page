@@ -120,6 +120,7 @@ describe("message bodies", () => {
     name: "Sun Club",
     tagline: "",
     summary: "",
+    heroBody: "",
     status: "",
     date: "Saturday, May 16",
     location: "Old Town Scottsdale",

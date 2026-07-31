@@ -30,6 +30,7 @@ const EVENT = {
   name: "",
   tagline: "A tagline.",
   summary: "A summary.",
+  heroBody: "",
   status: "Announcing Soon",
   date: "Dates Announcing Soon",
   location: "Old Town Scottsdale, Arizona",

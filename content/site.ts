@@ -227,6 +227,8 @@ export const seedEvents: EventRecord[] = [
     id: "sun-club",
     rsvpEnabled: true,
     name: "Sun Club",
+    heroBody:
+      "A curated poolside series bringing together hometown DJs, Scottsdale sunshine, thoughtful production, and the people who make the city move.",
     tagline: "House music under the desert sun.",
     summary:
       "A poolside house series in Old Town Scottsdale. Hometown DJs, water you're meant to get into, and a room that builds from afternoon into golden hour.",
@@ -256,6 +258,7 @@ export const seedEvents: EventRecord[] = [
     // Nothing to sign up to yet, so no RSVP button and no signup page.
     rsvpEnabled: false,
     name: "More concepts in development",
+    heroBody: "",
     tagline: "Sun Club is the first series, not the last.",
     summary:
       "1127 builds event concepts around music, community and production. If you run a venue or brand with a room worth filling, the next one can start with a conversation.",

@@ -28,6 +28,18 @@ export type EventRecord = {
   tagline: string;
   summary: string;
   /**
+   * The short paragraph under the tagline in the hero.
+   *
+   * Everything else in that block already came from the event; this one came
+   * from site content, so the hero described the featured night in four fields
+   * and the series in general in the fifth. Blank falls back to hero.body,
+   * which is what shows when no event is featured at all.
+   *
+   * Deliberately not `summary`: that appears in full in the series intro
+   * further down, and repeating it twice on one screen reads as a mistake.
+   */
+  heroBody: string;
+  /**
    * Whether this event is accepting RSVPs.
    *
    * Separate from `published`, because an event can be worth showing on the

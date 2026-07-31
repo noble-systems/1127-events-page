@@ -249,3 +249,40 @@ describe("accepting RSVPs is separate from being published", () => {
     }
   });
 });
+
+describe("the hero paragraph belongs to the event", () => {
+  /**
+   * Everything else in the hero already came from the featured event: the name,
+   * the tagline, the date, the photograph. The paragraph came from site
+   * content, so the block described one specific night in four fields and the
+   * series in general in the fifth.
+   */
+  test("it round-trips through the form", () => {
+    const values = readEventBody(
+      { ...valid, heroBody: "  One night at the pool.  " },
+      GENRE_LIST,
+    );
+    const input = toEventInput("x", values, GENRE_LIST);
+    assert.equal(input.heroBody, "One night at the pool.");
+    assert.equal(eventToFormValues(input, GENRE_LIST).heroBody, "One night at the pool.");
+  });
+
+  test("it is optional", () => {
+    // Blank means "use the standard line", which is what shows when no event is
+    // featured at all. Requiring it would block drafting an event.
+    assert.equal(validateEvent({ ...valid, heroBody: "" }).heroBody, undefined);
+    assert.equal(toEventInput("x", { ...valid, heroBody: "   " }, GENRE_LIST).heroBody, "");
+  });
+
+  test("a record written before the field existed does not break", () => {
+    // eventToFormValues reads it off stored events, and older rows have no such
+    // property at all.
+    const { heroBody, ...older } = toEventInput("x", valid, GENRE_LIST);
+    assert.equal(typeof heroBody, "string");
+    assert.equal(
+      eventToFormValues(older as Parameters<typeof eventToFormValues>[0], GENRE_LIST)
+        .heroBody,
+      "",
+    );
+  });
+});

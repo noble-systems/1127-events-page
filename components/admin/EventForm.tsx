@@ -245,6 +245,24 @@ export function EventForm({
               onChange={(e) => set("summary", e.target.value)}
             />
           </Field>
+
+          <Field
+            id="ev-hero-body"
+            label="Hero paragraph"
+            error={errors.heroBody}
+            hint="Shown under the tagline in the hero, but only while this event is Featured. Leave it blank to use the standard line about the series. Deliberately not the summary above, which already appears in full further down the page."
+            className="sm:col-span-2"
+          >
+            <TextArea
+              id="ev-hero-body"
+              name="heroBody"
+              rows={3}
+              value={values.heroBody}
+              error={errors.heroBody}
+              disabled={busy}
+              onChange={(e) => set("heroBody", e.target.value)}
+            />
+          </Field>
         </div>
       </section>
 

@@ -22,6 +22,11 @@ const NOTICES = {
     href: "/admin/events",
     link: "Edit events",
   },
+  heroFromEvent: {
+    text: "Everything in this hero comes from the featured event, this paragraph included. Change it on the event.",
+    href: "/admin/events",
+    link: "Edit events",
+  },
   seriesPhoto: {
     text: "This photograph comes from the featured event, so it is changed there rather than here.",
     href: "/admin/events",
