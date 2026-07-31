@@ -71,7 +71,12 @@ function jwtVerifier() {
   if (!verifier) {
     verifier = CognitoJwtVerifier.create({
       userPoolId: USER_POOL_ID() as string,
-      tokenUse: "access",
+      // The ID token, not the access token. The access token's username is
+      // the pool's UUID for the user, and the session needs the admin's email:
+      // it is shown in the dashboard header and it is where campaign test
+      // sends go. The access token never carried it; the ID token does, as a
+      // verified claim.
+      tokenUse: "id",
       clientId: CLIENT_ID() as string,
     });
   }
@@ -323,7 +328,7 @@ export async function verifyLoginCode(
       }),
     );
 
-    const token = result.AuthenticationResult?.AccessToken;
+    const token = result.AuthenticationResult?.IdToken;
     if (!token) {
       return {
         status: "error",
@@ -392,10 +397,18 @@ export async function currentAdmin(): Promise<AdminUser | null> {
 
   try {
     const payload = await jwtVerifier().verify(token);
-    const email =
-      (payload as { username?: string; sub?: string }).username ??
-      (payload as { sub?: string }).sub ??
-      "admin";
+    /**
+     * This used to read the access token's username, a Cognito UUID, and call
+     * it an email, with the literal string "admin" as a last resort. Nothing
+     * noticed for weeks because nothing used it as an address; the campaign
+     * test send was the first to try, and SES rejected the UUID with
+     * "Missing final '@domain'".
+     *
+     * No email claim means no usable admin identity, so it fails closed to a
+     * fresh sign-in rather than inventing one.
+     */
+    const email = (payload as { email?: string }).email;
+    if (!email || !email.includes("@")) return null;
     return { email, via: "cognito" };
   } catch {
     return null;

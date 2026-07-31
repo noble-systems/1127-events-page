@@ -125,6 +125,18 @@ export async function POST(request: Request) {
     if (!admin) {
       return NextResponse.json({ ok: false, message: "Not signed in." }, { status: 401 });
     }
+    // The session identity was a Cognito UUID for weeks and nothing noticed
+    // until SES refused it as an address. If it ever regresses, say so plainly
+    // rather than letting SES translate it.
+    if (!admin.email.includes("@")) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: `Your session identity ("${admin.email}") is not an email address. Sign out and back in.`,
+        },
+        { status: 500 },
+      );
+    }
 
     // A stand-in record so the test renders exactly what a real recipient gets,
     // unsubscribe link included. The link opts out the admin's own address,
