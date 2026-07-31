@@ -47,7 +47,10 @@ export async function PUT(request: Request) {
     const field = CONTENT_FIELDS.get(key);
     if (!field) continue;
 
-    const value = normaliseValue(field.kind, raw);
+    // pairKeys matters: partner.brings stores title/body, the details table
+    // stores label/value, and normalising without it would rename the
+    // properties the section reads.
+    const value = normaliseValue(field.kind, raw, field.pairKeys);
 
     // null means "no override": the field falls back to the committed default.
     // That is how a field gets reset, so it is stored as an absence.

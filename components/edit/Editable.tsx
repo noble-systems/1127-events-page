@@ -8,11 +8,16 @@ import { useEdit } from "./EditContext";
  *
  * Outside edit mode this is `<>{children}</>` and nothing more, so the public
  * page carries no wrapper elements, no listeners and no extra bytes. Inside it,
- * the same text becomes a contentEditable region with an outline on hover.
+ * the same text becomes a contentEditable region.
+ *
+ * `inline-block` rather than `inline` is load-bearing. An inline element that
+ * wraps onto three lines draws three separate outlines, one per line fragment,
+ * which looked like a stack of misaligned boxes across a heading. An
+ * inline-block wraps its own content and draws one rectangle around all of it.
  *
  * `suppressContentEditableWarning` is deliberate: React warns when it manages
  * the children of a contentEditable node, and here the browser is the one
- * mutating them. We read the text back on blur rather than on every keystroke,
+ * mutating them. The text is read back on blur rather than on every keystroke,
  * so React never fights the caret.
  */
 export function Editable({
@@ -21,7 +26,7 @@ export function Editable({
   className = "",
   children,
 }: {
-  /** The content key, e.g. "hero.body". */
+  /** The content key, e.g. "partner.title". */
   path: string;
   as?: "span" | "div" | "p" | "h1" | "h2" | "h3";
   className?: string;
@@ -31,8 +36,7 @@ export function Editable({
   const ref = useRef<HTMLElement>(null);
 
   /**
-   * Push the value in only when it changed from outside, such as Discard.
-   *
+   * Push a value in only when it changed from outside, such as Discard.
    * Writing on every render would reset the caret to the start of the line
    * halfway through a word.
    */
@@ -45,12 +49,6 @@ export function Editable({
 
   if (!edit) return <>{children}</>;
 
-  const commit = () => {
-    const node = ref.current;
-    if (node) edit.set(path, node.innerText.replace(/ /g, " ").trim());
-    edit.setActive(null);
-  };
-
   return (
     <Tag
       ref={ref as React.Ref<never>}
@@ -62,10 +60,14 @@ export function Editable({
       aria-label={`Edit ${path}`}
       data-edit-path={path}
       onFocus={() => edit.setActive(path)}
-      onBlur={commit}
+      onBlur={() => {
+        const node = ref.current;
+        if (node) edit.set(path, node.innerText.replace(/ /g, " ").trim());
+        edit.setActive(null);
+      }}
       onKeyDown={(event: React.KeyboardEvent) => {
         // Enter commits rather than inserting a line break: none of these are
-        // multi-paragraph fields, and a stray <br> is invisible until it
+        // multi-paragraph fields, and a stray break is invisible until it
         // reaches the live page.
         if (event.key === "Enter") {
           event.preventDefault();
@@ -77,8 +79,8 @@ export function Editable({
           (event.currentTarget as HTMLElement).blur();
         }
       }}
-      className={`${className} cursor-text rounded-[3px] outline-none ring-offset-2 transition-shadow duration-150 hover:ring-2 hover:ring-cobalt/40 focus:ring-2 focus:ring-cobalt ${
-        edit.active === path ? "ring-2 ring-cobalt" : ""
+      className={`${className} edit-target ${
+        edit.active === path ? "edit-target-active" : ""
       }`}
     >
       {children}
@@ -86,68 +88,213 @@ export function Editable({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Lists                                                                      */
+/* -------------------------------------------------------------------------- */
+
 /**
- * A block of paragraphs, edited as one region.
+ * One item of a list, editable in place, with a remove control.
  *
- * The stored value is a list, one entry per paragraph, and pressing Enter here
- * makes a new one. Editing each paragraph separately would have been simpler
- * but leaves no way to add or remove one without opening the form editor.
+ * Deliberately takes no function props. The first attempt handed a `render`
+ * callback to a client component from a server one, which React refuses:
+ * "Functions cannot be passed directly to Client Components". The public
+ * homepage threw on every request while the build and the whole test suite
+ * stayed green, because nothing there renders the page. Only fetching it found
+ * the fault.
+ *
+ * So the section keeps its own map and its own markup, and each item wraps its
+ * text in one of these. Nothing crosses the boundary but strings and numbers.
+ *
+ * The whole list lives in the editor as newline-separated text, which is the
+ * shape the save endpoint wants, so an item edits by replacing its own line.
  */
-export function EditableList({
+function useList(path: string) {
+  const edit = useEdit();
+  const lines = (edit?.value(path) ?? "").split("\n");
+  return {
+    edit,
+    lines,
+    commit: (next: string[]) =>
+      edit?.set(path, next.filter((line) => line.trim() !== "").join("\n")),
+  };
+}
+
+function RemoveButton({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      data-edit-control=""
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      className="text-clay/60 hover:text-clay ml-1.5 shrink-0 align-middle text-[0.75rem] leading-none opacity-40 transition-opacity duration-150 hover:opacity-100"
+    >
+      ✕
+    </button>
+  );
+}
+
+export function EditItem({
   path,
-  className = "",
+  index,
   children,
 }: {
   path: string;
-  className?: string;
+  index: number;
   children: React.ReactNode;
 }) {
-  const edit = useEdit();
-  const ref = useRef<HTMLDivElement>(null);
-
-  const incoming = edit?.value(path);
-  useEffect(() => {
-    const node = ref.current;
-    if (!node || incoming === undefined) return;
-    const shown = node.innerText.replace(/ /g, " ");
-    if (shown.split("\n").map((l) => l.trim()).filter(Boolean).join("\n") !== incoming) {
-      node.innerText = incoming;
-    }
-  }, [incoming]);
+  const { edit, lines, commit } = useList(path);
+  const ref = useRef<HTMLSpanElement>(null);
 
   if (!edit) return <>{children}</>;
 
   return (
-    <div
-      ref={ref}
-      contentEditable
-      suppressContentEditableWarning
-      spellCheck={false}
-      role="textbox"
-      aria-multiline="true"
-      tabIndex={0}
-      aria-label={`Edit ${path}`}
-      data-edit-path={path}
-      onFocus={() => edit.setActive(path)}
-      onBlur={() => {
-        const node = ref.current;
-        if (node) {
-          // Blank lines are dropped, matching normaliseValue, so what you see
-          // after blurring is what the page will actually render.
-          const lines = node.innerText
-            .replace(/ /g, " ")
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean);
-          edit.set(path, lines.join("\n"));
-        }
-        edit.setActive(null);
-      }}
-      className={`${className} cursor-text rounded-[3px] outline-none ring-offset-2 transition-shadow duration-150 hover:ring-2 hover:ring-cobalt/40 focus:ring-2 focus:ring-cobalt ${
-        edit.active === path ? "ring-2 ring-cobalt" : ""
-      }`}
+    <>
+      <span
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        spellCheck={false}
+        role="textbox"
+        tabIndex={0}
+        aria-label={`Edit item ${index + 1}`}
+        data-edit-path={`${path}.${index}`}
+        onFocus={() => edit.setActive(`${path}.${index}`)}
+        onBlur={(event) => {
+          const text = event.currentTarget.innerText.replace(/ /g, " ").trim();
+          edit.setActive(null);
+          if (text === lines[index]) return;
+          const next = [...lines];
+          next[index] = text;
+          commit(next);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+        }}
+        className={`edit-target ${
+          edit.active === `${path}.${index}` ? "edit-target-active" : ""
+        }`}
+      >
+        {children}
+      </span>
+      <RemoveButton
+        label={`Remove item ${index + 1}`}
+        onClick={() => commit(lines.filter((_, i) => i !== index))}
+      />
+    </>
+  );
+}
+
+/**
+ * Half of a two-column row: "Label: value" stored as one line.
+ *
+ * Editing the label and the value separately keeps the two-column layout, which
+ * editing the raw line would have flattened. The colon is the separator, and
+ * only the first one counts, because values contain colons.
+ */
+export function EditPair({
+  path,
+  index,
+  part,
+  children,
+}: {
+  path: string;
+  index: number;
+  part: "label" | "value";
+  children: React.ReactNode;
+}) {
+  const { edit, lines, commit } = useList(path);
+
+  if (!edit) return <>{children}</>;
+
+  const key = `${path}.${index}.${part}`;
+  const line = lines[index] ?? "";
+  const at = line.indexOf(":");
+  const left = (at === -1 ? line : line.slice(0, at)).trim();
+  const right = at === -1 ? "" : line.slice(at + 1).trim();
+
+  return (
+    <>
+      <span
+        contentEditable
+        suppressContentEditableWarning
+        spellCheck={false}
+        role="textbox"
+        tabIndex={0}
+        aria-label={`Edit ${part} ${index + 1}`}
+        data-edit-path={key}
+        onFocus={() => edit.setActive(key)}
+        onBlur={(event) => {
+          // A colon typed into either half would split the row somewhere new,
+          // so it is folded to a dash rather than silently rewriting the pair.
+          const text = event.currentTarget.innerText
+            .replace(/ /g, " ")
+            .replace(/:/g, " -")
+            .trim();
+          edit.setActive(null);
+          const next = [...lines];
+          next[index] =
+            part === "label" ? `${text}: ${right}` : `${left}: ${text}`;
+          if (next[index] === lines[index]) return;
+          commit(next);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+        }}
+        className={`edit-target ${edit.active === key ? "edit-target-active" : ""}`}
+      >
+        {children}
+      </span>
+      {part === "label" ? (
+        <RemoveButton
+          label={`Remove row ${index + 1}`}
+          onClick={() => commit(lines.filter((_, i) => i !== index))}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Appends an item. Renders nothing outside the editor.
+ *
+ * The wording lives here rather than arriving as a prop. A client component's
+ * props are serialised into the payload the public page ships even when the
+ * component renders null, so a `label="Add row"` prop put those words on the
+ * live homepage twice. A short variant flag costs four bytes and says nothing.
+ */
+const ADD_LABEL = {
+  item: { text: "Add item", blank: "New item" },
+  row: { text: "Add row", blank: "Label: value" },
+  paragraph: { text: "Add paragraph", blank: "New paragraph" },
+} as const;
+
+export function EditAdd({
+  path,
+  variant = "item",
+}: {
+  path: string;
+  variant?: keyof typeof ADD_LABEL;
+}) {
+  const { edit, lines, commit } = useList(path);
+  if (!edit) return null;
+
+  const { text, blank } = ADD_LABEL[variant];
+
+  return (
+    <button
+      type="button"
+      data-edit-control=""
+      onClick={() => commit([...lines, blank])}
+      className="text-cobalt mt-3 text-[0.875rem] underline-offset-4 hover:underline"
     >
-      {children}
-    </div>
+      + {text}
+    </button>
   );
 }

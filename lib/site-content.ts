@@ -6,6 +6,7 @@ import {
   mediaSlots,
   partner,
   sunClub,
+  upcoming,
 } from "../content/site.ts";
 import { CONTENT_FIELDS, isEditableKey } from "./content-schema.ts";
 
@@ -28,6 +29,7 @@ export type ContentOverrides = Record<string, unknown>;
 /** The shape sections consume. Same as the static exports, post-merge. */
 export type SiteContent = {
   hero: typeof hero;
+  upcoming: typeof upcoming;
   sunClub: typeof sunClub;
   ambassadors: typeof ambassadors;
   mediaSection: typeof mediaSection;
@@ -41,6 +43,7 @@ export function defaultContent(): SiteContent {
   // level constants for every other request in the same Lambda.
   return structuredClone({
     hero,
+    upcoming,
     sunClub,
     ambassadors,
     mediaSection,
@@ -120,7 +123,11 @@ export function mergeContent(overrides: ContentOverrides | null): SiteContent {
     // Without this, clearing a field in the dashboard would blank the section
     // rather than restore the committed copy.
     if (typeof value === "string" && value.trim() === "") continue;
-    if (field.kind === "list" && Array.isArray(value) && value.length === 0)
+    if (
+      (field.kind === "list" || field.kind === "pairs") &&
+      Array.isArray(value) &&
+      value.length === 0
+    )
       continue;
 
     writePath(content, key, value);
@@ -136,7 +143,39 @@ export function mergeContent(overrides: ContentOverrides | null): SiteContent {
  * trimmed string. Returning null means "no override", which is how a field gets
  * reset to the committed default.
  */
-export function normaliseValue(kind: string, raw: unknown): unknown {
+export function normaliseValue(
+  kind: string,
+  raw: unknown,
+  pairKeys: [string, string] = ["label", "value"],
+): unknown {
+  if (kind === "pairs") {
+    const lines =
+      typeof raw === "string"
+        ? raw.split("\n")
+        : Array.isArray(raw)
+          ? raw.map((row) =>
+              row && typeof row === "object"
+                ? `${(row as Record<string, string>)[pairKeys[0]] ?? ""}: ${(row as Record<string, string>)[pairKeys[1]] ?? ""}`
+                : String(row),
+            )
+          : [];
+
+    const rows = lines
+      .map((line) => {
+        const at = line.indexOf(":");
+        // A line with no colon is a label with nothing after it, which is more
+        // useful than dropping what somebody typed.
+        const left = (at === -1 ? line : line.slice(0, at)).trim();
+        const right = at === -1 ? "" : line.slice(at + 1).trim();
+        return left || right
+          ? { [pairKeys[0]]: left, [pairKeys[1]]: right }
+          : null;
+      })
+      .filter(Boolean);
+
+    return rows.length ? rows : null;
+  }
+
   if (kind === "list") {
     const lines =
       typeof raw === "string"

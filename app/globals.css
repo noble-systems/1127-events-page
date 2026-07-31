@@ -269,3 +269,71 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Live editing                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Marks everything the live editor can change.
+ *
+ * These classes only ever appear inside /admin/preview: the Editable wrappers
+ * render nothing at all when no edit context is present, so a visitor never
+ * receives an element carrying one.
+ *
+ * The outline is always on rather than on hover. Hover-only meant hunting
+ * around the page to discover what was editable, which is guessing with extra
+ * steps. A permanent dotted underline says "this one" without competing with
+ * the design, and the full box only appears once you are actually on it.
+ *
+ * inline-block matters: an inline element wrapping onto three lines draws three
+ * outlines, one per line fragment, which reads as a stack of broken boxes.
+ */
+.edit-target {
+  display: inline-block;
+  max-width: 100%;
+  cursor: text;
+  border-radius: 3px;
+  outline: none;
+  text-decoration: underline dotted color-mix(in srgb, var(--color-cobalt) 45%, transparent);
+  text-underline-offset: 0.28em;
+  text-decoration-thickness: 2px;
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.edit-target:hover {
+  background-color: color-mix(in srgb, var(--color-cobalt) 8%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-cobalt) 35%, transparent);
+}
+
+.edit-target:focus,
+.edit-target-active {
+  background-color: color-mix(in srgb, var(--color-cobalt) 6%, transparent);
+  box-shadow: 0 0 0 2px var(--color-cobalt);
+  text-decoration: none;
+}
+
+/* On the dark sections the cobalt underline disappears, so use the warm accent. */
+.on-dark .edit-target,
+[data-tone="deep"] .edit-target,
+[data-tone="ink"] .edit-target {
+  text-decoration-color: color-mix(in srgb, var(--color-sun) 60%, transparent);
+}
+
+.on-dark .edit-target:hover,
+[data-tone="deep"] .edit-target:hover,
+[data-tone="ink"] .edit-target:hover {
+  background-color: color-mix(in srgb, var(--color-sun) 14%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-sun) 55%, transparent);
+}
+
+.on-dark .edit-target:focus,
+.on-dark .edit-target-active,
+[data-tone="deep"] .edit-target:focus,
+[data-tone="deep"] .edit-target-active,
+[data-tone="ink"] .edit-target:focus,
+[data-tone="ink"] .edit-target-active {
+  box-shadow: 0 0 0 2px var(--color-sun);
+}

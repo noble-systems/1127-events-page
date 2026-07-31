@@ -1,7 +1,8 @@
+import { Editable } from "@/components/edit/Editable";
 import { EventCard } from "@/components/EventCard";
 import { Reveal } from "@/components/ui/Reveal";
 import { Section, SectionHeader } from "@/components/ui/Section";
-import { facts } from "@/content/site";
+import { facts, upcoming } from "@/content/site";
 import type { EventRecord } from "@/lib/types";
 
 function Facts() {
@@ -24,14 +25,20 @@ function Facts() {
   );
 }
 
-export function UpcomingEvents({ events }: { events: EventRecord[] }) {
+export function UpcomingEvents({
+  events,
+  copy = upcoming,
+}: {
+  events: EventRecord[];
+  copy?: typeof upcoming;
+}) {
   return (
     <Section id="events" tone="bone" size="lg" labelledBy="events-title">
       <SectionHeader
         id="events-title"
-        eyebrow="Upcoming"
-        title="What's next from 1127."
-        intro="1127 Events produces its own concepts. Sun Club is the series we're building right now, and the format we bring to venue partners."
+        eyebrow={<Editable path="upcoming.eyebrow">{copy.eyebrow}</Editable>}
+        title={<Editable path="upcoming.title">{copy.title}</Editable>}
+        intro={<Editable path="upcoming.intro">{copy.intro}</Editable>}
       />
 
       <div className="mt-14 grid gap-6 lg:grid-cols-3">

@@ -1,4 +1,5 @@
-import { Editable, EditableList } from "@/components/edit/Editable";
+import { EditAdd, EditItem, EditPair, Editable } from "@/components/edit/Editable";
+import { EditNotice } from "@/components/edit/EditNotice";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Media } from "@/components/ui/Media";
 import { Reveal } from "@/components/ui/Reveal";
@@ -68,6 +69,8 @@ export function SunClubIntro({
               />
             </div>
           </Reveal>
+
+          <EditNotice kind="seriesPhoto" />
         </div>
 
         <div className="lg:col-span-6 lg:col-start-7">
@@ -84,29 +87,37 @@ export function SunClubIntro({
             </h2>
           </Reveal>
 
-          <EditableList path="sunClub.paragraphs">
-            {paragraphs.map((paragraph, index) => (
-              <Reveal key={index} delay={110 + index * 60}>
-                <p className="text-ink/70 mt-6 text-[1.0625rem] leading-relaxed">
+          {paragraphs.map((paragraph, index) => (
+            <Reveal key={index} delay={110 + index * 60}>
+              <p className="text-ink/70 mt-6 text-[1.0625rem] leading-relaxed">
+                <EditItem path="sunClub.paragraphs" index={index}>
                   {paragraph}
-                </p>
-              </Reveal>
-            ))}
-          </EditableList>
+                </EditItem>
+              </p>
+            </Reveal>
+          ))}
+          <EditAdd path="sunClub.paragraphs" variant="paragraph" />
 
           <Reveal delay={240}>
             <dl className="border-ink/15 mt-10 border-t">
-              {details.map((detail) => (
+              {details.map((detail, index) => (
                 <div
-                  key={detail.label}
+                  key={detail.label || index}
                   className="border-ink/15 flex flex-col gap-1 border-b py-4 sm:flex-row sm:items-baseline sm:gap-8"
                 >
                   <dt className="label-xs text-ink/65 w-28 shrink-0">
-                    {detail.label}
+                    <EditPair path="sunClub.details" index={index} part="label">
+                      {detail.label}
+                    </EditPair>
                   </dt>
-                  <dd className="text-ink/85 text-[0.9375rem]">{detail.value}</dd>
+                  <dd className="text-ink/85 text-[0.9375rem]">
+                    <EditPair path="sunClub.details" index={index} part="value">
+                      {detail.value}
+                    </EditPair>
+                  </dd>
                 </div>
               ))}
+              <EditAdd path="sunClub.details" variant="row" />
             </dl>
           </Reveal>
 

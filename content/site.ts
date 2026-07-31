@@ -155,6 +155,21 @@ export const navLinks = [
 ] as const;
 
 /* -------------------------------------------------------------------------- */
+/* Upcoming events section header                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Was written inline in the section component, which meant the one heading
+ * introducing every event on the page was the one thing nobody could edit.
+ */
+export const upcoming = {
+  eyebrow: "Upcoming",
+  title: "What's next from 1127.",
+  intro:
+    "1127 Events produces its own concepts. Sun Club is the series we're building right now, and the format we bring to venue partners.",
+};
+
+/* -------------------------------------------------------------------------- */
 /* Hero                                                                        */
 /* -------------------------------------------------------------------------- */
 

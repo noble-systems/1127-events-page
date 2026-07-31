@@ -30,6 +30,18 @@ export const FIELD_BY_KEY = new Map(
 
 export function toFormValue(field: ContentField, stored: unknown): string {
   if (stored === undefined || stored === null) return "";
+  if (field.kind === "pairs") {
+    const [left, right] = field.pairKeys ?? ["label", "value"];
+    return Array.isArray(stored)
+      ? stored
+          .map((row) =>
+            row && typeof row === "object"
+              ? `${(row as Record<string, string>)[left] ?? ""}: ${(row as Record<string, string>)[right] ?? ""}`
+              : String(row),
+          )
+          .join("\n")
+      : String(stored);
+  }
   if (field.kind === "list") {
     return Array.isArray(stored) ? stored.join("\n") : String(stored);
   }
@@ -138,7 +150,9 @@ export function FieldRow({
   }
 
   const Input =
-    field.kind === "textarea" || field.kind === "list" ? TextArea : TextInput;
+    field.kind === "textarea" || field.kind === "list" || field.kind === "pairs"
+      ? TextArea
+      : TextInput;
   const differsFromDefault = value.trim() !== placeholder.trim();
 
   return (
@@ -147,7 +161,7 @@ export function FieldRow({
         <Input
           id={id}
           name={field.key}
-          rows={field.kind === "list" ? 5 : 3}
+          rows={field.kind === "list" || field.kind === "pairs" ? 5 : 3}
           placeholder={placeholder}
           value={value}
           disabled={busy}

@@ -1,4 +1,4 @@
-import { Editable } from "@/components/edit/Editable";
+import { EditAdd, EditPair, Editable } from "@/components/edit/Editable";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { Eyebrow, Section } from "@/components/ui/Section";
@@ -52,17 +52,24 @@ export function Partner({
         <div className="lg:col-span-6 lg:col-start-7">
           <Reveal delay={100}>
             <dl className="border-ink/15 border-t">
-              {content.brings.map((item) => (
+              {content.brings.map((item, index) => (
                 <div
-                  key={item.title}
+                  key={item.title || index}
                   className="border-ink/15 flex flex-col gap-1 border-b py-3.5 sm:flex-row sm:items-baseline sm:gap-6"
                 >
                   <dt className="text-ink w-48 shrink-0 text-[0.9375rem] font-medium">
-                    {item.title}
+                    <EditPair path="partner.brings" index={index} part="label">
+                      {item.title}
+                    </EditPair>
                   </dt>
-                  <dd className="text-ink/65 text-[0.875rem]">{item.body}</dd>
+                  <dd className="text-ink/65 text-[0.875rem]">
+                    <EditPair path="partner.brings" index={index} part="value">
+                      {item.body}
+                    </EditPair>
+                  </dd>
                 </div>
               ))}
+              <EditAdd path="partner.brings" variant="row" />
             </dl>
           </Reveal>
         </div>

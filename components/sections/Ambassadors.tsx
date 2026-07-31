@@ -1,4 +1,4 @@
-import { Editable } from "@/components/edit/Editable";
+import { EditAdd, EditItem, Editable } from "@/components/edit/Editable";
 import { EditableImage } from "@/components/edit/EditableImage";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Media } from "@/components/ui/Media";
@@ -57,36 +57,52 @@ export function Ambassadors({
 
           <Reveal delay={180}>
             <div className="mt-10">
-              <h3 className="label-sm text-ink/65">{content.doTitle}</h3>
-              <ul className="mt-4 space-y-2.5">
-                {content.does.map((item) => (
+              <h3 className="label-sm text-ink/65">
+                <Editable path="ambassadors.doTitle">{content.doTitle}</Editable>
+              </h3>
+              <ul className="group/list mt-4 space-y-2.5">
+                {content.does.map((item, index) => (
                   <li
-                    key={item}
+                    key={item || index}
                     className="text-ink/80 flex items-start gap-3 text-[0.9375rem]"
                   >
                     <span
                       aria-hidden="true"
                       className="bg-terracotta mt-[0.6em] h-1 w-1 shrink-0 rounded-full"
                     />
-                    {item}
+                    <span>
+                      <EditItem path="ambassadors.does" index={index}>
+                        {item}
+                      </EditItem>
+                    </span>
                   </li>
                 ))}
+                <li>
+                  <EditAdd path="ambassadors.does" />
+                </li>
               </ul>
             </div>
           </Reveal>
 
           <Reveal delay={240}>
             <div className="mt-10">
-              <h3 className="label-sm text-ink/65">{content.forTitle}</h3>
-              <ul className="mt-4 flex flex-wrap gap-2">
-                {content.communities.map((community) => (
+              <h3 className="label-sm text-ink/65">
+                <Editable path="ambassadors.forTitle">{content.forTitle}</Editable>
+              </h3>
+              <ul className="group/list mt-4 flex flex-wrap gap-2">
+                {content.communities.map((community, index) => (
                   <li
-                    key={community}
+                    key={community || index}
                     className="border-ink/15 bg-bone-soft text-ink/75 rounded-full border px-3.5 py-2 text-[0.8125rem]"
                   >
-                    {community}
+                    <EditItem path="ambassadors.communities" index={index}>
+                      {community}
+                    </EditItem>
                   </li>
                 ))}
+                <li>
+                  <EditAdd path="ambassadors.communities" />
+                </li>
               </ul>
             </div>
           </Reveal>
@@ -112,17 +128,28 @@ export function Ambassadors({
 
           <Reveal delay={160}>
             <div className="border-ink/12 bg-sand/70 mt-6 rounded-3xl border p-7 sm:p-9">
-              <h3 className="label-sm text-ink/65">{content.benefitsTitle}</h3>
-              <ul className="mt-5 space-y-3">
-                {content.benefits.map((benefit) => (
+              <h3 className="label-sm text-ink/65">
+                <Editable path="ambassadors.benefitsTitle">
+                  {content.benefitsTitle}
+                </Editable>
+              </h3>
+              <ul className="group/list mt-5 space-y-3">
+                {content.benefits.map((benefit, index) => (
                   <li
-                    key={benefit}
+                    key={benefit || index}
                     className="text-ink/80 flex items-start gap-3 text-[0.9375rem] leading-relaxed"
                   >
                     <CheckIcon />
-                    {benefit}
+                    <span>
+                      <EditItem path="ambassadors.benefits" index={index}>
+                        {benefit}
+                      </EditItem>
+                    </span>
                   </li>
                 ))}
+                <li>
+                  <EditAdd path="ambassadors.benefits" />
+                </li>
               </ul>
 
               <div className="mt-8">

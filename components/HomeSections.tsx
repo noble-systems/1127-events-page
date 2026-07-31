@@ -38,7 +38,7 @@ export function HomeSections({
       <SiteHeader />
       <main id="main">
         <Hero content={content.hero} event={featured} />
-        <UpcomingEvents events={events} />
+        <UpcomingEvents events={events} copy={content.upcoming} />
         <SunClubIntro content={content.sunClub} event={featured} />
         <Ambassadors content={content.ambassadors} />
         <MediaGrid section={content.mediaSection} slots={content.mediaSlots} />

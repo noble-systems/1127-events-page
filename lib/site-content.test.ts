@@ -167,11 +167,15 @@ describe("the series intro follows the featured event", () => {
   test("no field the featured event owns is also editable as content", () => {
     // Two places to change one thing is how the intro ends up describing last
     // month's event. The event record owns these; the content editor must not.
+    // sunClub.details is deliberately NOT in this list. The section replaces
+    // Date, Setting and Venue with the event's own values and keeps the rest,
+    // so what is stored here is series-level (Music, Talent, Arc, Dress,
+    // Energy) and has no event to contradict. Those rows were otherwise
+    // uneditable anywhere.
     for (const key of [
       "sunClub.image",
       "sunClub.imageAlt",
       "sunClub.shotNote",
-      "sunClub.details",
     ]) {
       assert.equal(
         CONTENT_FIELDS.has(key),
@@ -221,4 +225,84 @@ describe("the hero follows the featured event", () => {
       assert.equal(CONTENT_FIELDS.has(key), false, `${key} is a constant now`);
     }
   });
+});
+
+describe("pairs fields", () => {
+  /**
+   * Two-column rows: the series details table and the partner list. They are
+   * arrays of objects rather than strings, and having no field kind for them
+   * was why whole blocks of the page could not be edited anywhere at all.
+   */
+  test('splits "Label: value" on the first colon only', () => {
+    // Values contain colons. Splitting on every one would eat the text.
+    assert.deepEqual(normaliseValue("pairs", "Arc: Afternoon: into golden hour"), [
+      { label: "Arc", value: "Afternoon: into golden hour" },
+    ]);
+  });
+
+  test("uses the property names the section reads", () => {
+    assert.deepEqual(
+      normaliseValue("pairs", "Audience strategy: Built before the date.", [
+        "title",
+        "body",
+      ]),
+      [{ title: "Audience strategy", body: "Built before the date." }],
+    );
+  });
+
+  test("a line with no colon keeps what was typed", () => {
+    // Dropping it would silently delete a row somebody was midway through.
+    assert.deepEqual(normaliseValue("pairs", "Dress"), [
+      { label: "Dress", value: "" },
+    ]);
+  });
+
+  test("blank lines are dropped and an empty result is no override", () => {
+    assert.deepEqual(normaliseValue("pairs", "A: 1\n\n  \nB: 2"), [
+      { label: "A", value: "1" },
+      { label: "B", value: "2" },
+    ]);
+    assert.equal(normaliseValue("pairs", "\n  \n"), null);
+  });
+
+  test("round-trips an array back to text", () => {
+    const rows = [{ label: "Music", value: "House, all day" }];
+    assert.deepEqual(normaliseValue("pairs", rows), rows);
+  });
+});
+
+describe("the schema covers what the page actually renders", () => {
+  /**
+   * The gap this closes.
+   *
+   * The schema held forty fields while the homepage rendered considerably more,
+   * so entire blocks (the details table, all three ambassador lists, the
+   * partner list, the heading above the events) were not editable in the
+   * dashboard or on the page. Nothing errored; they simply could not be
+   * changed, and the only way to notice was to try.
+   */
+  const mustBeEditable = [
+    "upcoming.eyebrow",
+    "upcoming.title",
+    "upcoming.intro",
+    "sunClub.details",
+    "ambassadors.doTitle",
+    "ambassadors.does",
+    "ambassadors.forTitle",
+    "ambassadors.communities",
+    "ambassadors.benefitsTitle",
+    "ambassadors.benefits",
+    "partner.brings",
+  ];
+
+  for (const key of mustBeEditable) {
+    test(`${key} is editable`, () => {
+      assert.ok(CONTENT_FIELDS.has(key), `${key} is rendered but not editable`);
+      assert.notEqual(
+        readPath(defaultContent(), key),
+        undefined,
+        `${key} does not resolve against the defaults`,
+      );
+    });
+  }
 });

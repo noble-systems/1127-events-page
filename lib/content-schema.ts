@@ -22,7 +22,16 @@ export type FieldKind =
   /** One item per line, stored as an array. */
   | "list"
   /** An image reference: "s3:key" from an upload, or a path under /public. */
-  | "image";
+  | "image"
+  /**
+   * Two-column rows, one per line, written "Label: value".
+   *
+   * The details table and the partner list are arrays of objects rather than
+   * strings, and leaving them out was why a whole block of the page could not
+   * be touched. A colon is the separator because it is what the rows already
+   * look like on screen.
+   */
+  | "pairs";
 
 export type ContentField = {
   /** Dot path into the content object. */
@@ -33,6 +42,8 @@ export type ContentField = {
   hint?: string;
   /** Alt text belongs with its image, so the editor can group them. */
   altFor?: string;
+  /** For "pairs": the two property names each row maps to. */
+  pairKeys?: [string, string];
 };
 
 export type ContentGroup = {
@@ -87,6 +98,17 @@ export const CONTENT_GROUPS: ContentGroup[] = [
     ],
   },
   {
+    id: "upcoming",
+    title: "Upcoming events",
+    description:
+      "The heading above the event cards. The cards themselves come from Events.",
+    fields: [
+      { key: "upcoming.eyebrow", label: "Eyebrow", kind: "text" },
+      { key: "upcoming.title", label: "Title", kind: "text" },
+      { key: "upcoming.intro", label: "Intro", kind: "textarea" },
+    ],
+  },
+  {
     id: "sunClub",
     title: "Series intro",
     description:
@@ -104,6 +126,12 @@ export const CONTENT_GROUPS: ContentGroup[] = [
         kind: "list",
         hint: "One paragraph per line. The featured event's summary replaces these.",
       },
+      {
+        key: "sunClub.details",
+        label: "Details table",
+        kind: "pairs",
+        hint: 'One row per line, written "Label: value". These are about the series, not one date.',
+      },
     ],
   },
   {
@@ -112,6 +140,31 @@ export const CONTENT_GROUPS: ContentGroup[] = [
     description: "The ambassador programme section and its application form.",
     fields: [
       { key: "ambassadors.eyebrow", label: "Eyebrow", kind: "text" },
+      { key: "ambassadors.doTitle", label: "List 1 heading", kind: "text" },
+      {
+        key: "ambassadors.does",
+        label: "What ambassadors do",
+        kind: "list",
+        hint: "One per line.",
+      },
+      { key: "ambassadors.forTitle", label: "List 2 heading", kind: "text" },
+      {
+        key: "ambassadors.communities",
+        label: "Who it's for",
+        kind: "list",
+        hint: "One per line.",
+      },
+      {
+        key: "ambassadors.benefitsTitle",
+        label: "List 3 heading",
+        kind: "text",
+      },
+      {
+        key: "ambassadors.benefits",
+        label: "What you get",
+        kind: "list",
+        hint: "One per line.",
+      },
       { key: "ambassadors.title", label: "Title", kind: "text" },
       { key: "ambassadors.intro", label: "Intro", kind: "textarea" },
       { key: "ambassadors.cta", label: "Button label", kind: "text" },
@@ -145,6 +198,13 @@ export const CONTENT_GROUPS: ContentGroup[] = [
       { key: "partner.title", label: "Title", kind: "text" },
       { key: "partner.intro", label: "Intro", kind: "textarea" },
       { key: "partner.cta", label: "Button label", kind: "text" },
+      {
+        key: "partner.brings",
+        label: "What 1127 brings",
+        kind: "pairs",
+        pairKeys: ["title", "body"],
+        hint: 'One per line, written "Title: description".',
+      },
     ],
   },
   {

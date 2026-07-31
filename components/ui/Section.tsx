@@ -40,6 +40,10 @@ export function Section({
     <section
       id={id}
       aria-labelledby={labelledBy}
+      // The live editor needs to know which sections are dark, so its editing
+      // markers can switch from cobalt to the warm accent and stay visible.
+      // Inert everywhere else.
+      data-tone={tone}
       className={`relative isolate ${TONE_CLASS[tone]} ${PADDING[size]} ${className}`}
     >
       {backdrop ? (
