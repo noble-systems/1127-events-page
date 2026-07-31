@@ -58,12 +58,12 @@ export function Partner({
                   className="border-ink/15 flex flex-col gap-1 border-b py-3.5 sm:flex-row sm:items-baseline sm:gap-6"
                 >
                   <dt className="text-ink w-48 shrink-0 text-[0.9375rem] font-medium">
-                    <EditPair path="partner.brings" index={index} part="label">
+                    <EditPair path="partner.brings" index={index} part="left">
                       {item.title}
                     </EditPair>
                   </dt>
                   <dd className="text-ink/65 text-[0.875rem]">
-                    <EditPair path="partner.brings" index={index} part="value">
+                    <EditPair path="partner.brings" index={index} part="right">
                       {item.body}
                     </EditPair>
                   </dd>

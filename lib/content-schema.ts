@@ -103,6 +103,13 @@ export const CONTENT_GROUPS: ContentGroup[] = [
       { key: "upcoming.eyebrow", label: "Eyebrow", kind: "text" },
       { key: "upcoming.title", label: "Title", kind: "text" },
       { key: "upcoming.intro", label: "Intro", kind: "textarea" },
+      {
+        key: "facts",
+        label: "Facts strip",
+        kind: "pairs",
+        pairKeys: ["value", "label"],
+        hint: 'One per line, written "Figure: what it means". Only claims that are actually true: the combined-experience number is the one hard figure the site asserts.',
+      },
     ],
   },
   {

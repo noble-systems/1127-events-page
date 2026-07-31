@@ -189,11 +189,17 @@ export function EditItem({
 }
 
 /**
- * Half of a two-column row: "Label: value" stored as one line.
+ * Half of a two-column row, stored as one line with a colon between.
  *
- * Editing the label and the value separately keeps the two-column layout, which
- * editing the raw line would have flattened. The colon is the separator, and
- * only the first one counts, because values contain colons.
+ * `part` is left or right of the colon, not a property name. The details table
+ * stores label-then-value and the facts strip stores value-then-label, so
+ * naming these after the properties would have meant "label" pointing at
+ * different halves in different sections. The field's pairKeys decide which
+ * property each half lands in.
+ *
+ * Editing the halves separately keeps the two-column layout, which editing the
+ * raw line would have flattened. Only the first colon separates, because values
+ * contain colons.
  */
 export function EditPair({
   path,
@@ -203,7 +209,7 @@ export function EditPair({
 }: {
   path: string;
   index: number;
-  part: "label" | "value";
+  part: "left" | "right";
   children: React.ReactNode;
 }) {
   const { edit, lines, commit } = useList(path);
@@ -224,7 +230,7 @@ export function EditPair({
         spellCheck={false}
         role="textbox"
         tabIndex={0}
-        aria-label={`Edit ${part} ${index + 1}`}
+        aria-label={`Edit row ${index + 1}, ${part} half`}
         data-edit-path={key}
         onFocus={() => edit.setActive(key)}
         onBlur={(event) => {
@@ -237,7 +243,7 @@ export function EditPair({
           edit.setActive(null);
           const next = [...lines];
           next[index] =
-            part === "label" ? `${text}: ${right}` : `${left}: ${text}`;
+            part === "left" ? `${text}: ${right}` : `${left}: ${text}`;
           if (next[index] === lines[index]) return;
           commit(next);
         }}
@@ -251,7 +257,7 @@ export function EditPair({
       >
         {children}
       </span>
-      {part === "label" ? (
+      {part === "left" ? (
         <RemoveButton
           label={`Remove row ${index + 1}`}
           onClick={() => commit(lines.filter((_, i) => i !== index))}

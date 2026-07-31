@@ -1,5 +1,6 @@
 import {
   ambassadors,
+  facts,
   finalCta,
   hero,
   mediaSection,
@@ -30,6 +31,7 @@ export type ContentOverrides = Record<string, unknown>;
 export type SiteContent = {
   hero: typeof hero;
   upcoming: typeof upcoming;
+  facts: typeof facts;
   sunClub: typeof sunClub;
   ambassadors: typeof ambassadors;
   mediaSection: typeof mediaSection;
@@ -44,6 +46,7 @@ export function defaultContent(): SiteContent {
   return structuredClone({
     hero,
     upcoming,
+    facts,
     sunClub,
     ambassadors,
     mediaSection,

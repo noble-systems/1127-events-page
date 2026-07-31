@@ -1,36 +1,52 @@
-import { Editable } from "@/components/edit/Editable";
+import { EditAdd, EditPair, Editable } from "@/components/edit/Editable";
 import { EventCard } from "@/components/EventCard";
 import { Reveal } from "@/components/ui/Reveal";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { facts, upcoming } from "@/content/site";
 import type { EventRecord } from "@/lib/types";
 
-function Facts() {
+function Facts({ rows }: { rows: typeof facts }) {
   return (
-    <dl className="border-ink/10 bg-ink/10 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border lg:grid-cols-4">
-      {facts.map((fact) => (
-        <div key={fact.label} className="bg-bone px-5 py-6 sm:px-6">
-          <dt className="sr-only">{fact.label}</dt>
-          <dd>
-            <span className="font-display block text-2xl leading-none sm:text-3xl">
-              {fact.value}
-            </span>
-            <span className="text-ink/65 mt-2.5 block text-[0.8125rem] leading-snug">
-              {fact.label}
-            </span>
-          </dd>
-        </div>
-      ))}
-    </dl>
+    <>
+      <dl className="border-ink/10 bg-ink/10 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border lg:grid-cols-4">
+        {/*
+          Term before definition in the DOM, reversed visually so the figure
+          still sits above its caption. The caption used to be rendered twice,
+          once screen-reader-only as the term and once visibly inside the
+          definition, which read the same words to a screen reader twice and
+          gave the editor two copies of one string to disagree about.
+        */}
+        {rows.map((fact, index) => (
+          <div
+            key={fact.label || index}
+            className="bg-bone flex flex-col-reverse px-5 py-6 sm:px-6"
+          >
+            <dt className="text-ink/65 mt-2.5 text-[0.8125rem] leading-snug">
+              <EditPair path="facts" index={index} part="right">
+                {fact.label}
+              </EditPair>
+            </dt>
+            <dd className="font-display text-2xl leading-none sm:text-3xl">
+              <EditPair path="facts" index={index} part="left">
+                {fact.value}
+              </EditPair>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <EditAdd path="facts" variant="row" />
+    </>
   );
 }
 
 export function UpcomingEvents({
   events,
   copy = upcoming,
+  factRows = facts,
 }: {
   events: EventRecord[];
   copy?: typeof upcoming;
+  factRows?: typeof facts;
 }) {
   return (
     <Section id="events" tone="bone" size="lg" labelledBy="events-title">
@@ -54,7 +70,7 @@ export function UpcomingEvents({
       </div>
 
       <Reveal delay={120} className="mt-14">
-        <Facts />
+        <Facts rows={factRows} />
       </Reveal>
     </Section>
   );

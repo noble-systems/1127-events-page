@@ -106,12 +106,12 @@ export function SunClubIntro({
                   className="border-ink/15 flex flex-col gap-1 border-b py-4 sm:flex-row sm:items-baseline sm:gap-8"
                 >
                   <dt className="label-xs text-ink/65 w-28 shrink-0">
-                    <EditPair path="sunClub.details" index={index} part="label">
+                    <EditPair path="sunClub.details" index={index} part="left">
                       {detail.label}
                     </EditPair>
                   </dt>
                   <dd className="text-ink/85 text-[0.9375rem]">
-                    <EditPair path="sunClub.details" index={index} part="value">
+                    <EditPair path="sunClub.details" index={index} part="right">
                       {detail.value}
                     </EditPair>
                   </dd>
