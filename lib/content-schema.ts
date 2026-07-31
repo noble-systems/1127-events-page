@@ -66,7 +66,12 @@ const MEDIA_SLOT_IDS = [
   "recap",
 ] as const;
 
-const mediaSlotFields = (): ContentField[] =>
+/**
+ * ARCHIVED with the media grid section; see components/sections/MediaGrid.tsx.
+ * Restoring the section means re-adding a "media" group whose fields come from
+ * this builder, which is why it stays rather than moving to git history.
+ */
+const _archivedMediaSlotFields = (): ContentField[] =>
   MEDIA_SLOT_IDS.flatMap((id, index) => [
     {
       key: `mediaSlots.${index}.image`,
@@ -153,18 +158,6 @@ export const CONTENT_GROUPS: ContentGroup[] = [
         kind: "text",
         altFor: "ambassadors.image",
       },
-    ],
-  },
-  {
-    id: "media",
-    title: "Photo grid",
-    description:
-      "The wall of images. Each tile falls back to a designed gradient until a photograph is set, so an empty tile never looks broken.",
-    fields: [
-      { key: "mediaSection.eyebrow", label: "Eyebrow", kind: "text" },
-      { key: "mediaSection.title", label: "Title", kind: "text" },
-      { key: "mediaSection.intro", label: "Intro", kind: "textarea" },
-      ...mediaSlotFields(),
     ],
   },
   {

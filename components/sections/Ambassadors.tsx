@@ -31,7 +31,7 @@ export function Ambassadors({
   content?: typeof ambassadors;
 } = {}) {
   return (
-    <Section id="ambassadors" tone="bone" size="lg" labelledBy="ambassadors-title">
+    <Section id="ambassadors" tone="sand" size="lg" labelledBy="ambassadors-title">
       <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-16">
         <div className="lg:col-span-6">
           <Reveal>
@@ -127,7 +127,7 @@ export function Ambassadors({
           </Reveal>
 
           <Reveal delay={160}>
-            <div className="border-ink/12 bg-sand/70 mt-6 rounded-3xl border p-7 sm:p-9">
+            <div className="border-ink/12 bg-bone/70 mt-6 rounded-3xl border p-7 sm:p-9">
               <h3 className="label-sm text-ink/65">
                 <Editable path="ambassadors.benefitsTitle">
                   {content.benefitsTitle}

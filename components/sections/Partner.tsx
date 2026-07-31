@@ -14,7 +14,7 @@ export function Partner({
   content?: typeof partner;
 } = {}) {
   return (
-    <Section id="partner" tone="sand" size="lg" labelledBy="partner-title">
+    <Section id="partner" tone="bone" size="lg" labelledBy="partner-title">
       <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
         <div className="lg:col-span-5">
           <Reveal>

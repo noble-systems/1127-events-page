@@ -3,7 +3,6 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Ambassadors } from "@/components/sections/Ambassadors";
 import { FinalCta } from "@/components/sections/FinalCta";
 import { Hero } from "@/components/sections/Hero";
-import { MediaGrid } from "@/components/sections/MediaGrid";
 import { Partner } from "@/components/sections/Partner";
 import { UpcomingEvents } from "@/components/sections/UpcomingEvents";
 import type { SiteContent } from "@/lib/site-content";
@@ -43,7 +42,6 @@ export function HomeSections({
           factRows={content.facts}
         />
         <Ambassadors content={content.ambassadors} />
-        <MediaGrid section={content.mediaSection} slots={content.mediaSlots} />
         <Partner content={content.partner} />
         <FinalCta content={content.finalCta} />
       </main>

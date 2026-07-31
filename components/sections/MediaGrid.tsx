@@ -1,3 +1,21 @@
+/**
+ * ARCHIVED, deliberately unmounted. Do not delete.
+ *
+ * Eight placeholder tiles and a recap-film badge with no footage behind any of
+ * them sold nothing; the section is parked until real photography exists.
+ *
+ * To bring it back:
+ *   1. In components/HomeSections.tsx, import MediaGrid and render
+ *      <MediaGrid section={content.mediaSection} slots={content.mediaSlots} />
+ *      between Ambassadors and Partner.
+ *   2. Restore the "media" group in lib/content-schema.ts (git history, commit
+ *      that archived it) so the tiles are editable again.
+ *   3. Re-check the homepage tone alternation: this section is deep, so its
+ *      neighbours should be light.
+ *
+ * It stays in the tree rather than only in git so the type checker keeps it
+ * compiling against current props while it waits.
+ */
 import { Editable } from "@/components/edit/Editable";
 import { EditableImage } from "@/components/edit/EditableImage";
 import { Media } from "@/components/ui/Media";

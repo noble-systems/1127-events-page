@@ -33,24 +33,26 @@ describe("the schema matches the real content", () => {
     // search. Pairing them in the schema is what makes the editor show them
     // together.
     const images = [...CONTENT_FIELDS.values()].filter((f) => f.kind === "image");
-    // Ambassadors plus the eight media tiles. The hero and series-intro
-    // photographs are deliberately NOT here: both come from whichever event is
-    // featured, so offering them in the content editor too would be two places
-    // to change one thing. If this count moves, check that was intentional.
-    assert.equal(images.length, 9, `expected 9 image fields, got ${images.length}`);
+    // Just the ambassadors photograph. The hero's comes from the featured
+    // event, and the eight media tiles are archived with their section until
+    // there is footage to fill them. If this count moves, check it was meant.
+    assert.equal(images.length, 1, `expected 1 image field, got ${images.length}`);
     for (const image of images) {
       const alt = [...CONTENT_FIELDS.values()].find((f) => f.altFor === image.key);
       assert.ok(alt, `no alt-text field for ${image.key}`);
     }
   });
 
-  test("the media grid covers all eight tiles", () => {
-    const tiles = [...CONTENT_FIELDS.keys()].filter((k) =>
-      /^mediaSlots\.\d+\.image$/.test(k),
+  test("the media grid is archived, not half-present", () => {
+    // The section is unmounted until there is footage. Its fields must be all
+    // gone from the schema (an editor cannot reach an unmounted section), while
+    // the slot data stays in the content so restoring the section is a remount
+    // plus a schema group, not a data migration.
+    const tiles = [...CONTENT_FIELDS.keys()].filter(
+      (k) => k.startsWith("mediaSlots.") || k.startsWith("mediaSection."),
     );
-    assert.equal(tiles.length, 8);
-    const defaults = defaultContent();
-    assert.equal(defaults.mediaSlots.length, 8, "slot count drifted");
+    assert.deepEqual(tiles, [], "archived fields still offered to the editor");
+    assert.equal(defaultContent().mediaSlots.length, 8, "slot data lost");
   });
 });
 
@@ -92,10 +94,12 @@ describe("mergeContent", () => {
     assert.equal(merged.ambassadors.intro, defaultContent().ambassadors.intro);
   });
 
-  test("sets an image on a media tile", () => {
-    const merged = mergeContent({ "mediaSlots.2.image": "s3:events/x/hero.jpg" });
-    assert.equal(merged.mediaSlots[2]?.image, "s3:events/x/hero.jpg");
-    assert.equal(merged.mediaSlots[0]?.image, null, "other tiles unaffected");
+  test("sets an image", () => {
+    const merged = mergeContent({ "ambassadors.image": "s3:site/amb.jpg" });
+    assert.equal(merged.ambassadors.image, "s3:site/amb.jpg");
+    // An archived section's keys are not in the schema, so they no longer merge.
+    const stale = mergeContent({ "mediaSlots.2.image": "s3:events/x/hero.jpg" });
+    assert.equal(stale.mediaSlots[2]?.image, null, "archived key merged anyway");
   });
 
   test("an empty string reverts to the default rather than blanking the page", () => {
