@@ -6,7 +6,26 @@ import { Wordmark } from "@/components/Wordmark";
 import { buttonClass } from "@/components/ui/Button";
 import { navLinks } from "@/content/site";
 
-export function SiteHeader({ overlay = true }: { overlay?: boolean }) {
+/**
+ * `rsvpOpen` is whether the featured event is currently taking signups.
+ *
+ * The header button leads to /rsvp, which forwards to the featured event's
+ * signup page. With that event's RSVPs closed (or nothing featured) /rsvp
+ * renders the general join-the-list page instead, so a button still reading
+ * "RSVP" would promise something the destination cannot do. The label follows
+ * the destination: "Join the list" is what that page actually is.
+ *
+ * Pages that render statically (partner, legal) cannot know the live state and
+ * leave the default; the worst case there is the generic label on a page that
+ * is one click away from the honest one.
+ */
+export function SiteHeader({
+  overlay = true,
+  rsvpOpen = true,
+}: {
+  overlay?: boolean;
+  rsvpOpen?: boolean;
+}) {
   const [scrolled, setScrolled] = useState(!overlay);
   const [menuOpen, setMenuOpen] = useState(false);
   const [current, setCurrent] = useState<string | null>(null);
@@ -144,7 +163,7 @@ export function SiteHeader({ overlay = true }: { overlay?: boolean }) {
                 "hidden sm:inline-flex",
               )}
             >
-              RSVP
+              {rsvpOpen ? "RSVP" : "Join the list"}
             </Link>
 
             <button
@@ -221,7 +240,7 @@ export function SiteHeader({ overlay = true }: { overlay?: boolean }) {
                 onClick={closeMenu}
                 className={buttonClass("sun", "lg", "w-full")}
               >
-                RSVP
+                {rsvpOpen ? "RSVP" : "Join the list"}
               </Link>
               <a
                 href="/partner"

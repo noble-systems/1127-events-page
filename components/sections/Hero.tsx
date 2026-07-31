@@ -140,7 +140,15 @@ export function Hero({
               size="lg"
               className="text-bone/80 hover:text-bone"
             >
-              <Editable path="hero.rsvpCta">{content.rsvpCta}</Editable>
+              {event && event.rsvpEnabled === false ? (
+                // Closed signups make /rsvp the join-the-list page, and this
+                // label follows the destination like the header's does. Not
+                // editable in this state: the edit would write to a label the
+                // page is deliberately not showing.
+                "Join the list"
+              ) : (
+                <Editable path="hero.rsvpCta">{content.rsvpCta}</Editable>
+              )}
             </ButtonLink>
           </div>
         </div>

@@ -35,7 +35,7 @@ export function HomeSections({
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader rsvpOpen={Boolean(featured && featured.rsvpEnabled !== false)} />
       <main id="main">
         <Hero content={content.hero} event={featured} />
         <UpcomingEvents

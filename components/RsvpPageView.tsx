@@ -40,7 +40,10 @@ function eventFacts(event?: EventRecord) {
 export function RsvpPageView({ featured }: { featured?: EventRecord }) {
   return (
     <>
-      <SiteHeader overlay={false} />
+      <SiteHeader
+        overlay={false}
+        rsvpOpen={Boolean(featured && featured.rsvpEnabled !== false)}
+      />
 
       <main id="main" className="bg-bone pt-[4.5rem] lg:pt-20">
         {/* ---------------------------------------------------------------- */}

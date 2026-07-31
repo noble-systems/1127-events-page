@@ -36,6 +36,38 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
     router.refresh();
   };
 
+  /**
+   * Same shape as togglePublished below: the whole event goes back through the
+   * validated PUT with one flag flipped. Off removes the RSVP button from the
+   * card, 404s the event's signup page, and turns the header button into
+   * "Join the list" while this event is featured.
+   */
+  const toggleRsvp = async (event: EventRecord) => {
+    setBusyId(event.id);
+    setError(null);
+
+    const response = await fetch(`/api/admin/events/${event.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...event,
+        tags: event.tags.join(", "),
+        venue: event.venue ?? "",
+        image: event.image ?? "",
+        rsvpEnabled: event.rsvpEnabled === false,
+      }),
+    });
+
+    if (!response.ok) {
+      setError("Couldn't change RSVPs for that event.");
+      setBusyId(null);
+      return;
+    }
+
+    setBusyId(null);
+    router.refresh();
+  };
+
   const togglePublished = async (event: EventRecord) => {
     setBusyId(event.id);
     setError(null);
@@ -158,6 +190,11 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
                 >
                   {event.published ? "Live" : "Draft"}
                 </span>
+                {event.rsvpEnabled === false ? (
+                  <span className="bg-clay/15 text-terracotta-deep rounded-full px-2.5 py-1 text-[0.75rem] tracking-[0.08em] uppercase">
+                    RSVPs closed
+                  </span>
+                ) : null}
               </div>
               <p className="text-ink/65 mt-1.5 truncate text-[0.875rem]">
                 {event.date} · {event.location} · order {event.order}
@@ -187,6 +224,19 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
                 />
                 Feature
               </label>
+              <button
+                type="button"
+                onClick={() => toggleRsvp(event)}
+                disabled={busyId === event.id}
+                title={
+                  event.rsvpEnabled === false
+                    ? "Signups are closed: no RSVP button, and the event's signup page answers 404"
+                    : "Signups are open at /rsvp/" + event.id
+                }
+                className="border-ink/20 hover:border-ink/45 rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors duration-200 disabled:opacity-50"
+              >
+                {event.rsvpEnabled === false ? "Open RSVPs" : "Close RSVPs"}
+              </button>
               <button
                 type="button"
                 onClick={() => togglePublished(event)}
