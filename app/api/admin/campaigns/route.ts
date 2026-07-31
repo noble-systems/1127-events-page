@@ -148,9 +148,16 @@ export async function POST(request: Request) {
         html: preview.html,
         text: preview.text,
       });
-    } catch {
+    } catch (error) {
+      // Admin-only endpoint, so the real reason is returned rather than a
+      // guess. The first version swallowed it and answered "check the SES
+      // setup", which sent whoever read it off to check the one part that
+      // was fine.
+      console.error("[1127] campaign test send failed", error);
+      const reason =
+        error instanceof Error ? `${error.name}: ${error.message}` : "Unknown error.";
       return NextResponse.json(
-        { ok: false, message: "The test send failed. Check the SES setup." },
+        { ok: false, message: `The test send failed. ${reason}` },
         { status: 502 },
       );
     }
