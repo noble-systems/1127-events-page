@@ -647,7 +647,7 @@ export const finalCta = {
     eyebrow: "For guests",
     title: "Join the next event",
     body: "Get on the Sun Club list and hear about the date before it's public.",
-    cta: "RSVP for Sun Club",
+    cta: "RSVP for the next date",
   },
   partners: {
     eyebrow: "For venues, brands & artists",
