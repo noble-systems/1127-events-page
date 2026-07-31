@@ -124,7 +124,9 @@ export function SunClubIntro({
           <Reveal delay={300}>
             <div className="mt-10 flex flex-wrap items-center gap-3">
               <ButtonLink href="/rsvp" variant="primary" size="lg">
-                RSVP for Sun Club
+                {/* The section follows the featured event; the button must too,
+                    or it invites people to RSVP for a different night. */}
+                {event ? `RSVP for ${event.name}` : "RSVP for Sun Club"}
                 <ArrowIcon />
               </ButtonLink>
               <ButtonLink href="#ambassadors" variant="outline" size="lg">

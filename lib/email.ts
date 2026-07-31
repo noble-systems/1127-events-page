@@ -4,6 +4,7 @@ import {
   type SendEmailCommandInput,
 } from "@aws-sdk/client-sesv2";
 import { brand, contact, notifications } from "../content/site.ts";
+import { isSuppressed } from "./audience.ts";
 import { hasRealSecret, unsubscribeToken } from "./tokens.ts";
 import type { EventRecord, SubmissionRecord } from "./types.ts";
 
@@ -651,10 +652,13 @@ type Rendered = {
 /**
  * May we send this person marketing?
  *
- * An opt-out and a dead address both mean no.
+ * Delegates to the audience module rather than re-deriving it from status.
+ * Suppression has more states than a status check sees (the timestamp pair on
+ * application rows, resubscribes), and two definitions of "may we email them"
+ * is how a screen and a send disagree.
  */
 export function mayEmail(record: SubmissionRecord): boolean {
-  return record.status !== "unsubscribed" && record.status !== "bounced";
+  return record.status !== "bounced" && !isSuppressed(record);
 }
 
 /**

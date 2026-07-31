@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SubscriptionsView } from "@/components/admin/SubscriptionsView";
 import {
-  rsvpList,
+  mailingList,
   subscribed,
   subscriptionSummary,
   unsubscribes,
@@ -44,7 +44,7 @@ export default async function SubscriptionsPage() {
 
       <SubscriptionsView
         summary={subscriptionSummary(everyone)}
-        rsvps={rsvpList(everyone).length}
+        rsvps={mailingList(everyone).length}
         subscribedRows={subscribed(everyone)}
         unsubscribedRows={unsubscribes(everyone)}
       />

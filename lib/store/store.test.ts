@@ -18,7 +18,7 @@ const { isMailable, isSuppressed, subscriptionState } = await import(
 const {
   createEvent,
   deleteEvent,
-  featuredEvent,
+  listPublicEvents,
   listAllEvents,
   recordSubmission,
   store,
@@ -118,37 +118,40 @@ describe("featured is a single slot", () => {
     const rooftop = (await listAllEvents()).find((e) => e.id === "rooftop")!;
     await updateEvent(rooftop, event("rooftop", { featured: false, order: 1 }));
 
-    assert.equal((await featuredEvent())?.id, "sun-club");
+    const featured = (await listAllEvents()).find((e) => e.featured);
+    assert.equal(featured?.id, "sun-club");
   });
 });
 
-describe("featuredEvent", () => {
+describe("what the public site sees as featured", () => {
   beforeEach(reset);
 
   /**
    * The regression this pins.
    *
-   * Call sites used to end in `?? events[0]`, so unticking Featured changed
-   * nothing on screen: the first event by display order silently took over.
-   * Sun Club sorts first, which is why it looked permanently featured.
+   * Call sites used to read `events.find(featured) ?? events[0]`, so unticking
+   * Featured changed nothing on screen: the first event by display order
+   * silently took over, and Sun Club sorts first, which made it look
+   * permanently featured. Nothing featured must mean nothing featured.
    */
-  test("returns null when nothing is featured, rather than the first event", async () => {
+  const publicFeatured = async () =>
+    (await listPublicEvents()).find((event) => event.featured) ?? null;
+
+  test("nothing featured means nothing featured", async () => {
     await createEvent(event("sun-club", { featured: false, order: 0 }));
     await createEvent(event("rooftop", { featured: false, order: 1 }));
-
-    assert.equal(await featuredEvent(), null);
+    assert.equal(await publicFeatured(), null);
   });
 
-  test("never returns an unpublished event", async () => {
+  test("a featured draft is invisible to the public", async () => {
     await createEvent(event("draft", { featured: true, published: false }));
-    assert.equal(await featuredEvent(), null);
+    assert.equal(await publicFeatured(), null);
   });
 
-  test("returns the featured event when there is one", async () => {
+  test("the featured event is found when there is one", async () => {
     await createEvent(event("sun-club", { featured: false, order: 0 }));
     await createEvent(event("rooftop", { featured: true, order: 1 }));
-
-    assert.equal((await featuredEvent())?.id, "rooftop");
+    assert.equal((await publicFeatured())?.id, "rooftop");
   });
 });
 
@@ -462,6 +465,24 @@ describe("featured moves on when the event does", () => {
     const third = (await listAllEvents()).find((e) => e.id === "third")!;
     await updateEvent(third, event("third", { published: false, order: 2 }));
     assert.equal(await featuredId(), "first");
+  });
+});
+
+describe("a draft cannot take the slot on create", () => {
+  beforeEach(reset);
+
+  /**
+   * The regression this pins. updateEvent enforced published-only, createEvent
+   * did not, so POSTing a featured draft stripped Featured from the live event
+   * and left the site with nothing featured at all.
+   */
+  test("creating a featured draft neither keeps nor steals Featured", async () => {
+    await createEvent(event("live", { featured: true, order: 0 }));
+    await createEvent(event("sneaky", { featured: true, published: false, order: 1 }));
+
+    const rows = await listAllEvents();
+    assert.equal(rows.find((e) => e.id === "sneaky")?.featured, false);
+    assert.equal(rows.find((e) => e.id === "live")?.featured, true, "the slot was stolen");
   });
 });
 

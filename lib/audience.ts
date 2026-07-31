@@ -208,13 +208,6 @@ export function subscriptionState(record: SubmissionRecord): SubscriptionState {
   return record.marketingOptIn === true ? "subscribed" : "unsubscribed";
 }
 
-/** Everyone on the RSVP list, whatever their subscription says. */
-export function rsvpList(
-  records: readonly SubmissionRecord[],
-): SubmissionRecord[] {
-  return records.filter((record) => record.type === "rsvp");
-}
-
 /**
  * The list itself: everybody you may email right now, newest first.
  *
@@ -224,7 +217,7 @@ export function rsvpList(
 export function subscribed(
   records: readonly SubmissionRecord[],
 ): SubmissionRecord[] {
-  return rsvpList(records)
+  return mailingList(records)
     .filter(isMailable)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
@@ -277,7 +270,7 @@ export type SubscriptionSummary = {
 export function subscriptionSummary(
   records: readonly SubmissionRecord[],
 ): SubscriptionSummary {
-  const list = rsvpList(records);
+  const list = mailingList(records);
   const summary: SubscriptionSummary = {
     rsvps: list.length,
     subscribed: 0,

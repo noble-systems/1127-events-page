@@ -136,7 +136,16 @@ export function LiveEditor({
       const signed = await fetch("/api/admin/uploads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+        // contentKey is what the route derives the S3 key from. It was left
+        // out, so every upload from this editor answered "Save the event
+        // first, then add a photo", which is the other flow's error. The
+        // overlays rendered, the file picker opened, and no photo could
+        // actually be uploaded.
+        body: JSON.stringify({
+          contentKey: key,
+          filename: file.name,
+          contentType: file.type,
+        }),
       });
       const data = (await signed.json().catch(() => null)) as {
         ok?: boolean;

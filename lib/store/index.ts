@@ -156,20 +156,6 @@ export async function listAllEventsSafe(): Promise<{
   }
 }
 
-/**
- * The featured event, or null when nothing is featured.
- *
- * There is deliberately no positional fallback here. Every call site used to
- * end in `?? events[0]`, which meant unticking Featured changed nothing you
- * could see: the first event by display order quietly took over, and Sun Club
- * sorts first, so Sun Club appeared to be permanently featured. Nothing
- * featured now means nothing featured, and the hero and series intro fall back
- * to their static copy, which is the honest reading of it.
- */
-export async function featuredEvent(): Promise<EventRecord | null> {
-  return (await listPublicEvents()).find((event) => event.featured) ?? null;
-}
-
 export async function getEvent(id: string): Promise<EventRecord | null> {
   return store().getEvent(id);
 }
@@ -222,8 +208,12 @@ async function promoteNextFeatured(exclude: string): Promise<void> {
 
 export async function createEvent(input: NewEventInput): Promise<EventRecord> {
   const now = new Date().toISOString();
-  if (input.featured) await claimFeatured(input.id);
-  return store().putEvent({ ...input, createdAt: now, updatedAt: now });
+  // Same rule updateEvent applies: a draft cannot hold the featured slot. This
+  // path missed it, so POSTing a featured draft stripped Featured from the live
+  // event and left the site with nothing featured at all.
+  const featured = input.featured && input.published;
+  if (featured) await claimFeatured(input.id);
+  return store().putEvent({ ...input, featured, createdAt: now, updatedAt: now });
 }
 
 export async function updateEvent(

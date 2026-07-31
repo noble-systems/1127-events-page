@@ -221,7 +221,7 @@ export function SiteHeader({ overlay = true }: { overlay?: boolean }) {
                 onClick={closeMenu}
                 className={buttonClass("sun", "lg", "w-full")}
               >
-                RSVP for Sun Club
+                RSVP
               </Link>
               <a
                 href="/partner"

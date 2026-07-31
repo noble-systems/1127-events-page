@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { PAGE_SIZE, Pager } from "@/components/admin/Paginate";
+import { Pager } from "@/components/admin/Paginate";
+import { PAGE_SIZE, pageOf } from "@/lib/paginate";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { toUrlId } from "@/lib/ids";
 import { describeSource } from "@/lib/request-meta";
@@ -151,10 +152,8 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
    * rows currently on screen.
    */
   const [requested, setRequested] = useState(0);
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const clampPage = (value: number) => Math.min(Math.max(value, 0), pages - 1);
-  const page = clampPage(requested);
-  const start = page * PAGE_SIZE;
+  // The same clamping the Subscriptions screen uses; see lib/paginate.
+  const { page, pages, start } = pageOf(filtered.length, requested);
   const visible = filtered.slice(start, start + PAGE_SIZE);
 
   // Always scoped to the visible tab, so an export is one kind of record with

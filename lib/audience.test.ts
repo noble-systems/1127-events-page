@@ -9,7 +9,6 @@ import {
   tallyByGenre,
   unattributed,
   canResubscribe,
-  rsvpList,
   subscriptionState,
   subscriptionSummary,
   unsubscribes,
@@ -272,11 +271,11 @@ describe("unsubscribing does not remove somebody from the RSVP list", () => {
   };
 
   test("they stay on the RSVP list", () => {
-    assert.equal(rsvpList([gone, here]).length, 2);
+    assert.equal(mailingList([gone, here]).length, 2);
   });
 
   test("their event history survives", () => {
-    assert.deepEqual(rsvpList([gone])[0].eventIds, ["house-night"]);
+    assert.deepEqual(mailingList([gone])[0].eventIds, ["house-night"]);
   });
 
   test("but they are not mailable", () => {

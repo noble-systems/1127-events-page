@@ -49,7 +49,7 @@ export function RsvpForm({
     return (
       <FormSuccess
         title="You're on the list."
-        body="We'll email you as soon as the next Sun Club date is set, before it goes public. Bringing people? Send them the link so they get their own spot."
+        body="We'll email you as soon as the next date is set, before it goes public. Bringing people? Send them the link so they get their own spot."
         actionLabel={onDone ? "Close" : "Add someone else"}
         onAction={() => {
           reset();
