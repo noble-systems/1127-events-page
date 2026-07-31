@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ContentEditor } from "@/components/admin/ContentEditor";
 import { CONTENT_GROUPS } from "@/lib/content-schema";
 import { defaultContent, readPath } from "@/lib/site-content";
@@ -32,6 +33,19 @@ export default async function ContentPage() {
           committed in the repo, so clearing a box restores the standard copy rather
           than leaving a blank section. Photographs upload straight to S3 and
           replace wherever that image appears.
+        </p>
+
+        <p className="mt-5">
+          <Link
+            href="/admin/preview"
+            className="bg-ink text-bone inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[0.9375rem] transition-opacity duration-200 hover:opacity-90"
+          >
+            Edit on the page
+          </Link>
+        </p>
+        <p className="text-ink/65 mt-2.5 text-[0.8125rem] leading-relaxed">
+          Opens the homepage with these fields beside it, updating as you type.
+          The form below does the same thing without the preview.
         </p>
       </header>
 

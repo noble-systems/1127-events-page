@@ -1,12 +1,4 @@
-import { SiteFooter } from "@/components/SiteFooter";
-import { SiteHeader } from "@/components/SiteHeader";
-import { Ambassadors } from "@/components/sections/Ambassadors";
-import { FinalCta } from "@/components/sections/FinalCta";
-import { Hero } from "@/components/sections/Hero";
-import { MediaGrid } from "@/components/sections/MediaGrid";
-import { Partner } from "@/components/sections/Partner";
-import { SunClubIntro } from "@/components/sections/SunClubIntro";
-import { UpcomingEvents } from "@/components/sections/UpcomingEvents";
+import { HomeSections } from "@/components/HomeSections";
 import { brand, hero } from "@/content/site";
 import { getSiteContent, listPublicEvents } from "@/lib/store";
 import type { EventRecord } from "@/lib/types";
@@ -107,24 +99,10 @@ export default async function HomePage() {
     getSiteContent(),
   ]);
 
-  // One featured event drives both the hero and the series intro, so they can
-  // never describe different events.
-  const featured = events.find((e) => e.featured) ?? null;
-
   return (
     <>
       <StructuredData events={events} />
-      <SiteHeader />
-      <main id="main">
-        <Hero content={content.hero} event={featured} />
-        <UpcomingEvents events={events} />
-        <SunClubIntro content={content.sunClub} event={featured} />
-        <Ambassadors content={content.ambassadors} />
-        <MediaGrid section={content.mediaSection} slots={content.mediaSlots} />
-        <Partner content={content.partner} />
-        <FinalCta content={content.finalCta} />
-      </main>
-      <SiteFooter />
+      <HomeSections content={content} events={events} />
     </>
   );
 }
