@@ -65,14 +65,14 @@ export function EditHeroLogo({ event }: { event: EventRecord }) {
       <span className="text-bone/70">{label}</span>
       <button
         type="button"
-        disabled={busy || value <= 0}
+        disabled={busy || value <= -4}
         aria-label={`Less ${label.toLowerCase()}`}
         onClick={() => save({ [field]: value - 1 })}
         className="border-bone/25 hover:border-bone/60 h-6 w-6 rounded-full border leading-none disabled:opacity-40"
       >
         −
       </button>
-      <span className="w-4 text-center tabular-nums">{value}</span>
+      <span className="w-6 text-center tabular-nums">{value}</span>
       <button
         type="button"
         disabled={busy || value >= 8}

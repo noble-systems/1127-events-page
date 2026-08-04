@@ -162,8 +162,10 @@ export function validateEvent(values: EventFormValues): FormErrors {
 
   for (const field of ["heroLogoPadTop", "heroLogoPadBottom"] as const) {
     const pad = Number(values[field]);
-    if (!Number.isInteger(pad) || pad < 0 || pad > 8) {
-      errors[field] = "Spacing is 0 to 8.";
+    // Negative pulls the eyebrow or tagline closer than the layout's own
+    // margins; a control that can only add space cannot fix a gap.
+    if (!Number.isInteger(pad) || pad < -4 || pad > 8) {
+      errors[field] = "Spacing is -4 to 8.";
     }
   }
 

@@ -45,10 +45,14 @@ export function Hero({
    * places to change one thing is how the hero ends up describing last month.
    */
   const logoSrc = resolveImageSrc(event?.heroLogo);
+  // max-h, never h. A fixed height letterboxed wide artwork: the image kept
+  // the full box and centred the visible mark inside it, and the empty box
+  // rendered as huge phantom gaps above and below the logo that no spacing
+  // control could remove, because they were inside the img element itself.
   const logoSizeClass = {
-    sm: "h-[clamp(6rem,16vw,11rem)]",
-    md: "h-[clamp(9rem,26vw,17rem)]",
-    lg: "h-[clamp(12rem,34vw,23rem)]",
+    sm: "max-h-[clamp(6rem,16vw,11rem)]",
+    md: "max-h-[clamp(9rem,26vw,17rem)]",
+    lg: "max-h-[clamp(12rem,34vw,23rem)]",
   }[event?.heroLogoSize ?? "md"];
   const ownBody = event?.heroBody?.trim();
   const body = ownBody || content.body;
@@ -124,7 +128,7 @@ export function Hero({
                 <img
                   src={logoSrc}
                   alt=""
-                  className={`${logoSizeClass} w-auto max-w-full object-contain object-left`}
+                  className={`${logoSizeClass} h-auto w-auto max-w-full`}
                   style={{
                     filter:
                       "drop-shadow(0 3px 14px rgba(7, 20, 47, 0.9)) drop-shadow(0 1px 3px rgba(7, 20, 47, 0.8))",

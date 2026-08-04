@@ -391,8 +391,11 @@ describe("hero logo spacing", () => {
 
   test("rejects out-of-range and junk spacing", () => {
     assert.ok(validateEvent({ ...valid, heroLogoPadTop: "9" }).heroLogoPadTop);
-    assert.ok(validateEvent({ ...valid, heroLogoPadTop: "-1" }).heroLogoPadTop);
+    assert.ok(validateEvent({ ...valid, heroLogoPadTop: "-5" }).heroLogoPadTop);
     assert.ok(validateEvent({ ...valid, heroLogoPadBottom: "abc" }).heroLogoPadBottom);
+    // Negative is allowed down to -4: a control that can only add space cannot
+    // fix a gap.
+    assert.equal(validateEvent({ ...valid, heroLogoPadTop: "-4" }).heroLogoPadTop, undefined);
     assert.equal(validateEvent({ ...valid, heroLogoPadTop: "8" }).heroLogoPadTop, undefined);
   });
 
