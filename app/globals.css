@@ -88,6 +88,21 @@
     text-wrap: balance;
   }
 
+  /*
+   * Fraunces defaults to oldstyle text figures: 1 and 2 stop at x-height and 7
+   * descends below the baseline. In running prose that is a feature; in a
+   * wordmark that is literally four digits it reads as broken, and "1127" has
+   * rendered lopsided everywhere the display face set it. Lining figures wherever
+   * that face is used, headings and the font-display utility both.
+   */
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-variant-numeric: lining-nums;
+  }
+
   p {
     text-wrap: pretty;
   }
