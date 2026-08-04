@@ -71,10 +71,8 @@ export const brand = {
 
 export const contact = {
   email: "hello@1127.events" as string | null,
-  /** e.g. "@1127events" */
-  instagramHandle: null as string | null,
-  /** e.g. "https://instagram.com/1127events" */
-  instagramUrl: null as string | null,
+  instagramHandle: "@1127.events" as string | null,
+  instagramUrl: "https://instagram.com/1127.events" as string | null,
   /** e.g. "(480) 555-0123" */
   phone: null as string | null,
   /**

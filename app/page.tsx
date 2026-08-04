@@ -1,5 +1,5 @@
 import { HomeSections } from "@/components/HomeSections";
-import { brand, hero } from "@/content/site";
+import { brand, contact, hero } from "@/content/site";
 import { getSiteContent, listPublicEvents } from "@/lib/store";
 import type { EventRecord } from "@/lib/types";
 
@@ -33,6 +33,8 @@ function StructuredData({ events }: { events: EventRecord[] }) {
     name: brand.name,
     url: brand.domain,
     description: brand.description,
+    // Search engines use this to tie the site and the profile to one entity.
+    ...(contact.instagramUrl ? { sameAs: [contact.instagramUrl] } : {}),
     address: {
       "@type": "PostalAddress",
       addressLocality: "Scottsdale",
