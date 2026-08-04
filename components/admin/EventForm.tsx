@@ -513,6 +513,28 @@ export function EventForm({
                   </button>
                 </div>
               ) : null}
+
+              {values.heroLogo ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="label-xs text-ink/65">Size in the hero</span>
+                  {(["sm", "md", "lg"] as const).map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      disabled={busy || uploading}
+                      aria-pressed={values.heroLogoSize === size}
+                      onClick={() => set("heroLogoSize", size)}
+                      className={`rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors duration-200 disabled:opacity-50 ${
+                        values.heroLogoSize === size
+                          ? "border-ink bg-ink text-bone"
+                          : "border-ink/20 hover:border-ink/45"
+                      }`}
+                    >
+                      {{ sm: "Small", md: "Medium", lg: "Large" }[size]}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </Field>
 

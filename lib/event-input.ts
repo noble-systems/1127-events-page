@@ -32,6 +32,7 @@ export type EventFormValues = {
   shotNote: string;
   image: string;
   heroLogo: string;
+  heroLogoSize: string;
   imageAlt: string;
   ctaLabel: string;
   ctaAction: string;
@@ -60,6 +61,7 @@ export const EMPTY_EVENT: EventFormValues = {
   shotNote: "",
   image: "",
   heroLogo: "",
+  heroLogoSize: "md",
   imageAlt: "",
   ctaLabel: "RSVP",
   ctaAction: "rsvp",
@@ -150,6 +152,10 @@ export function validateEvent(values: EventFormValues): FormErrors {
     errors.heroLogo = "Upload a logo image, or use a path inside /public.";
   }
 
+  if (!["sm", "md", "lg"].includes(values.heroLogoSize)) {
+    errors.heroLogoSize = "Pick small, medium or large.";
+  }
+
   return errors;
 }
 
@@ -185,6 +191,7 @@ export function toEventInput(
     shotNote: values.shotNote.trim(),
     image: values.image.trim() || null,
     heroLogo: values.heroLogo.trim() || null,
+    heroLogoSize: values.heroLogoSize as "sm" | "md" | "lg",
     imageAlt: values.imageAlt.trim(),
     ctaLabel: values.ctaLabel.trim(),
     ctaAction: values.ctaAction as CtaAction,
@@ -228,6 +235,7 @@ export function readEventBody(
     shotNote: str("shotNote"),
     image: str("image"),
     heroLogo: str("heroLogo"),
+    heroLogoSize: str("heroLogoSize") || "md",
     imageAlt: str("imageAlt"),
     ctaLabel: str("ctaLabel"),
     ctaAction: str("ctaAction") || "rsvp",
@@ -257,6 +265,7 @@ export function eventToFormValues(
     shotNote: string;
     image: string | null;
     heroLogo?: string | null;
+    heroLogoSize?: "sm" | "md" | "lg";
     imageAlt: string;
     ctaLabel: string;
     ctaAction: CtaAction;
@@ -285,6 +294,7 @@ export function eventToFormValues(
     shotNote: event.shotNote,
     image: event.image ?? "",
     heroLogo: event.heroLogo ?? "",
+    heroLogoSize: event.heroLogoSize ?? "md",
     imageAlt: event.imageAlt,
     ctaLabel: event.ctaLabel,
     ctaAction: event.ctaAction,

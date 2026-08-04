@@ -340,3 +340,28 @@ describe("the hero logo belongs to the event", () => {
     );
   });
 });
+
+describe("the hero logo size", () => {
+  test("round-trips, and defaults to medium", () => {
+    assert.equal(readEventBody({ ...valid }, GENRE_LIST).heroLogoSize, "md");
+    const values = readEventBody({ ...valid, heroLogoSize: "lg" }, GENRE_LIST);
+    const input = toEventInput("x", values, GENRE_LIST);
+    assert.equal(input.heroLogoSize, "lg");
+    assert.equal(eventToFormValues(input, GENRE_LIST).heroLogoSize, "lg");
+  });
+
+  test("an unknown size is refused rather than stored", () => {
+    assert.ok(validateEvent({ ...valid, heroLogoSize: "xl" }).heroLogoSize);
+    assert.equal(validateEvent({ ...valid, heroLogoSize: "sm" }).heroLogoSize, undefined);
+  });
+
+  test("a record from before the field reads as medium", () => {
+    const { heroLogoSize, ...older } = toEventInput("x", valid, GENRE_LIST);
+    assert.equal(heroLogoSize, "md");
+    assert.equal(
+      eventToFormValues(older as Parameters<typeof eventToFormValues>[0], GENRE_LIST)
+        .heroLogoSize,
+      "md",
+    );
+  });
+});

@@ -44,6 +44,11 @@ export function Hero({
    * places to change one thing is how the hero ends up describing last month.
    */
   const logoSrc = resolveImageSrc(event?.heroLogo);
+  const logoSizeClass = {
+    sm: "h-[clamp(6rem,16vw,11rem)]",
+    md: "h-[clamp(9rem,26vw,17rem)]",
+    lg: "h-[clamp(12rem,34vw,23rem)]",
+  }[event?.heroLogoSize ?? "md"];
   const ownBody = event?.heroBody?.trim();
   const body = ownBody || content.body;
   // A featured event with no paragraph of its own silently borrows the series
@@ -107,7 +112,7 @@ export function Hero({
                 <img
                   src={logoSrc}
                   alt=""
-                  className="h-[clamp(9rem,26vw,17rem)] w-auto max-w-full object-contain object-left"
+                  className={`${logoSizeClass} w-auto max-w-full object-contain object-left`}
                 />
                 <span className="sr-only">{title}</span>
               </>

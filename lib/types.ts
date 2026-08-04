@@ -56,6 +56,8 @@ export type EventRecord = {
    * have one, and absent on rows written before it existed.
    */
   heroLogo?: string | null;
+  /** How large the wordmark renders in the hero. Absent means "md". */
+  heroLogoSize?: "sm" | "md" | "lg";
   /**
    * Small badge on the card, e.g. "Announcing Soon", "Tickets Live", "Sold Out".
    *
