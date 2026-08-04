@@ -20,6 +20,18 @@ export type EditApi = {
   /** The path currently being edited, so only one thing is focused at a time. */
   active: string | null;
   setActive: (path: string | null) => void;
+  /**
+   * Stages a change to the featured event's hero-logo presentation. Drafted
+   * like every other edit on this screen: the preview updates instantly and
+   * nothing persists until Save. The first version of the logo panel saved on
+   * every click, on the very page whose banner promises nothing is public
+   * until you save.
+   */
+  setHeroLogo: (patch: {
+    heroLogoSize?: "sm" | "md" | "lg";
+    heroLogoPadTop?: number;
+    heroLogoPadBottom?: number;
+  }) => void;
 };
 
 const EditContext = createContext<EditApi | null>(null);

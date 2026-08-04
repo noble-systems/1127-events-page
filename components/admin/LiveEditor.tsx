@@ -98,6 +98,24 @@ export function LiveEditor({
   }, [stored]);
 
   const [values, setValues] = useState<Values>(initial);
+
+  /**
+   * The featured event's hero-logo presentation, drafted exactly like the
+   * content: previewed instantly, persisted on Save, reverted on Discard.
+   */
+  const featured = useMemo(
+    () => events.find((event) => event.featured) ?? null,
+    [events],
+  );
+  const initialLogo = useMemo(
+    () => ({
+      heroLogoSize: featured?.heroLogoSize ?? ("md" as const),
+      heroLogoPadTop: featured?.heroLogoPadTop ?? 0,
+      heroLogoPadBottom: featured?.heroLogoPadBottom ?? 0,
+    }),
+    [featured],
+  );
+  const [logoDraft, setLogoDraft] = useState(initialLogo);
   // Which field has the caret, so only one shows as focused at a time.
   const [active, setActive] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -105,12 +123,28 @@ export function LiveEditor({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const dirty = useMemo(
+  const contentDirty = useMemo(
     () => CONTENT_GROUPS.some((g) => g.fields.some((f) => values[f.key] !== initial[f.key])),
     [values, initial],
   );
+  const logoDirty =
+    featured !== null &&
+    (logoDraft.heroLogoSize !== initialLogo.heroLogoSize ||
+      logoDraft.heroLogoPadTop !== initialLogo.heroLogoPadTop ||
+      logoDraft.heroLogoPadBottom !== initialLogo.heroLogoPadBottom);
+  const dirty = contentDirty || logoDirty;
 
   const draft = useMemo(() => draftFrom(values), [values]);
+
+  // The preview renders the draft event, so a staged size or spacing change is
+  // visible immediately without persisting anything.
+  const draftEvents = useMemo(
+    () =>
+      events.map((event) =>
+        event.featured ? { ...event, ...logoDraft } : event,
+      ),
+    [events, logoDraft],
+  );
 
   /**
    * The browser's own guard. A custom banner cannot stop a tab being closed, so
@@ -219,6 +253,27 @@ export function LiveEditor({
         return;
       }
 
+      if (logoDirty && featured) {
+        // The same validated whole-event PUT the admin list's toggles use.
+        const eventResponse = await fetch(`/api/admin/events/${featured.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...featured,
+            tags: featured.tags.join(", "),
+            venue: featured.venue ?? "",
+            image: featured.image ?? "",
+            ...logoDraft,
+          }),
+        });
+        if (!eventResponse.ok) {
+          setError(
+            "The text saved, but the logo settings did not. Press Save again.",
+          );
+          return;
+        }
+      }
+
       setSaved(true);
       // Re-reads the server components so `initial` matches what is stored and
       // the page stops counting as dirty.
@@ -244,6 +299,10 @@ export function LiveEditor({
       uploading,
       active,
       setActive,
+      setHeroLogo: (patch) => {
+        setSaved(false);
+        setLogoDraft((current) => ({ ...current, ...patch }));
+      },
     }),
     [values, set, upload, uploading, active],
   );
@@ -276,7 +335,10 @@ export function LiveEditor({
             <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                onClick={() => setValues(initial)}
+                onClick={() => {
+                setValues(initial);
+                setLogoDraft(initialLogo);
+              }}
                 disabled={!dirty || saving}
                 className="border-bone/25 hover:border-bone/50 rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -316,7 +378,7 @@ export function LiveEditor({
             and take an unsaved edit with it. The editing affordances add their
             own pointer-events back. */}
         <div className="[&_a]:pointer-events-none [&_button]:pointer-events-none [&_[data-edit-path]]:pointer-events-auto [&_[data-edit-control]]:pointer-events-auto [&_[data-edit-control]_*]:pointer-events-auto">
-          <HomeSections content={draft} events={events} />
+          <HomeSections content={draft} events={draftEvents} />
         </div>
       </div>
     </EditProvider>

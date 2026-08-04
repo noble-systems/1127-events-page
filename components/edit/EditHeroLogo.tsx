@@ -1,56 +1,24 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import type { EventRecord } from "@/lib/types";
 import { useEdit } from "./EditContext";
 
 /**
  * Size and spacing for the hero wordmark, adjusted while looking at it.
  *
- * These are event fields, not page content, but the live editor is where they
- * belong: spacing is a judgement about how the hero looks, and the event form
- * cannot show you that. The panel renders only in edit mode, under the logo it
- * controls, and writes through the same validated event PUT the admin list's
- * toggles use, so every other field survives the round trip.
+ * Drafted, not auto-saved. The first version wrote the event on every click,
+ * on the very page whose banner promises nothing is public until you save.
+ * Now a click stages the change through the edit context: the preview updates
+ * instantly, the banner counts it as an unsaved change, Save persists it and
+ * Discard reverts it, exactly like every sentence on the page.
  *
- * Each change saves immediately and refreshes the server render, which is the
- * toggle pattern everywhere else in the dashboard: no separate save button to
- * forget, and what you see after the refresh is what visitors get.
+ * The values displayed come off the event prop, which in edit mode is the
+ * draft-overlaid event the preview renders, so panel and preview can never
+ * disagree.
  */
 export function EditHeroLogo({ event }: { event: EventRecord }) {
   const edit = useEdit();
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   if (!edit) return null;
-
-  const save = async (patch: Partial<EventRecord>) => {
-    setBusy(true);
-    setError(null);
-
-    const response = await fetch(`/api/admin/events/${event.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...event,
-        tags: event.tags.join(", "),
-        venue: event.venue ?? "",
-        image: event.image ?? "",
-        ...patch,
-      }),
-    });
-
-    if (!response.ok) {
-      setError("Couldn't save that.");
-      setBusy(false);
-      return;
-    }
-
-    setBusy(false);
-    router.refresh();
-  };
 
   const size = event.heroLogoSize ?? "md";
   const padTop = event.heroLogoPadTop ?? 0;
@@ -65,9 +33,9 @@ export function EditHeroLogo({ event }: { event: EventRecord }) {
       <span className="text-bone/70">{label}</span>
       <button
         type="button"
-        disabled={busy || value <= -4}
+        disabled={value <= -4}
         aria-label={`Less ${label.toLowerCase()}`}
-        onClick={() => save({ [field]: value - 1 })}
+        onClick={() => edit.setHeroLogo({ [field]: value - 1 })}
         className="border-bone/25 hover:border-bone/60 h-6 w-6 rounded-full border leading-none disabled:opacity-40"
       >
         −
@@ -75,9 +43,9 @@ export function EditHeroLogo({ event }: { event: EventRecord }) {
       <span className="w-6 text-center tabular-nums">{value}</span>
       <button
         type="button"
-        disabled={busy || value >= 8}
+        disabled={value >= 8}
         aria-label={`More ${label.toLowerCase()}`}
-        onClick={() => save({ [field]: value + 1 })}
+        onClick={() => edit.setHeroLogo({ [field]: value + 1 })}
         className="border-bone/25 hover:border-bone/60 h-6 w-6 rounded-full border leading-none disabled:opacity-40"
       >
         +
@@ -96,10 +64,9 @@ export function EditHeroLogo({ event }: { event: EventRecord }) {
           <button
             key={option}
             type="button"
-            disabled={busy}
             aria-pressed={size === option}
-            onClick={() => save({ heroLogoSize: option })}
-            className={`rounded-full border px-2.5 py-1 uppercase disabled:opacity-40 ${
+            onClick={() => edit.setHeroLogo({ heroLogoSize: option })}
+            className={`rounded-full border px-2.5 py-1 uppercase ${
               size === option
                 ? "border-sun bg-sun/20 text-sun"
                 : "border-bone/25 hover:border-bone/60"
@@ -113,7 +80,7 @@ export function EditHeroLogo({ event }: { event: EventRecord }) {
       {stepper("Space above", padTop, "heroLogoPadTop")}
       {stepper("Space below", padBottom, "heroLogoPadBottom")}
 
-      {error ? <span className="text-sun">{error}</span> : null}
+      <span className="text-bone/50">Saves with Save changes, above</span>
     </div>
   );
 }

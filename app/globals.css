@@ -57,8 +57,14 @@
     scroll-behavior: smooth;
     scroll-padding-top: var(--header-offset);
     -webkit-text-size-adjust: 100%;
-    /* Reserve the scrollbar gutter so opening a modal doesn't shift the page. */
-    scrollbar-gutter: stable;
+    /*
+     * No scrollbar-gutter reservation. "stable" was here to stop layout shift
+     * when the mobile menu locks scrolling, but that menu exists only on
+     * phones, where scrollbars are overlay and nothing shifts anyway. On
+     * desktop browsers with overlay scrollbars the reservation rendered as a
+     * permanent empty stripe down the right edge of every page, most visible
+     * beside the hero photograph.
+     */
   }
 
   body {
