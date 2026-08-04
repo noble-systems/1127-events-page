@@ -167,33 +167,49 @@ describe("resolveImageSrc", () => {
 });
 
 describe("eventImageKey", () => {
-  test("is stable for an event, so re-uploading replaces the photograph", () => {
-    const a = eventImageKey("sun-club", "DSC_0042.jpg");
-    const b = eventImageKey("sun-club", "completely-different-name.jpg");
+  /**
+   * Keys were stable per event once, so re-uploading overwrote the same URL.
+   * That handed freshness to every cache between S3 and the eyeball, and a
+   * replaced photograph kept showing its predecessor until browser, CDN and
+   * image-optimizer clocks all ran out. Versioned keys are the fix: the URL
+   * changes when the image does, so no cache can ever be wrong.
+   */
+  test("each upload version gets its own URL, whatever the filename", () => {
+    const a = eventImageKey("sun-club", "DSC_0042.jpg", "v1");
+    const b = eventImageKey("sun-club", "completely-different-name.jpg", "v1");
     assert.equal(a, b, "the key must not depend on the uploaded filename");
-    assert.equal(a, "events/sun-club/hero.jpg");
+    assert.equal(a, "events/sun-club/hero-v1.jpg");
+
+    const later = eventImageKey("sun-club", "DSC_0042.jpg", "v2");
+    assert.notEqual(a, later, "a re-upload must mint a new URL");
   });
 
   test("keeps the real extension", () => {
-    assert.equal(eventImageKey("x", "a.png"), "events/x/hero.png");
-    assert.equal(eventImageKey("x", "a.webp"), "events/x/hero.webp");
-    assert.equal(eventImageKey("x", "a.avif"), "events/x/hero.avif");
+    assert.equal(eventImageKey("x", "a.png", "v"), "events/x/hero-v.png");
+    assert.equal(eventImageKey("x", "a.webp", "v"), "events/x/hero-v.webp");
+    assert.equal(eventImageKey("x", "a.avif", "v"), "events/x/hero-v.avif");
   });
 
-  test("normalises jpeg to jpg so one event cannot have two hero files", () => {
-    assert.equal(eventImageKey("x", "a.jpeg"), "events/x/hero.jpg");
+  test("normalises jpeg to jpg", () => {
+    assert.equal(eventImageKey("x", "a.jpeg", "v"), "events/x/hero-v.jpg");
   });
 
-  test("sanitises the event id and always produces a valid key", () => {
-    const nasty = eventImageKey("../../etc/passwd", "a.jpg");
+  test("sanitises the event id and the version, and always validates", () => {
+    const nasty = eventImageKey("../../etc/passwd", "a.jpg", "v");
     assert.equal(nasty.includes(".."), false);
     assert.equal(isValidS3Key(nasty), true);
-    assert.equal(isValidS3Key(eventImageKey("", "a.jpg")), true);
+    assert.equal(isValidS3Key(eventImageKey("", "a.jpg", "v")), true);
+    // A hostile version string cannot traverse or inject either.
+    const hostileVersion = eventImageKey("x", "a.jpg", "../../../etc%2F");
+    assert.equal(hostileVersion.includes(".."), false);
+    assert.equal(isValidS3Key(hostileVersion), true);
+    // Nor can an empty one produce a dangling hyphen-dot.
+    assert.equal(eventImageKey("x", "a.jpg", ""), "events/x/hero-0.jpg");
   });
 
   test("falls back to jpg for an unknown extension", () => {
-    assert.equal(eventImageKey("x", "a.gif"), "events/x/hero.jpg");
-    assert.equal(eventImageKey("x", "noextension"), "events/x/hero.jpg");
+    assert.equal(eventImageKey("x", "a.gif", "v"), "events/x/hero-v.jpg");
+    assert.equal(eventImageKey("x", "noextension", "v"), "events/x/hero-v.jpg");
   });
 });
 

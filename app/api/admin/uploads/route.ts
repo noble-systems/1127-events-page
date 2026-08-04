@@ -81,6 +81,12 @@ export async function POST(request: Request) {
     );
   }
 
+const CACHE_FOREVER = "public, max-age=31536000, immutable";
+
+
+  // Base36 time: compact, key-safe, and strictly increasing, so every upload
+  // gets a URL no cache has ever seen.
+  const version = Date.now().toString(36);
   const extension = ALLOWED.get(contentType.toLowerCase());
   if (!extension) {
     return NextResponse.json(
@@ -96,8 +102,8 @@ export async function POST(request: Request) {
   // uploaded filename. A filename is attacker-controlled; deriving the key from
   // it is how you end up serving something unexpected from your own domain.
   const key = contentKey
-    ? siteImageKey(contentKey, `x.${extension}`)
-    : eventImageKey(eventId, `x.${extension}`);
+    ? siteImageKey(contentKey, `x.${extension}`, version)
+    : eventImageKey(eventId, `x.${extension}`, version);
 
   if (!isValidS3Key(key)) {
     // Should be unreachable, since eventImageKey sanitises. Belt and braces:
@@ -116,18 +122,30 @@ export async function POST(request: Request) {
         Bucket: bucket,
         Key: key,
         ContentType: contentType,
-        // Photographs are swapped by overwriting the same key, so a long cache
-        // would mean an updated photo not appearing. Five minutes at the edge
-        // keeps swaps close to immediate while still absorbing traffic spikes.
-        CacheControl: "public, max-age=300",
+        // The key is versioned per upload, so this URL's bytes can never
+        // change and every cache in the chain may keep them for a year.
+        // Replacing the photo replaces the URL, which is what actually makes
+        // an update appear: the old "stable key + short max-age" approach
+        // still left the browser, the CDN and the image optimizer each
+        // serving the old bytes until their own clocks ran out.
+        CacheControl: CACHE_FOREVER,
       }),
-      // Long enough to upload a large photo on a poor connection, short enough
-      // that a leaked URL is not a lasting write capability.
+      // Long enough to upload a large photo on a poor connection, short
+      // enough that a leaked URL is not a lasting write capability.
+      //
+      // Cache-Control only becomes object metadata when the PUT itself sends
+      // the header, which is why the response tells the client the exact value
+      // to send. The presigner hoists it into the query string either way, so
+      // a headerless PUT still succeeds; it merely lands without the policy,
+      // which is harmless, since freshness comes from the versioned key rather
+      // than from headers. Verified against the real bucket both ways.
       { expiresIn: 300 },
     );
 
     return NextResponse.json({
       ok: true,
+      // The PUT should send this exact header; see the presign note above.
+      cacheControl: CACHE_FOREVER,
       url,
       key,
       ref: `${S3_PREFIX}${key}`,

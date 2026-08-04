@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
       },
     ],
     deviceSizes: [420, 640, 828, 1080, 1280, 1600, 1920, 2560],
+    // Image URLs are versioned per upload, so an optimized variant can never
+    // go stale: a replaced photo is a new URL, not new bytes at an old one.
+    minimumCacheTTL: 31536000,
   },
   poweredByHeader: false,
 };

@@ -117,18 +117,48 @@ export function resolveImageSrc(value: string | null | undefined): string | null
  * keys are: re-uploading replaces the picture wherever it appears, with no
  * content change needed.
  */
-export function siteImageKey(fieldKey: string, filename: string): string {
+/**
+ * Keys carry an upload version, so every upload gets a new URL.
+ *
+ * They used to be stable ("events/<id>/hero.jpg"), on the theory that
+ * overwriting the same key swapped the photo everywhere with no database
+ * change. The theory bought nothing: both upload flows save the returned ref
+ * anyway. What stable keys actually did was pin the URL forever, which handed
+ * freshness to every cache between S3 and the eyeball: the browser, the CDN,
+ * and Next's image optimizer each kept serving the old bytes until their own
+ * clock ran out, so a replaced photograph looked like a failed upload.
+ *
+ * A versioned key inverts that. The URL changes when the image does, the ref
+ * swap is atomic with the save, and every cache may hold the old URL for a
+ * year without ever being wrong. Replaced objects are left behind in the
+ * bucket; they are small, and deleting them would break any page still holding
+ * the old URL mid-navigation.
+ *
+ * The version is an argument rather than minted here so the builders stay pure
+ * and the tests deterministic. The upload route mints one per upload.
+ */
+export function siteImageKey(
+  fieldKey: string,
+  filename: string,
+  version: string,
+): string {
   const extension = (filename.match(/\.(jpe?g|png|webp|avif)$/i)?.[1] ?? "jpg")
     .toLowerCase()
     .replace("jpeg", "jpg");
   const safe = fieldKey.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return `site/${safe || "image"}.${extension}`;
+  const v = version.replace(/[^a-z0-9]/gi, "").slice(0, 16) || "0";
+  return `site/${safe || "image"}-${v}.${extension}`;
 }
 
-export function eventImageKey(eventId: string, filename: string): string {
+export function eventImageKey(
+  eventId: string,
+  filename: string,
+  version: string,
+): string {
   const extension = (filename.match(/\.(jpe?g|png|webp|avif)$/i)?.[1] ?? "jpg")
     .toLowerCase()
     .replace("jpeg", "jpg");
   const safeId = eventId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 60) || "event";
-  return `events/${safeId}/hero.${extension}`;
+  const v = version.replace(/[^a-z0-9]/gi, "").slice(0, 16) || "0";
+  return `events/${safeId}/hero-${v}.${extension}`;
 }

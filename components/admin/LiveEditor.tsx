@@ -151,6 +151,7 @@ export function LiveEditor({
         ok?: boolean;
         url?: string;
         ref?: string;
+        cacheControl?: string;
         message?: string;
       } | null;
 
@@ -161,7 +162,14 @@ export function LiveEditor({
 
       const put = await fetch(data.url, {
         method: "PUT",
-        headers: { "Content-Type": file.type },
+        headers: {
+          "Content-Type": file.type,
+          // Without this header the object lands with no caching policy at
+          // all; verified against the real bucket. Freshness never depends on
+          // it (the key is versioned per upload), it just lets every cache
+          // hold the bytes for a year with a clear conscience.
+          ...(data.cacheControl ? { "Cache-Control": data.cacheControl } : {}),
+        },
         body: file,
       });
       if (!put.ok) {
