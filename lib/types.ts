@@ -50,6 +50,13 @@ export type EventRecord = {
    */
   rsvpEnabled: boolean;
   /**
+   * A wordmark shown in the hero in place of the typed name while this event
+   * is featured. The name itself stays in the markup for screen readers and
+   * search; the logo is presentation. Optional, because most events will not
+   * have one, and absent on rows written before it existed.
+   */
+  heroLogo?: string | null;
+  /**
    * Small badge on the card, e.g. "Announcing Soon", "Tickets Live", "Sold Out".
    *
    * Free text, and deliberately about what state the event is in rather than

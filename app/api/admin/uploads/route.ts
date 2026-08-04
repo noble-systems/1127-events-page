@@ -57,6 +57,9 @@ export async function POST(request: Request) {
   const body = (await readJson(request)) as Record<string, unknown> | null;
   const eventId = typeof body?.eventId === "string" ? body.eventId : "";
   const contentKey = typeof body?.contentKey === "string" ? body.contentKey : "";
+  // Only "logo" means anything, and only for event uploads. Anything else is
+  // the default backdrop photograph, so an old client keeps working.
+  const kind = body?.kind === "logo" ? ("logo" as const) : ("hero" as const);
   const contentType = typeof body?.contentType === "string" ? body.contentType : "";
 
   // The client also sends `filename`, and it is deliberately not read. A
@@ -103,7 +106,7 @@ const CACHE_FOREVER = "public, max-age=31536000, immutable";
   // it is how you end up serving something unexpected from your own domain.
   const key = contentKey
     ? siteImageKey(contentKey, `x.${extension}`, version)
-    : eventImageKey(eventId, `x.${extension}`, version);
+    : eventImageKey(eventId, `x.${extension}`, version, kind);
 
   if (!isValidS3Key(key)) {
     // Should be unreachable, since eventImageKey sanitises. Belt and braces:

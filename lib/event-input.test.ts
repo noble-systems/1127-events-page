@@ -286,3 +286,57 @@ describe("the hero paragraph belongs to the event", () => {
     );
   });
 });
+
+describe("the hero logo belongs to the event", () => {
+  /**
+   * A wordmark shown in place of the typed name while the event is featured.
+   * Optional, validated exactly like the photograph, and it must survive the
+   * whole-event round trip: the list's Publish and RSVP toggles resubmit the
+   * entire record, so a field they drop is a field they silently erase.
+   */
+  test("round-trips through the form", () => {
+    const values = readEventBody(
+      { ...valid, heroLogo: " s3:events/x/logo-v1.png " },
+      GENRE_LIST,
+    );
+    const input = toEventInput("x", values, GENRE_LIST);
+    assert.equal(input.heroLogo, "s3:events/x/logo-v1.png");
+    assert.equal(
+      eventToFormValues(input, GENRE_LIST).heroLogo,
+      "s3:events/x/logo-v1.png",
+    );
+  });
+
+  test("is optional, and blank stores null", () => {
+    assert.equal(validateEvent({ ...valid, heroLogo: "" }).heroLogo, undefined);
+    assert.equal(toEventInput("x", { ...valid, heroLogo: "  " }, GENRE_LIST).heroLogo, null);
+  });
+
+  test("rejects remote and traversing refs, exactly like the photograph", () => {
+    for (const heroLogo of [
+      "https://evil.example/x.png",
+      "//evil.example/x.png",
+      "/media/../../etc/passwd",
+      "javascript:alert(1)",
+    ]) {
+      assert.ok(
+        validateEvent({ ...valid, heroLogo }).heroLogo,
+        `expected "${heroLogo}" to be rejected`,
+      );
+    }
+    assert.equal(
+      validateEvent({ ...valid, heroLogo: "s3:events/x/logo-v1.png" }).heroLogo,
+      undefined,
+    );
+  });
+
+  test("a record written before the field existed reads as empty", () => {
+    const { heroLogo, ...older } = toEventInput("x", valid, GENRE_LIST);
+    assert.equal(heroLogo, null);
+    assert.equal(
+      eventToFormValues(older as Parameters<typeof eventToFormValues>[0], GENRE_LIST)
+        .heroLogo,
+      "",
+    );
+  });
+});

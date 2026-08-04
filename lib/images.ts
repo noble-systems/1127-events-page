@@ -103,21 +103,6 @@ export function resolveImageSrc(value: string | null | undefined): string | null
 }
 
 /**
- * Stable key for an event photograph.
- *
- * Stable is the point: uploading a new file to the same key replaces the
- * picture everywhere it appears, with no database change. That is what makes
- * these swappable. The tradeoff is caching, which is why the upload route sets
- * a short max-age on these objects.
- */
-/**
- * Stable key for a homepage photograph, derived from its content field.
- *
- * "hero.image" becomes "site/hero-image.jpg". Stable for the same reason event
- * keys are: re-uploading replaces the picture wherever it appears, with no
- * content change needed.
- */
-/**
  * Keys carry an upload version, so every upload gets a new URL.
  *
  * They used to be stable ("events/<id>/hero.jpg"), on the theory that
@@ -154,11 +139,13 @@ export function eventImageKey(
   eventId: string,
   filename: string,
   version: string,
+  /** "hero" is the backdrop photograph; "logo" the wordmark. */
+  name: "hero" | "logo" = "hero",
 ): string {
   const extension = (filename.match(/\.(jpe?g|png|webp|avif)$/i)?.[1] ?? "jpg")
     .toLowerCase()
     .replace("jpeg", "jpg");
   const safeId = eventId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 60) || "event";
   const v = version.replace(/[^a-z0-9]/gi, "").slice(0, 16) || "0";
-  return `events/${safeId}/hero-${v}.${extension}`;
+  return `events/${safeId}/${name}-${v}.${extension}`;
 }

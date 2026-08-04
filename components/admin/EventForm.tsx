@@ -14,6 +14,7 @@ import {
 } from "@/components/forms/Fields";
 import { Button } from "@/components/ui/Button";
 import { toneBackground } from "@/components/ui/Media";
+import { resolveImageSrc } from "@/lib/images";
 import {
   EMPTY_EVENT,
   type EventFormValues,
@@ -84,7 +85,15 @@ export function EventForm({
    * S3. The file never goes through the app, which is what keeps a large
    * photograph from hitting the Lambda request body limit.
    */
-  const upload = async (file: File) => {
+  const upload = async (
+    file: File,
+    // The backdrop photograph and the hero wordmark share one flow; only the
+    // stored field and the S3 key prefix differ.
+    target: { field: "image" | "heroLogo"; kind: "hero" | "logo" } = {
+      field: "image",
+      kind: "hero",
+    },
+  ) => {
     setUploadError(null);
     setUploading(true);
 
@@ -94,6 +103,7 @@ export function EventForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           eventId,
+          kind: target.kind,
           filename: file.name,
           contentType: file.type,
         }),
@@ -134,7 +144,7 @@ export function EventForm({
         return;
       }
 
-      set("image", data.ref);
+      set(target.field, data.ref);
     } catch {
       setUploadError("Upload failed. Check your connection and try again.");
     } finally {
@@ -450,6 +460,58 @@ export function EventForm({
                     ? "Stored in the images bucket. Swap it by uploading again."
                     : "A file committed under /public."}
                 </p>
+              ) : null}
+            </div>
+          </Field>
+
+          <Field
+            id="ev-hero-logo"
+            label="Hero logo"
+            optional
+            error={errors.heroLogo ?? undefined}
+            hint={
+              eventId
+                ? "A wordmark shown in the hero instead of the typed name while this event is featured. Light artwork on a transparent PNG reads best on the dark backdrop. The name stays in the page for screen readers and search."
+                : "Save the event first, then you can upload a logo."
+            }
+          >
+            <div className="space-y-3">
+              {eventId ? (
+                <input
+                  id="ev-hero-logo-file"
+                  type="file"
+                  accept="image/png,image/webp,image/avif,image/jpeg"
+                  disabled={busy || uploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file)
+                      void upload(file, { field: "heroLogo", kind: "logo" });
+                  }}
+                  className="border-ink/15 bg-bone-soft file:bg-ink file:text-bone hover:border-ink/30 w-full rounded-xl border px-4 py-3 text-[0.9375rem] file:mr-4 file:rounded-full file:border-0 file:px-4 file:py-2 file:text-[0.8125rem] disabled:opacity-60"
+                />
+              ) : null}
+
+              {values.heroLogo ? (
+                <div className="flex items-center gap-3">
+                  {/* Dark backdrop, because that is where the logo will live. */}
+                  <span className="bg-deep inline-block rounded-xl p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={resolveImageSrc(values.heroLogo) ?? undefined}
+                      alt=""
+                      className="h-14 w-auto max-w-[16rem] object-contain"
+                    />
+                  </span>
+                  <button
+                    type="button"
+                    disabled={busy || uploading}
+                    onClick={() => set("heroLogo", "")}
+                    className="text-terracotta-deep text-[0.8125rem] underline-offset-4 hover:underline disabled:opacity-50"
+                  >
+                    Remove, and show the name as text
+                  </button>
+                </div>
               ) : null}
             </div>
           </Field>

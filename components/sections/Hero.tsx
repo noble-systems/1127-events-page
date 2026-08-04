@@ -1,5 +1,6 @@
 import { Editable } from "@/components/edit/Editable";
 import { EditNotice } from "@/components/edit/EditNotice";
+import { resolveImageSrc } from "@/lib/images";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Media } from "@/components/ui/Media";
 import { hero, PRESENTS } from "@/content/site";
@@ -42,6 +43,7 @@ export function Hero({
    * as page content for the same reason hero.title and hero.date are not: two
    * places to change one thing is how the hero ends up describing last month.
    */
+  const logoSrc = resolveImageSrc(event?.heroLogo);
   const ownBody = event?.heroBody?.trim();
   const body = ownBody || content.body;
   // A featured event with no paragraph of its own silently borrows the series
@@ -95,7 +97,23 @@ export function Hero({
               ["--rise-delay" as string]: "160ms",
             }}
           >
-            {title}
+            {logoSrc ? (
+              <>
+                {/* The name still reads aloud and indexes; the wordmark is how
+                    it looks. A plain img rather than next/image: the artwork's
+                    intrinsic ratio is unknown at build, and fill would need a
+                    fixed frame the logo should be sizing itself. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={logoSrc}
+                  alt=""
+                  className="h-[clamp(9rem,26vw,17rem)] w-auto max-w-full object-contain object-left"
+                />
+                <span className="sr-only">{title}</span>
+              </>
+            ) : (
+              title
+            )}
           </h1>
 
           <p

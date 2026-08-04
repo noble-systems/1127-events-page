@@ -184,6 +184,14 @@ describe("eventImageKey", () => {
     assert.notEqual(a, later, "a re-upload must mint a new URL");
   });
 
+  test("a logo gets its own key family, so it never collides with the photo", () => {
+    assert.equal(
+      eventImageKey("x", "a.png", "v", "logo"),
+      "events/x/logo-v.png",
+    );
+    assert.ok(isValidS3Key(eventImageKey("x", "a.png", "v", "logo")));
+  });
+
   test("keeps the real extension", () => {
     assert.equal(eventImageKey("x", "a.png", "v"), "events/x/hero-v.png");
     assert.equal(eventImageKey("x", "a.webp", "v"), "events/x/hero-v.webp");

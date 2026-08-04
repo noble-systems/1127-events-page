@@ -31,6 +31,7 @@ export type EventFormValues = {
   order: string;
   shotNote: string;
   image: string;
+  heroLogo: string;
   imageAlt: string;
   ctaLabel: string;
   ctaAction: string;
@@ -58,6 +59,7 @@ export const EMPTY_EVENT: EventFormValues = {
   order: "0",
   shotNote: "",
   image: "",
+  heroLogo: "",
   imageAlt: "",
   ctaLabel: "RSVP",
   ctaAction: "rsvp",
@@ -143,6 +145,11 @@ export function validateEvent(values: EventFormValues): FormErrors {
       "Upload a photo, or use a path inside /public such as /media/sun-club-01.jpg";
   }
 
+  // Same rule as the photograph, same reason: the ref reaches an img src.
+  if (!isValidImageRef(values.heroLogo)) {
+    errors.heroLogo = "Upload a logo image, or use a path inside /public.";
+  }
+
   return errors;
 }
 
@@ -177,6 +184,7 @@ export function toEventInput(
     order: Number(values.order),
     shotNote: values.shotNote.trim(),
     image: values.image.trim() || null,
+    heroLogo: values.heroLogo.trim() || null,
     imageAlt: values.imageAlt.trim(),
     ctaLabel: values.ctaLabel.trim(),
     ctaAction: values.ctaAction as CtaAction,
@@ -219,6 +227,7 @@ export function readEventBody(
     order: typeof raw.order === "number" ? String(raw.order) : str("order") || "0",
     shotNote: str("shotNote"),
     image: str("image"),
+    heroLogo: str("heroLogo"),
     imageAlt: str("imageAlt"),
     ctaLabel: str("ctaLabel"),
     ctaAction: str("ctaAction") || "rsvp",
@@ -247,6 +256,7 @@ export function eventToFormValues(
     order: number;
     shotNote: string;
     image: string | null;
+    heroLogo?: string | null;
     imageAlt: string;
     ctaLabel: string;
     ctaAction: CtaAction;
@@ -274,6 +284,7 @@ export function eventToFormValues(
     order: String(event.order),
     shotNote: event.shotNote,
     image: event.image ?? "",
+    heroLogo: event.heroLogo ?? "",
     imageAlt: event.imageAlt,
     ctaLabel: event.ctaLabel,
     ctaAction: event.ctaAction,
