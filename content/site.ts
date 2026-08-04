@@ -440,7 +440,7 @@ export const capabilities: readonly Capability[] = [
 
 export const ambassadors = {
   eyebrow: "1127 Ambassador Program",
-  title: "The people who move the city.",
+  title: "Bring your people.",
   intro:
     "1127 Events works with a curated network of local ambassadors who bring more than follower counts. They bring real relationships, real communities, and the kind of organic energy that turns an event into the place everyone wants to be.",
   doTitle: "What ambassadors do",
@@ -462,11 +462,13 @@ export const ambassadors = {
   ],
   benefitsTitle: "What you get",
   benefits: [
+    // Money first. It is the strongest line in the list, and burying it under
+    // guest-list perks undersold the programme.
+    "Paid, performance-based incentives",
     "Complimentary or priority event access",
     "Guest-list opportunities for your group",
     "Professional photography and social content",
     "Access to future dates",
-    "Performance-based event incentives",
     "A direct line into Scottsdale's music, nightlife and hospitality communities",
   ],
   cta: "Apply to Become an Ambassador",
@@ -617,11 +619,11 @@ export const partner = {
   eyebrow: "Venues, Brands & Partners",
   title: "Bring 1127 to your venue.",
   intro:
-    "You focus on hospitality, bar service, security and your guests. We handle entertainment, audience development, event marketing, technical production and media, all through one point of contact.",
+    "You focus on hospitality, bar service, security and your guests. We handle entertainment, audience development, event marketing, technical production and media.",
   brings: [
     { title: "Audience strategy", body: "Built and tracked before the date." },
     { title: "Paid promotion", body: "Real budget, produced creative." },
-    { title: "Local talent", body: "Artists this city already turns out for." },
+    { title: "Local talent", body: "Known local artists." },
     { title: "Media production", body: "Photo, video and recaps you keep." },
     { title: "Event operations", body: "Staffing, run-of-show, day-of control." },
     { title: "Technical production", body: "Sound, power and an audio tech." },
