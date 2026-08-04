@@ -365,3 +365,49 @@ describe("the hero logo size", () => {
     );
   });
 });
+
+describe("hero logo spacing", () => {
+  /**
+   * Set from the live editor while looking at the hero. The fields ride the
+   * same whole-event PUT as everything else, so the round trip and the
+   * survive-the-toggles property are what matter.
+   */
+  test("round-trips, and defaults to zero", () => {
+    const bare = readEventBody({ ...valid }, GENRE_LIST);
+    assert.equal(bare.heroLogoPadTop, "0");
+    assert.equal(bare.heroLogoPadBottom, "0");
+
+    const values = readEventBody(
+      { ...valid, heroLogoPadTop: 3, heroLogoPadBottom: "2" },
+      GENRE_LIST,
+    );
+    const input = toEventInput("x", values, GENRE_LIST);
+    assert.equal(input.heroLogoPadTop, 3);
+    assert.equal(input.heroLogoPadBottom, 2);
+    const back = eventToFormValues(input, GENRE_LIST);
+    assert.equal(back.heroLogoPadTop, "3");
+    assert.equal(back.heroLogoPadBottom, "2");
+  });
+
+  test("rejects out-of-range and junk spacing", () => {
+    assert.ok(validateEvent({ ...valid, heroLogoPadTop: "9" }).heroLogoPadTop);
+    assert.ok(validateEvent({ ...valid, heroLogoPadTop: "-1" }).heroLogoPadTop);
+    assert.ok(validateEvent({ ...valid, heroLogoPadBottom: "abc" }).heroLogoPadBottom);
+    assert.equal(validateEvent({ ...valid, heroLogoPadTop: "8" }).heroLogoPadTop, undefined);
+  });
+
+  test("a record from before the fields reads as zero", () => {
+    const { heroLogoPadTop, heroLogoPadBottom: _dropped, ...older } = toEventInput(
+      "x",
+      valid,
+      GENRE_LIST,
+    );
+    assert.equal(heroLogoPadTop, 0);
+    const back = eventToFormValues(
+      older as Parameters<typeof eventToFormValues>[0],
+      GENRE_LIST,
+    );
+    assert.equal(back.heroLogoPadTop, "0");
+    assert.equal(back.heroLogoPadBottom, "0");
+  });
+});

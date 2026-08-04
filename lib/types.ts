@@ -59,6 +59,13 @@ export type EventRecord = {
   /** How large the wordmark renders in the hero. Absent means "md". */
   heroLogoSize?: "sm" | "md" | "lg";
   /**
+   * Space above and below the wordmark, in rem, 0 to 8. Set from the live
+   * editor while looking at the hero, which is the only place spacing can be
+   * judged. Absent means 0.
+   */
+  heroLogoPadTop?: number;
+  heroLogoPadBottom?: number;
+  /**
    * Small badge on the card, e.g. "Announcing Soon", "Tickets Live", "Sold Out".
    *
    * Free text, and deliberately about what state the event is in rather than

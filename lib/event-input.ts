@@ -33,6 +33,8 @@ export type EventFormValues = {
   image: string;
   heroLogo: string;
   heroLogoSize: string;
+  heroLogoPadTop: string;
+  heroLogoPadBottom: string;
   imageAlt: string;
   ctaLabel: string;
   ctaAction: string;
@@ -62,6 +64,8 @@ export const EMPTY_EVENT: EventFormValues = {
   image: "",
   heroLogo: "",
   heroLogoSize: "md",
+  heroLogoPadTop: "0",
+  heroLogoPadBottom: "0",
   imageAlt: "",
   ctaLabel: "RSVP",
   ctaAction: "rsvp",
@@ -156,6 +160,13 @@ export function validateEvent(values: EventFormValues): FormErrors {
     errors.heroLogoSize = "Pick small, medium or large.";
   }
 
+  for (const field of ["heroLogoPadTop", "heroLogoPadBottom"] as const) {
+    const pad = Number(values[field]);
+    if (!Number.isInteger(pad) || pad < 0 || pad > 8) {
+      errors[field] = "Spacing is 0 to 8.";
+    }
+  }
+
   return errors;
 }
 
@@ -192,6 +203,8 @@ export function toEventInput(
     image: values.image.trim() || null,
     heroLogo: values.heroLogo.trim() || null,
     heroLogoSize: values.heroLogoSize as "sm" | "md" | "lg",
+    heroLogoPadTop: Number(values.heroLogoPadTop),
+    heroLogoPadBottom: Number(values.heroLogoPadBottom),
     imageAlt: values.imageAlt.trim(),
     ctaLabel: values.ctaLabel.trim(),
     ctaAction: values.ctaAction as CtaAction,
@@ -236,6 +249,14 @@ export function readEventBody(
     image: str("image"),
     heroLogo: str("heroLogo"),
     heroLogoSize: str("heroLogoSize") || "md",
+    heroLogoPadTop:
+      typeof raw.heroLogoPadTop === "number"
+        ? String(raw.heroLogoPadTop)
+        : str("heroLogoPadTop") || "0",
+    heroLogoPadBottom:
+      typeof raw.heroLogoPadBottom === "number"
+        ? String(raw.heroLogoPadBottom)
+        : str("heroLogoPadBottom") || "0",
     imageAlt: str("imageAlt"),
     ctaLabel: str("ctaLabel"),
     ctaAction: str("ctaAction") || "rsvp",
@@ -266,6 +287,8 @@ export function eventToFormValues(
     image: string | null;
     heroLogo?: string | null;
     heroLogoSize?: "sm" | "md" | "lg";
+    heroLogoPadTop?: number;
+    heroLogoPadBottom?: number;
     imageAlt: string;
     ctaLabel: string;
     ctaAction: CtaAction;
@@ -295,6 +318,8 @@ export function eventToFormValues(
     image: event.image ?? "",
     heroLogo: event.heroLogo ?? "",
     heroLogoSize: event.heroLogoSize ?? "md",
+    heroLogoPadTop: String(event.heroLogoPadTop ?? 0),
+    heroLogoPadBottom: String(event.heroLogoPadBottom ?? 0),
     imageAlt: event.imageAlt,
     ctaLabel: event.ctaLabel,
     ctaAction: event.ctaAction,

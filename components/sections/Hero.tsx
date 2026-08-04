@@ -1,4 +1,5 @@
 import { Editable } from "@/components/edit/Editable";
+import { EditHeroLogo } from "@/components/edit/EditHeroLogo";
 import { EditNotice } from "@/components/edit/EditNotice";
 import { resolveImageSrc } from "@/lib/images";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
@@ -103,23 +104,40 @@ export function Hero({
             }}
           >
             {logoSrc ? (
-              <>
+              <span
+                className="block"
+                style={{
+                  marginTop: `${event?.heroLogoPadTop ?? 0}rem`,
+                  marginBottom: `${event?.heroLogoPadBottom ?? 0}rem`,
+                }}
+              >
                 {/* The name still reads aloud and indexes; the wordmark is how
                     it looks. A plain img rather than next/image: the artwork's
                     intrinsic ratio is unknown at build, and fill would need a
                     fixed frame the logo should be sizing itself. */}
+                {/* The halo is what keeps the gold sun readable over a busy
+                    photograph: a soft dark shadow lifting the artwork off
+                    whatever is behind it. Invisible against the plain dark
+                    backdrop, working hardest exactly when the backdrop is
+                    loudest. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={logoSrc}
                   alt=""
                   className={`${logoSizeClass} w-auto max-w-full object-contain object-left`}
+                  style={{
+                    filter:
+                      "drop-shadow(0 3px 14px rgba(7, 20, 47, 0.9)) drop-shadow(0 1px 3px rgba(7, 20, 47, 0.8))",
+                  }}
                 />
                 <span className="sr-only">{title}</span>
-              </>
+              </span>
             ) : (
               title
             )}
           </h1>
+
+          {logoSrc && event ? <EditHeroLogo event={event} /> : null}
 
           <p
             className="animate-rise font-display text-bone/90 mt-7 text-[1.6rem] leading-tight sm:text-[2.1rem]"
