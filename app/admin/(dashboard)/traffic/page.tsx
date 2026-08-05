@@ -155,12 +155,14 @@ export default async function TrafficPage() {
               <div
                 key={day}
                 title={`${day}: ${views} views, ${rsvps} RSVPs`}
-                className="group flex h-full flex-1 flex-col justify-end"
+                className="bg-ink/[0.04] group flex h-full flex-1 flex-col justify-end rounded-sm"
               >
-                <div
-                  className={`w-full rounded-t-sm ${rsvps > 0 ? "bg-sun-deep/80" : "bg-cobalt/55"} group-hover:bg-cobalt`}
-                  style={{ height: `${Math.max(views > 0 ? 4 : 1, (100 * views) / maxDay)}%` }}
-                />
+                {views > 0 ? (
+                  <div
+                    className={`w-full rounded-t-sm ${rsvps > 0 ? "bg-sun-deep/80" : "bg-cobalt/55"} group-hover:bg-cobalt`}
+                    style={{ height: `${Math.max(6, (100 * views) / maxDay)}%` }}
+                  />
+                ) : null}
               </div>
             );
           })}
@@ -277,30 +279,68 @@ function Summary({
   );
 }
 
+/** "19" means nothing; "7pm" means 7pm. */
+function hourLabel(hour: number): string {
+  const twelve = hour % 12 || 12;
+  return `${twelve}${hour < 12 ? "am" : "pm"}`;
+}
+
 function HourChart({ entries }: { entries: Map<string, number> }) {
+  const total = [...entries.values()].reduce((a, b) => a + b, 0);
+
+  /**
+   * Below this there is no rhythm to show, only noise: one tall bar over a
+   * row of slivers, which reads as data and means nothing. A chart that
+   * cannot support a conclusion is replaced by a sentence saying so.
+   */
+  if (total < 30) {
+    return (
+      <p className="border-ink/25 bg-bone/60 text-ink/65 mt-5 rounded-2xl border border-dashed px-6 py-8 text-center text-[0.875rem]">
+        Not enough traffic yet to show a daily rhythm ({total} of the ~30 views
+        it takes). This fills in by itself.
+      </p>
+    );
+  }
+
   const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
   const max = Math.max(1, ...entries.values());
+  const busiest = Number(
+    [...entries.entries()].sort((a, b) => b[1] - a[1])[0][0],
+  );
+
   return (
-    <div className="mt-5 flex h-24 items-end gap-[3px]">
-      {hours.map((h) => {
-        const n = entries.get(h) ?? 0;
-        return (
-          <div
-            key={h}
-            title={`${h}:00, ${n} views`}
-            className="flex h-full flex-1 flex-col justify-end"
-          >
+    <>
+      <div className="mt-5 flex h-24 items-end gap-[3px]">
+        {hours.map((h) => {
+          const n = entries.get(h) ?? 0;
+          return (
             <div
-              className="bg-cobalt/55 hover:bg-cobalt w-full rounded-t-sm"
-              style={{ height: `${Math.max(n > 0 ? 6 : 1, (100 * n) / max)}%` }}
-            />
-            {["00", "06", "12", "18"].includes(h) ? (
-              <span className="text-ink/50 mt-1 text-[0.65rem]">{Number(h)}</span>
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
+              key={h}
+              title={`${hourLabel(Number(h))}: ${n} ${n === 1 ? "view" : "views"}`}
+              className="bg-ink/[0.04] flex h-full flex-1 flex-col justify-end rounded-sm"
+            >
+              {/* Zero is an empty track, not a hairline pretending to be data. */}
+              {n > 0 ? (
+                <div
+                  className="bg-cobalt/55 hover:bg-cobalt w-full rounded-t-sm"
+                  style={{ height: `${Math.max(6, (100 * n) / max)}%` }}
+                />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      <div className="text-ink/50 mt-1.5 flex text-[0.7rem]">
+        {["12am", "6am", "12pm", "6pm"].map((label) => (
+          <span key={label} className="flex-1 text-left" style={{ maxWidth: "25%" }}>
+            {label}
+          </span>
+        ))}
+      </div>
+      <p className="text-ink/70 mt-3 text-[0.875rem]">
+        Busiest around {hourLabel(busiest)}.
+      </p>
+    </>
   );
 }
 
