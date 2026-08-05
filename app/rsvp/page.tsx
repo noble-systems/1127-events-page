@@ -48,10 +48,18 @@ export default async function RsvpPage({
    * events rather than trusted, so a crafted link cannot attribute a signup to
    * an event that does not exist, or open a form for an unpublished draft.
    */
-  const open = events.filter((event) => event.rsvpEnabled !== false);
   const requested = params.event
-    ? open.find((event) => event.id === params.event)
+    ? (events.find((event) => event.id === params.event) ??
+      events.find((event) => (event.formerIds ?? []).includes(params.event!)))
     : undefined;
+
+  /**
+   * A requested event goes to its own page whatever its state; that page now
+   * explains a closed list itself. The featured fallback still skips closed
+   * events, because /rsvp on a flyer should always land somewhere a signup
+   * can happen.
+   */
+  const open = events.filter((event) => event.rsvpEnabled !== false);
   const target = requested ?? open.find((event) => event.featured);
 
   if (target) redirect(`/rsvp/${encodeURIComponent(target.id)}`);

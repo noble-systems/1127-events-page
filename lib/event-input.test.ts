@@ -3,6 +3,7 @@ import { describe, test } from "node:test";
 import {
   EMPTY_EVENT,
   eventToFormValues,
+  isValidEventId,
   readEventBody,
   slugify,
   toEventInput,
@@ -43,6 +44,27 @@ describe("slugify", () => {
 
   test("caps length", () => {
     assert.ok(slugify("x".repeat(200)).length <= 60);
+  });
+});
+
+describe("isValidEventId", () => {
+  test("accepts exactly what slugify produces", () => {
+    assert.equal(isValidEventId("sun-club"), true);
+    assert.equal(isValidEventId("mirage"), true);
+    assert.equal(isValidEventId("night-2"), true);
+  });
+
+  test("rejects anything slugify would change", () => {
+    assert.equal(isValidEventId(""), false);
+    assert.equal(isValidEventId("Sun Club"), false);
+    assert.equal(isValidEventId("café"), false);
+    assert.equal(isValidEventId("x".repeat(61)), false);
+  });
+
+  /** The store's bookkeeping rows can never be claimed as a URL. */
+  test("rejects reserved row ids", () => {
+    assert.equal(isValidEventId("__seed__"), false);
+    assert.equal(isValidEventId("__content__"), false);
   });
 });
 

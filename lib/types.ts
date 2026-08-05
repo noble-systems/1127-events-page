@@ -24,6 +24,14 @@ export type CtaAction = "rsvp" | "partner";
 
 export type EventRecord = {
   id: string;
+  /**
+   * Ids this event used to answer to. The id is the public RSVP URL, and the
+   * URL can be renamed when the event is (Sun Club became Mirage while its
+   * address still said sun-club). Old addresses live here so /rsvp/<former-id>
+   * redirects to the current one: links in old texts, bios and printed QR
+   * codes must follow the event, not die with the name.
+   */
+  formerIds?: string[];
   name: string;
   tagline: string;
   summary: string;

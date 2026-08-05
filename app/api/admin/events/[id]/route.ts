@@ -1,8 +1,19 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { readJson, requireAdmin } from "@/lib/admin-api";
-import { readEventBody, toEventInput, validateEvent } from "@/lib/event-input";
-import { deleteEvent, getEvent, getGenreList, updateEvent } from "@/lib/store";
+import {
+  isValidEventId,
+  readEventBody,
+  toEventInput,
+  validateEvent,
+} from "@/lib/event-input";
+import {
+  deleteEvent,
+  getEvent,
+  getGenreList,
+  renameEvent,
+  updateEvent,
+} from "@/lib/store";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -40,8 +51,27 @@ export async function PUT(request: Request, { params }: Params) {
   // discarded on save. See normaliseGenres.
   const allowedGenres = await getGenreList();
 
-  const values = readEventBody(await readJson(request), allowedGenres);
+  const body = await readJson(request);
+  const values = readEventBody(body, allowedGenres);
   const errors = validateEvent(values);
+
+  /**
+   * An optional new URL for the event. Checked here rather than in
+   * validateEvent because uniqueness needs the store. The old URL is not
+   * lost: renameEvent keeps it as a permanent redirect.
+   */
+  const rawNewId =
+    typeof (body as { newId?: unknown })?.newId === "string"
+      ? ((body as { newId: string }).newId ?? "").trim()
+      : "";
+  const newId = rawNewId && rawNewId !== id ? rawNewId : null;
+  if (newId) {
+    if (!isValidEventId(newId)) {
+      errors.newId = "Use lowercase letters, numbers and hyphens only.";
+    } else if (await getEvent(newId)) {
+      errors.newId = "Another event already uses this URL.";
+    }
+  }
 
   if (Object.keys(errors).length > 0) {
     return NextResponse.json(
@@ -50,10 +80,11 @@ export async function PUT(request: Request, { params }: Params) {
     );
   }
 
-  const event = await updateEvent(
+  let event = await updateEvent(
     existing,
     toEventInput(id, values, allowedGenres),
   );
+  if (newId) event = await renameEvent(event, newId);
   revalidatePath("/");
 
   return NextResponse.json({ ok: true, event });

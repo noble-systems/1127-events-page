@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { RsvpPageView } from "@/components/RsvpPageView";
 import { listPublicEvents } from "@/lib/store";
 
@@ -30,11 +30,21 @@ async function resolve(params: Params["params"]) {
     listPublicEvents(),
     params,
   ]);
-  return events.find((event) => event.id === id) ?? null;
+  return {
+    event: events.find((event) => event.id === id) ?? null,
+    /**
+     * The address of a renamed event. A direct id match always wins; failing
+     * that, an event that lists this slug among its former ids claims it, and
+     * the page redirects permanently to the current address. This is what
+     * keeps a printed QR code alive across a rename.
+     */
+    moved:
+      events.find((event) => (event.formerIds ?? []).includes(id)) ?? null,
+  };
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const event = await resolve(params);
+  const { event } = await resolve(params);
   if (!event) return { title: "RSVP" };
 
   const title = `RSVP for ${event.name}`;
@@ -56,8 +66,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function EventRsvpPage({ params }: Params) {
-  const event = await resolve(params);
-  if (!event) notFound();
-
-  return <RsvpPageView featured={event} />;
+  const { event, moved } = await resolve(params);
+  if (event) return <RsvpPageView featured={event} />;
+  if (moved) permanentRedirect(`/rsvp/${encodeURIComponent(moved.id)}`);
+  notFound();
 }

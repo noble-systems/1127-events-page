@@ -73,6 +73,13 @@ export function EventForm({
 }) {
   const router = useRouter();
   const [values, setValues] = useState<EventFormValues>(initial ?? EMPTY_EVENT);
+  /**
+   * The event's URL slug, held apart from `values`: it is the record's id,
+   * not a field on it. Editable only on an existing event; a new event's URL
+   * is minted from its name. Sent as `newId` only when actually changed, so
+   * an ordinary save can never trigger the rename path by accident.
+   */
+  const [slug, setSlug] = useState(eventId ?? "");
   const [errors, setErrors] = useState<FormErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -185,7 +192,11 @@ export function EventForm({
         {
           method: eventId ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(values),
+          body: JSON.stringify(
+            eventId && slug.trim() && slug.trim() !== eventId
+              ? { ...values, newId: slug.trim() }
+              : values,
+          ),
         },
       );
 
@@ -229,6 +240,25 @@ export function EventForm({
             />
           </Field>
 
+          {eventId ? (
+            <Field id="ev-slug" label="URL" error={errors.newId}>
+              <TextInput
+                id="ev-slug"
+                name="newId"
+                placeholder="the-event-name"
+                value={slug}
+                error={errors.newId}
+                disabled={busy}
+                onChange={(e) => setSlug(e.target.value)}
+              />
+              <p className="text-ink/55 mt-2 text-[0.8125rem] leading-relaxed">
+                1127.events/rsvp/{slug.trim() || eventId}
+                {slug.trim() && slug.trim() !== eventId
+                  ? ". The old address will keep redirecting here, so links already out there survive the change."
+                  : ""}
+              </p>
+            </Field>
+          ) : null}
 
           <Field
             id="ev-tagline"

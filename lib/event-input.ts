@@ -114,6 +114,17 @@ export function slugify(value: string): string {
   );
 }
 
+/**
+ * True when `value` can be an event id, which is its public URL slug.
+ *
+ * The test is simply "slugify would leave it unchanged": lowercase letters,
+ * digits and hyphens. This also fences off the store's bookkeeping rows
+ * (__seed__, __content__), whose underscores slugify never emits.
+ */
+export function isValidEventId(value: string): boolean {
+  return value.length > 0 && slugify(value) === value;
+}
+
 export function validateEvent(values: EventFormValues): FormErrors {
   const errors: FormErrors = {};
 

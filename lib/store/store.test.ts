@@ -18,9 +18,11 @@ const { isMailable, isSuppressed, subscriptionState } = await import(
 const {
   createEvent,
   deleteEvent,
+  getEvent,
   listPublicEvents,
   listAllEvents,
   recordSubmission,
+  renameEvent,
   store,
   setFeaturedEvent,
   suppressEmail,
@@ -522,5 +524,57 @@ describe("featured is chosen from the list", () => {
     await createEvent(event("a", { featured: true }));
     await setFeaturedEvent("nope");
     assert.equal((await listAllEvents()).find((e) => e.featured)?.id, "a");
+  });
+});
+
+describe("renameEvent moves the URL without stranding anything", () => {
+  beforeEach(reset);
+
+  const rsvp = (eventId: string) => ({
+    name: "Sam",
+    email: "sam@example.com",
+    marketingOptIn: "true",
+    eventId,
+  });
+
+  test("record, RSVP history and alias all follow the new id", async () => {
+    await createEvent(event("sun-club", { featured: true }));
+    await recordSubmission("rsvp", rsvp("sun-club"));
+
+    const renamed = await renameEvent((await getEvent("sun-club"))!, "mirage");
+
+    assert.equal(renamed.id, "mirage");
+    assert.deepEqual(renamed.formerIds, ["sun-club"]);
+    assert.equal(renamed.featured, true, "the featured slot moved with it");
+    assert.equal(await getEvent("sun-club"), null, "the old row is gone");
+
+    const rows = await store().listSubmissions("rsvp");
+    assert.deepEqual(rows[0].eventIds, ["mirage"], "history follows the event");
+  });
+
+  test("renaming back along a cycle never aliases an id to itself", async () => {
+    await createEvent(event("sun-club"));
+    await renameEvent((await getEvent("sun-club"))!, "mirage");
+    const back = await renameEvent((await getEvent("mirage"))!, "sun-club");
+
+    assert.equal(back.id, "sun-club");
+    assert.deepEqual(back.formerIds, ["mirage"]);
+  });
+
+  /**
+   * The clobber this pins: updateEvent rebuilds the record from form input,
+   * which has never heard of formerIds. Losing it on an ordinary save would
+   * silently kill every redirect the last rename created.
+   */
+  test("an ordinary edit keeps the URL history", async () => {
+    await createEvent(event("sun-club"));
+    await renameEvent((await getEvent("sun-club"))!, "mirage");
+
+    const current = (await getEvent("mirage"))!;
+    const saved = await updateEvent(current, {
+      ...event("mirage"),
+      name: "Mirage",
+    });
+    assert.deepEqual(saved.formerIds, ["sun-club"]);
   });
 });

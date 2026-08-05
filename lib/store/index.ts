@@ -230,10 +230,57 @@ export async function updateEvent(
   return store().putEvent({
     ...input,
     id: existing.id,
+    // URL history rides along: the form knows nothing about formerIds, and an
+    // ordinary save must not amputate the redirects old links depend on.
+    formerIds: existing.formerIds,
     featured: input.published ? input.featured : false,
     createdAt: existing.createdAt,
     updatedAt: new Date().toISOString(),
   });
+}
+
+/**
+ * Moves an event to a new id, which is its public RSVP URL.
+ *
+ * The name can change and the URL should be able to follow it, but the old
+ * address is already out in the world in texts, bios and printed QR codes. So
+ * the old id joins formerIds on the record, /rsvp of a former id redirects
+ * permanently, and every submission's RSVP history is rewritten so audience
+ * segments built on the event keep matching the people who signed up under
+ * the old address.
+ *
+ * Order is deliberate for crash safety: write the new row, move the history,
+ * delete the old row last. Dying part way leaves the event existing twice,
+ * which a retry converges; it can never exist zero times.
+ */
+export async function renameEvent(
+  existing: EventRecord,
+  newId: string,
+): Promise<EventRecord> {
+  const renamed = await store().putEvent({
+    ...existing,
+    id: newId,
+    // Renaming back along a cycle (a → b → a) drops the target from history
+    // rather than letting an id alias itself.
+    formerIds: [
+      ...(existing.formerIds ?? []).filter((id) => id !== newId),
+      existing.id,
+    ],
+    updatedAt: new Date().toISOString(),
+  });
+
+  for (const row of await store().listSubmissions()) {
+    if (!(row.eventIds ?? []).includes(existing.id)) continue;
+    const eventIds = Array.from(
+      new Set(
+        (row.eventIds ?? []).map((id) => (id === existing.id ? newId : id)),
+      ),
+    );
+    await updateSubmission(row.pk, { eventIds });
+  }
+
+  await store().deleteEvent(existing.id);
+  return renamed;
 }
 
 export async function deleteEvent(id: string): Promise<void> {
