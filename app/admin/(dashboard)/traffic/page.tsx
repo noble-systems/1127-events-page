@@ -36,11 +36,13 @@ function Top({
   entries,
   empty,
   labels,
+  hint,
 }: {
   title: string;
   entries: Array<[string, number]>;
   empty: string;
   labels?: (key: string) => string;
+  hint?: string;
 }) {
   const top = entries.sort((a, b) => b[1] - a[1]).slice(0, 8);
   const max = top[0]?.[1] ?? 0;
@@ -48,6 +50,9 @@ function Top({
   return (
     <section className="border-ink/12 bg-bone rounded-2xl border p-6">
       <h2 className="font-display text-xl">{title}</h2>
+      {hint ? (
+        <p className="text-ink/50 mt-1 text-[0.75rem] leading-relaxed">{hint}</p>
+      ) : null}
       {top.length === 0 ? (
         <p className="text-ink/65 mt-4 text-[0.875rem]">{empty}</p>
       ) : (
@@ -154,23 +159,30 @@ export default async function TrafficPage() {
             return (
               <div
                 key={day}
-                title={`${day}: ${views} views, ${rsvps} RSVPs`}
+                title={`${dayLabel(day)}: ${views} views, ${rsvps} RSVPs`}
                 className="bg-ink/[0.04] group flex h-full flex-1 flex-col justify-end rounded-sm"
               >
+                {/* The count sits on the bar; a bar with no number is
+                    decoration. Bars scale to 82% so the number has headroom. */}
                 {views > 0 ? (
-                  <div
-                    className={`w-full rounded-t-sm ${rsvps > 0 ? "bg-sun-deep/80" : "bg-cobalt/55"} group-hover:bg-cobalt`}
-                    style={{ height: `${Math.max(6, (100 * views) / maxDay)}%` }}
-                  />
+                  <>
+                    <span className="text-ink/60 pb-1 text-center text-[0.625rem] leading-none tabular-nums">
+                      {views}
+                    </span>
+                    <div
+                      className={`w-full rounded-t-sm ${rsvps > 0 ? "bg-sun-deep/80" : "bg-cobalt/55"} group-hover:bg-cobalt`}
+                      style={{ height: `${Math.max(6, (82 * views) / maxDay)}%` }}
+                    />
+                  </>
                 ) : null}
               </div>
             );
           })}
         </div>
         <div className="text-ink/50 mt-2 flex justify-between text-[0.75rem]">
-          <span>{days[0]}</span>
+          <span>{dayLabel(days[0])}</span>
           <span className="text-sun-deep">amber = a day with RSVPs</span>
-          <span>{days[days.length - 1]}</span>
+          <span>{dayLabel(days[days.length - 1])}</span>
         </div>
       </section>
 
@@ -186,9 +198,10 @@ export default async function TrafficPage() {
           empty="No outside referrers yet. Direct visits and same-site navigation do not count here."
         />
         <Top
-          title="Campaigns"
+          title="Tagged links"
           entries={[...sumBy(rows, "utm").entries()]}
-          empty="No campaign-tagged visits yet. Links with utm_source or utm_campaign land here."
+          hint="Each row is a link you tagged before sharing it. Add ?utm_source=ig&utm_campaign=flyer to the end of any link, and everyone who arrives through it is counted here under that name."
+          empty="None yet. Tag a link before you share it and arrivals through it show up here."
         />
         <Top
           title="Countries"
@@ -285,6 +298,14 @@ function hourLabel(hour: number): string {
   return `${twelve}${hour < 12 ? "am" : "pm"}`;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "2026-07-07" reads like a database; "Jul 7" reads like a date. */
+function dayLabel(day: string): string {
+  const [, month, date] = day.split("-").map(Number);
+  return `${MONTHS[(month || 1) - 1]} ${date || 1}`;
+}
+
 function HourChart({ entries }: { entries: Map<string, number> }) {
   const total = [...entries.values()].reduce((a, b) => a + b, 0);
 
@@ -319,12 +340,18 @@ function HourChart({ entries }: { entries: Map<string, number> }) {
               title={`${hourLabel(Number(h))}: ${n} ${n === 1 ? "view" : "views"}`}
               className="bg-ink/[0.04] flex h-full flex-1 flex-col justify-end rounded-sm"
             >
-              {/* Zero is an empty track, not a hairline pretending to be data. */}
+              {/* Zero is an empty track, not a hairline pretending to be data.
+                  Nonzero carries its count; bars stop at 78% so it fits. */}
               {n > 0 ? (
-                <div
-                  className="bg-cobalt/55 hover:bg-cobalt w-full rounded-t-sm"
-                  style={{ height: `${Math.max(6, (100 * n) / max)}%` }}
-                />
+                <>
+                  <span className="text-ink/60 pb-0.5 text-center text-[0.625rem] leading-none tabular-nums">
+                    {n}
+                  </span>
+                  <div
+                    className="bg-cobalt/55 hover:bg-cobalt w-full rounded-t-sm"
+                    style={{ height: `${Math.max(6, (78 * n) / max)}%` }}
+                  />
+                </>
               ) : null}
             </div>
           );
