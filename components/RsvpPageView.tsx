@@ -132,11 +132,11 @@ export function RsvpPageView({ featured }: { featured?: EventRecord }) {
                     <h2 className="text-3xl leading-tight sm:text-4xl">
                       The list isn&apos;t open yet
                     </h2>
+                    {/* One template string, not JSX text after the expression:
+                        Turbopack drops the space between them, and production
+                        typeset "Mirageisn't" until this was one string. */}
                     <p className="text-ink/65 mt-3 text-[0.9375rem] leading-relaxed">
-                      {featured?.name ?? "This event"} isn&apos;t taking RSVPs
-                      right now. When the list opens, it opens on the site
-                      first. Hold onto this link; it will work the moment that
-                      happens.
+                      {`${featured?.name ?? "This event"} isn't taking RSVPs right now. When the list opens, it opens on the site first. Hold onto this link; it will work the moment that happens.`}
                     </p>
                     <div className="mt-7">
                       <ButtonLink href="/" variant="primary" size="lg">
