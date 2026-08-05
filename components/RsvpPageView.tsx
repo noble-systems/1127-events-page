@@ -38,6 +38,14 @@ function eventFacts(event?: EventRecord) {
 }
 
 export function RsvpPageView({ featured }: { featured?: EventRecord }) {
+  /**
+   * An event can be live on the site with its guest list closed. Its RSVP URL
+   * keeps working in that state; the form is simply replaced by a plain
+   * explanation, because the people holding this link were invited by it and
+   * deserve better than a 404.
+   */
+  const closed = Boolean(featured && featured.rsvpEnabled === false);
+
   return (
     <>
       <SiteHeader
@@ -82,9 +90,9 @@ export function RsvpPageView({ featured }: { featured?: EventRecord }) {
               </p>
 
               <p className="text-bone/75 mt-6 max-w-lg text-[1.0625rem] leading-relaxed">
-                Dates aren&apos;t public yet. Leave your details and you&apos;ll
-                hear about the next one before anyone else, and get first access
-                when the guest list opens.
+                {closed
+                  ? "The guest list for this one isn't open right now. Dates and signups go up on the homepage first, so keep an eye there."
+                  : "Dates aren't public yet. Leave your details and you'll hear about the next one before anyone else, and get first access when the guest list opens."}
               </p>
 
               <dl className="border-bone/15 bg-bone/15 mt-10 grid gap-px overflow-hidden rounded-2xl border sm:grid-cols-2">
@@ -108,23 +116,50 @@ export function RsvpPageView({ featured }: { featured?: EventRecord }) {
                 </div>
                 <div className="bg-deep px-5 py-5">
                   <dt className="label-xs text-bone/55">Music</dt>
-                  <dd className="font-display mt-2 text-xl">House</dd>
+                  <dd className="font-display mt-2 text-xl">
+                    {featured?.genres?.length
+                      ? featured.genres.join(", ")
+                      : "Announcing soon"}
+                  </dd>
                 </div>
               </dl>
             </div>
 
             <div className="lg:col-span-6">
               <div className="border-ink/10 bg-bone text-ink rounded-3xl border p-6 shadow-[0_40px_90px_-50px_rgba(4,12,32,0.9)] sm:p-9">
-                <h2 className="text-3xl leading-tight sm:text-4xl">
-                  Get on the list
-                </h2>
-                <p className="text-ink/65 mt-3 text-[0.9375rem] leading-relaxed">
-                  Takes about fifteen seconds. We only email about 1127 events.
-                </p>
+                {closed ? (
+                  <>
+                    <h2 className="text-3xl leading-tight sm:text-4xl">
+                      The list isn&apos;t open yet
+                    </h2>
+                    <p className="text-ink/65 mt-3 text-[0.9375rem] leading-relaxed">
+                      {featured?.name ?? "This event"} isn&apos;t taking RSVPs
+                      right now. When the list opens, it opens on the site
+                      first. Hold onto this link; it will work the moment that
+                      happens.
+                    </p>
+                    <div className="mt-7">
+                      <ButtonLink href="/" variant="primary" size="lg">
+                        See what&apos;s coming
+                        <ArrowIcon />
+                      </ButtonLink>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-3xl leading-tight sm:text-4xl">
+                      Get on the list
+                    </h2>
+                    <p className="text-ink/65 mt-3 text-[0.9375rem] leading-relaxed">
+                      Takes about fifteen seconds. We only email about 1127
+                      events.
+                    </p>
 
-                <div className="mt-7">
-                  <RsvpForm eventId={featured?.id ?? ""} />
-                </div>
+                    <div className="mt-7">
+                      <RsvpForm eventId={featured?.id ?? ""} />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
