@@ -16,7 +16,7 @@ const sections: readonly LegalSection[] = [
     heading: "The short version",
     body: [
       "Two cookies, both first-party. One remembers the choice you made about cookies. The other only exists if you are a member of the 1127 team signed in to the dashboard.",
-      "There are no advertising cookies, no analytics cookies, and no third-party scripts on this site today. Nothing here follows you to other websites.",
+      "There are no advertising cookies, no analytics cookies, and no third-party scripts on this site. Nothing here follows you to other websites. We count page views in aggregate on our own servers, and that counting sets no cookies either.",
     ],
   },
   {

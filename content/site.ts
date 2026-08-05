@@ -46,7 +46,7 @@ export const PRESENTS = "1127 Events Presents";
  * Bump it whenever any of the three documents changes materially, and update
  * the "Last updated" date on those pages to match.
  */
-export const LEGAL_VERSION = "2026-07-29";
+export const LEGAL_VERSION = "2026-08-04";
 
 /* -------------------------------------------------------------------------- */
 /* Brand                                                                       */

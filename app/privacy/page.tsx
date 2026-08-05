@@ -30,6 +30,7 @@ const sections: readonly LegalSection[] = [
     heading: "What you give us",
     body: [
       "This site has four forms: the RSVP list, the talent application, the ambassador application, and the partnership inquiry. We keep what you type into them.",
+      "We also count page views on our own servers: which pages are read, on which days, from which countries and referring sites, in aggregate. No cookies are set for this, no advertising or analytics service receives anything, and nothing counted can identify you. Browsers that send Do Not Track or Global Privacy Control are not counted at all.",
     ],
     list: [
       "Your name",
