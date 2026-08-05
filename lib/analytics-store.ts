@@ -1,11 +1,18 @@
 import {
   DynamoDBClient,
+  PutItemCommand,
   ScanCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { metricPk, parseMetricPk, type MetricKind } from "./analytics.ts";
+import { randomUUID } from "node:crypto";
+import {
+  metricPk,
+  parseMetricPk,
+  type MetricKind,
+  type VisitLogEntry,
+} from "./analytics.ts";
 
 /**
  * Storage for the page-view counters.
@@ -136,4 +143,99 @@ export async function readMetrics(days: readonly string[]): Promise<MetricRow[]>
   } while (cursor);
 
   return rows;
+}
+
+/* -------------------------------------------------------------------------- */
+/* The visit log                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Individual visits, kept 30 days then reclaimed by the table's TTL.
+ *
+ * Each row is what a web server's access log has always contained, minus the
+ * part that made access logs sensitive: there is no IP, no identifier, no
+ * visitor hash on these rows. A row says "someone on an iPhone in the US came
+ * from instagram to /rsvp at 2:14pm" and can never say who, or whether two
+ * rows are the same person.
+ */
+const VLOG_TTL_SECONDS = 30 * 24 * 60 * 60;
+const VLOG_FILE = path.join(process.cwd(), ".data", "visits.json");
+
+export async function appendVisit(entry: VisitLogEntry): Promise<void> {
+  const table = TABLE();
+
+  if (!table) {
+    let rows: VisitLogEntry[] = [];
+    try {
+      rows = JSON.parse(await readFile(VLOG_FILE, "utf8"));
+    } catch {
+      /* first visit */
+    }
+    rows.push(entry);
+    await mkdir(path.dirname(VLOG_FILE), { recursive: true });
+    await writeFile(VLOG_FILE, JSON.stringify(rows.slice(-500), null, 2), "utf8");
+    return;
+  }
+
+  await db()
+    .send(
+      new PutItemCommand({
+        TableName: table,
+        Item: {
+          pk: { S: `vlog#${entry.ts}#${randomUUID().slice(0, 8)}` },
+          ts: { S: entry.ts },
+          p: { S: entry.path },
+          ...(entry.ref ? { r: { S: entry.ref } } : {}),
+          ...(entry.utm ? { u: { S: entry.utm } } : {}),
+          ...(entry.geo ? { g: { S: entry.geo } } : {}),
+          d: { S: entry.device },
+          b: { S: entry.browser },
+          expiresAt: {
+            N: String(Math.ceil(Date.now() / 1000) + VLOG_TTL_SECONDS),
+          },
+        },
+      }),
+    )
+    .catch((error) => console.error("[1127] visit log write failed", error));
+}
+
+/** The newest `limit` visits, newest first. */
+export async function readVisitLog(limit: number): Promise<VisitLogEntry[]> {
+  const table = TABLE();
+
+  if (!table) {
+    try {
+      const rows: VisitLogEntry[] = JSON.parse(await readFile(VLOG_FILE, "utf8"));
+      return rows.slice(-limit).reverse();
+    } catch {
+      return [];
+    }
+  }
+
+  const rows: VisitLogEntry[] = [];
+  let cursor: Record<string, unknown> | undefined;
+  do {
+    const page = await db().send(
+      new ScanCommand({
+        TableName: table,
+        FilterExpression: "begins_with(pk, :v)",
+        ExpressionAttributeValues: { ":v": { S: "vlog#" } },
+        ExclusiveStartKey: cursor as never,
+      }),
+    );
+    for (const item of page.Items ?? []) {
+      rows.push({
+        ts: item.ts?.S ?? "",
+        path: item.p?.S ?? "",
+        ref: item.r?.S ?? null,
+        utm: item.u?.S ?? null,
+        geo: item.g?.S ?? null,
+        device: item.d?.S ?? "Other",
+        browser: item.b?.S ?? "Other",
+      });
+    }
+    cursor = page.LastEvaluatedKey;
+  } while (cursor);
+
+  return rows.sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, limit);
 }

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
+  browserKey,
   campaignKey,
+  deviceKey,
+  hourKey,
+  visitorHash,
   countryKey,
   dayKey,
   isBotAgent,
@@ -106,5 +110,42 @@ describe("keys and ranges", () => {
     const days = lastDays(3, now);
     assert.deepEqual(days, ["2026-08-02", "2026-08-03", "2026-08-04"]);
     assert.equal(dayKey(now), "2026-08-04");
+  });
+});
+
+describe("the deeper layer", () => {
+  test("visitorHash: same person same day, one hash; any change, another", () => {
+    const a = visitorHash("secret", "2026-08-04", "1.2.3.4", "Safari");
+    assert.equal(a, visitorHash("secret", "2026-08-04", "1.2.3.4", "Safari"));
+    assert.notEqual(a, visitorHash("secret", "2026-08-05", "1.2.3.4", "Safari"), "must rotate daily");
+    assert.notEqual(a, visitorHash("secret", "2026-08-04", "5.6.7.8", "Safari"));
+    assert.equal(a.length, 16);
+    // The raw inputs must not be recoverable or visible in the value.
+    assert.ok(!a.includes("1.2.3.4"));
+  });
+
+  test("deviceKey and browserKey classify the common agents", () => {
+    const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1";
+    assert.equal(deviceKey(iphone), "iPhone");
+    assert.equal(browserKey(iphone), "Safari");
+    const chrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36";
+    assert.equal(deviceKey(chrome), "Windows");
+    assert.equal(browserKey(chrome), "Chrome");
+    assert.equal(deviceKey(null), "Other");
+  });
+
+  test("hourKey is a two-digit Phoenix hour", () => {
+    assert.match(hourKey(new Date("2026-08-04T19:30:00Z")), /^\d{2}$/);
+    // 19:30 UTC is 12:30 in Phoenix (UTC-7, no DST).
+    assert.equal(hourKey(new Date("2026-08-04T19:30:00Z")), "12");
+  });
+
+  test("uniq keys parse like any other metric", () => {
+    const pk = metricPk("uniq", "2026-08-04", "abcd1234abcd1234");
+    assert.deepEqual(parseMetricPk(pk), {
+      kind: "uniq",
+      day: "2026-08-04",
+      key: "abcd1234abcd1234",
+    });
   });
 });

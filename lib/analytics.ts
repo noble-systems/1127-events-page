@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+
 /**
  * First-party, cookieless page analytics.
  *
@@ -20,7 +22,16 @@
  * This module is pure so the parsing rules are testable without AWS.
  */
 
-export type MetricKind = "day" | "path" | "ref" | "utm" | "geo";
+export type MetricKind =
+  | "day"
+  | "path"
+  | "ref"
+  | "utm"
+  | "geo"
+  | "hour"
+  | "dev"
+  | "browser"
+  | "uniq";
 
 /** UTC day, because counters need one unambiguous bucket boundary. */
 export function dayKey(now: Date = new Date()): string {
@@ -39,7 +50,9 @@ export function metricPk(kind: MetricKind, day: string, key: string): string {
 export function parseMetricPk(
   pk: string,
 ): { kind: MetricKind; day: string; key: string } | null {
-  const match = pk.match(/^m#(day|path|ref|utm|geo)#(\d{4}-\d{2}-\d{2})#(.*)$/);
+  const match = pk.match(
+    /^m#(day|path|ref|utm|geo|hour|dev|browser|uniq)#(\d{4}-\d{2}-\d{2})#(.*)$/,
+  );
   if (!match) return null;
   return { kind: match[1] as MetricKind, day: match[2], key: match[3] };
 }
@@ -130,3 +143,77 @@ export function lastDays(count: number, now: Date = new Date()): string[] {
   }
   return days;
 }
+
+/* -------------------------------------------------------------------------- */
+/* The deeper layer: visitors, devices, hours, and the visit log              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * An anonymous visitor, valid for one day.
+ *
+ * HMAC of the connection's IP and user agent, keyed by the app secret and the
+ * date. The raw inputs are never stored; the hash cannot be reversed; and
+ * because the date is inside the key, the same person is a DIFFERENT hash
+ * tomorrow. That is the deliberate ceiling: unique-visitor counts per day,
+ * with no way to follow anybody across days, which is the difference between
+ * counting and tracking. This is the same construction Plausible and Fathom
+ * built their cookieless uniques on.
+ */
+export function visitorHash(
+  secret: string,
+  day: string,
+  ip: string | undefined,
+  userAgent: string | null | undefined,
+): string {
+  return createHmac("sha256", `${secret}:${day}`)
+    .update(`${ip ?? "?"}|${userAgent ?? "?"}`)
+    .digest("hex")
+    .slice(0, 16);
+}
+
+/**
+ * Hour of day in Phoenix time, because "when do people visit" is a question
+ * about afternoons and evenings in Arizona, not about UTC.
+ */
+export function hourKey(now: Date = new Date()): string {
+  const hour = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Phoenix",
+    hour: "2-digit",
+    hour12: false,
+  }).format(now);
+  return hour.padStart(2, "0");
+}
+
+/** "iPhone", "Android", "Mac", "Windows" beat browser-version soup. */
+export function deviceKey(userAgent: string | null | undefined): string {
+  const ua = userAgent ?? "";
+  if (/iPhone|iPod/.test(ua)) return "iPhone";
+  if (/iPad/.test(ua)) return "iPad";
+  if (/Android/.test(ua)) return "Android";
+  if (/Macintosh/.test(ua)) return "Mac";
+  if (/Windows/.test(ua)) return "Windows";
+  if (/Linux/.test(ua)) return "Linux";
+  return "Other";
+}
+
+export function browserKey(userAgent: string | null | undefined): string {
+  const ua = userAgent ?? "";
+  if (/Edg\//.test(ua)) return "Edge";
+  if (/OPR\/|Opera/.test(ua)) return "Opera";
+  if (/SamsungBrowser/.test(ua)) return "Samsung";
+  if (/Firefox\//.test(ua)) return "Firefox";
+  if (/Chrome\/|CriOS\//.test(ua)) return "Chrome";
+  if (/Safari\//.test(ua)) return "Safari";
+  return "Other";
+}
+
+/** One row of the recent-visits feed. Short-lived and identifier-free. */
+export type VisitLogEntry = {
+  ts: string;
+  path: string;
+  ref: string | null;
+  utm: string | null;
+  geo: string | null;
+  device: string;
+  browser: string;
+};

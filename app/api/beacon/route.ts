@@ -1,16 +1,21 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
+  browserKey,
   campaignKey,
   countryKey,
   dayKey,
+  deviceKey,
+  hourKey,
   isBotAgent,
   normalisePath,
   refererHost,
+  visitorHash,
 } from "@/lib/analytics";
-import { recordView } from "@/lib/analytics-store";
-import { parseCampaign } from "@/lib/request-meta";
+import { appendVisit, recordView } from "@/lib/analytics-store";
+import { clientIp, parseCampaign } from "@/lib/request-meta";
 import { siteUrl } from "@/lib/email";
+import { appSecret } from "@/lib/tokens";
 
 /**
  * POST /api/beacon  { path, ref?, query? }
@@ -68,7 +73,37 @@ export async function POST(request: Request) {
   const geo = countryKey(request.headers.get("cloudfront-viewer-country"));
   if (geo) entries.push({ kind: "geo", key: geo });
 
-  await recordView(entries, dayKey());
+  const userAgent = request.headers.get("user-agent");
+  const device = deviceKey(userAgent);
+  const browser = browserKey(userAgent);
+  entries.push({ kind: "hour", key: hourKey() });
+  entries.push({ kind: "dev", key: device });
+  entries.push({ kind: "browser", key: browser });
+
+  /**
+   * The unique-visitor tick. The hash is HMAC(secret+day, ip+agent): raw
+   * inputs never stored, unreversible, and a different value tomorrow by
+   * construction, so it can count today's visitors and can never follow one.
+   * Counting a visitor once per day means the row is simply written again on
+   * repeat views; the dashboard counts rows, not additions.
+   */
+  entries.push({
+    kind: "uniq",
+    key: visitorHash(appSecret(), dayKey(), clientIp(request.headers), userAgent),
+  });
+
+  await Promise.all([
+    recordView(entries, dayKey()),
+    appendVisit({
+      ts: new Date().toISOString(),
+      path,
+      ref,
+      utm,
+      geo,
+      device,
+      browser,
+    }),
+  ]);
   return done;
 }
 
