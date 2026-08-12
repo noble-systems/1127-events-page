@@ -13,6 +13,7 @@ import {
   type Values,
 } from "@/lib/content-values";
 import { CONTENT_GROUPS } from "@/lib/content-schema";
+import { shrinkImage } from "@/lib/shrink-image";
 import {
   defaultContent,
   mergeContent,
@@ -162,11 +163,12 @@ export function LiveEditor({
     setValues((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  /** Two steps: presign, then send the bytes straight to S3. */
-  const upload = useCallback(async (key: string, file: File) => {
+  /** Three steps: shrink in the browser, presign, send the bytes to S3. */
+  const upload = useCallback(async (key: string, raw: File) => {
     setError(null);
     setUploading(key);
     try {
+      const file = await shrinkImage(raw);
       const signed = await fetch("/api/admin/uploads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

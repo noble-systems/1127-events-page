@@ -118,7 +118,12 @@ export function Hero({
                 {/* The name still reads aloud and indexes; the wordmark is how
                     it looks. A plain img rather than next/image: the artwork's
                     intrinsic ratio is unknown at build, and fill would need a
-                    fixed frame the logo should be sizing itself. */}
+                    fixed frame the logo should be sizing itself. The URL still
+                    goes through the optimizer, though: a raw S3 src bypassed
+                    the CDN entirely, costing every fresh visitor a direct
+                    cross-origin fetch on the most prominent image on the
+                    page. w=1080 is on the configured size ladder and covers
+                    the largest render at 2x. */}
                 {/* The halo is what keeps the gold sun readable over a busy
                     photograph: a soft dark shadow lifting the artwork off
                     whatever is behind it. Invisible against the plain dark
@@ -126,7 +131,7 @@ export function Hero({
                     loudest. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={logoSrc}
+                  src={`/_next/image?url=${encodeURIComponent(logoSrc)}&w=1080&q=75`}
                   alt=""
                   className={`${logoSizeClass} h-auto w-auto max-w-full`}
                   style={{

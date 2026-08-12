@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { toneBackground } from "@/components/ui/Media";
 import { resolveImageSrc } from "@/lib/images";
+import { shrinkImage } from "@/lib/shrink-image";
 import {
   EMPTY_EVENT,
   type EventFormValues,
@@ -93,7 +94,7 @@ export function EventForm({
    * photograph from hitting the Lambda request body limit.
    */
   const upload = async (
-    file: File,
+    raw: File,
     // The backdrop photograph and the hero wordmark share one flow; only the
     // stored field and the S3 key prefix differ.
     target: { field: "image" | "heroLogo"; kind: "hero" | "logo" } = {
@@ -105,6 +106,9 @@ export function EventForm({
     setUploading(true);
 
     try {
+      // Phone photos arrive at several megabytes; the site never serves more
+      // than 2560px. Shrinking here makes every later cache and encode cheap.
+      const file = await shrinkImage(raw, target.kind);
       const signed = await fetch("/api/admin/uploads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
