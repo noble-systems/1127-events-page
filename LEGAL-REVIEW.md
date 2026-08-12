@@ -233,3 +233,16 @@ For whoever has to keep these in step:
 **Rule for the team:** if a commit changes what is collected, stored or sent, it
 changes the relevant page in the same commit. The pages are only trustworthy for
 as long as that holds.
+
+## Ticket sales (added with the Stripe build, Aug 2026)
+
+8. **Refund policy.** Tickets are sold with no stated refund policy. One
+   needs to exist and be linked from the tickets page and the terms before
+   real sales open. What is it: no refunds, refunds until doors, weather?
+9. **Arizona TPT on admissions.** Ticket revenue for events in Scottsdale
+   may be subject to state and city transaction privilege tax. Stripe Tax
+   can calculate this if counsel says it applies; today prices are flat and
+   tax-silent.
+10. **Terms coverage.** The existing terms page predates paid sales. It
+    should say what a ticket buys, that codes admit one person each, and
+    what happens if an event is cancelled or rescheduled.

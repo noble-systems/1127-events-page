@@ -159,6 +159,16 @@ export function EventForm({
     }
   };
 
+  const setTier = (
+    index: number,
+    patch: Partial<EventFormValues["tickets"][number]>,
+  ) => {
+    set(
+      "tickets",
+      values.tickets.map((tier, i) => (i === index ? { ...tier, ...patch } : tier)),
+    );
+  };
+
   const set = <K extends keyof EventFormValues>(
     key: K,
     value: EventFormValues[K],
@@ -746,7 +756,7 @@ export function EventForm({
             <Select
               id="ev-cta-action"
               name="ctaAction"
-              options={["rsvp", "partner"]}
+              options={["rsvp", "partner", "tickets"]}
               placeholder="Choose a destination"
               value={values.ctaAction}
               error={errors.ctaAction}
@@ -791,6 +801,123 @@ export function EventForm({
               disabled={busy}
               onChange={(value) => set("rsvpEnabled", value)}
             />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-ink/12 bg-bone rounded-2xl border p-6 sm:p-8">
+        <h2 className="font-display text-xl">Tickets</h2>
+        <p className="text-ink/65 mt-2 max-w-2xl text-[0.8125rem] leading-relaxed">
+          Paid entry, charged through Stripe. Each type has its own price and
+          its own pool; the pool can never oversell. Selling needs the switch
+          on and at least one type below.
+        </p>
+
+        <div className="mt-6 space-y-5">
+          <Toggle
+            id="ev-tickets-enabled"
+            label="Selling tickets"
+            hint="Off keeps the tickets page up but says sales haven't opened, so a shared link never dies."
+            checked={values.ticketsEnabled}
+            disabled={busy}
+            onChange={(value) => set("ticketsEnabled", value)}
+          />
+
+          {values.tickets.map((tier, index) => (
+            <div
+              key={tier.id || `new-${index}`}
+              className="border-ink/12 bg-bone-soft grid gap-4 rounded-xl border p-4 sm:grid-cols-[1fr_130px_130px_auto] sm:items-start"
+            >
+              <Field
+                id={`ev-ticket-${index}-name`}
+                label="Type"
+                error={errors[`ticket-${index}-name`]}
+              >
+                <TextInput
+                  id={`ev-ticket-${index}-name`}
+                  name={`ticket-${index}-name`}
+                  placeholder="Early Bird"
+                  value={tier.name}
+                  error={errors[`ticket-${index}-name`]}
+                  disabled={busy}
+                  onChange={(e) => setTier(index, { name: e.target.value })}
+                />
+              </Field>
+              <Field
+                id={`ev-ticket-${index}-price`}
+                label="Price"
+                error={errors[`ticket-${index}-price`]}
+              >
+                <TextInput
+                  id={`ev-ticket-${index}-price`}
+                  name={`ticket-${index}-price`}
+                  placeholder="$15"
+                  value={tier.price}
+                  error={errors[`ticket-${index}-price`]}
+                  disabled={busy}
+                  onChange={(e) => setTier(index, { price: e.target.value })}
+                />
+              </Field>
+              <Field
+                id={`ev-ticket-${index}-capacity`}
+                label="How many"
+                error={errors[`ticket-${index}-capacity`]}
+              >
+                <TextInput
+                  id={`ev-ticket-${index}-capacity`}
+                  name={`ticket-${index}-capacity`}
+                  type="number"
+                  min={1}
+                  placeholder="25"
+                  value={tier.capacity}
+                  error={errors[`ticket-${index}-capacity`]}
+                  disabled={busy}
+                  onChange={(e) => setTier(index, { capacity: e.target.value })}
+                />
+              </Field>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  set(
+                    "tickets",
+                    values.tickets.filter((_, i) => i !== index),
+                  )
+                }
+                className="text-ink/55 hover:text-ink mt-1 justify-self-start text-[0.8125rem] underline underline-offset-2 sm:mt-8"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+
+          {errors.tickets ? (
+            <p role="alert" className="text-terracotta-deep text-[0.875rem]">
+              {errors.tickets}
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              disabled={busy || values.tickets.length >= 12}
+              onClick={() =>
+                set("tickets", [
+                  ...values.tickets,
+                  { id: "", name: "", price: "", capacity: "" },
+                ])
+              }
+            >
+              Add a ticket type
+            </Button>
+            {values.tickets.length > 0 ? (
+              <p className="text-ink/55 text-[0.8125rem]">
+                Removing a type stops future sales; tickets already sold stay
+                sold.
+              </p>
+            ) : null}
           </div>
         </div>
       </section>

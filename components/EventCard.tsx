@@ -1,6 +1,7 @@
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { PRESENTS } from "@/content/site";
 import { Media } from "@/components/ui/Media";
+import { isSelling } from "@/lib/tickets";
 import type { EventRecord } from "@/lib/types";
 
 function MetaRow({ label, value }: { label: string; value: string }) {
@@ -39,17 +40,25 @@ export function EventCard({ event }: { event: EventRecord }) {
   const featured = event.featured;
   // An event that is not taking signups has no RSVP button rather than one that
   // leads to a 404. Its other CTA still works, so "More concepts in
-  // development" can still point at /partner.
+  // development" can still point at /partner. Tickets follow the same rule:
+  // the button only exists while the event actually sells.
   const rsvp = event.ctaAction === "rsvp" && event.rsvpEnabled !== false;
-  const showCta = rsvp || event.ctaAction !== "rsvp";
+  const tickets = event.ctaAction === "tickets" && isSelling(event);
+  const showCta = rsvp || tickets || event.ctaAction === "partner";
 
   const cta = !showCta ? null : (
     <ButtonLink
       // The event's own RSVP page, so the signup is attributed to this night
       // and their genre affinity recorded even when another event is featured.
       // See lib/genres.ts.
-      href={rsvp ? `/rsvp/${encodeURIComponent(event.id)}` : "/partner"}
-      variant={rsvp ? "primary" : "outline"}
+      href={
+        tickets
+          ? `/tickets/${encodeURIComponent(event.id)}`
+          : rsvp
+            ? `/rsvp/${encodeURIComponent(event.id)}`
+            : "/partner"
+      }
+      variant={rsvp || tickets ? "primary" : "outline"}
       size={featured ? "lg" : "md"}
     >
       {event.ctaLabel}

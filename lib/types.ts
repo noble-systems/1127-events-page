@@ -20,7 +20,25 @@ export const MEDIA_TONES: readonly MediaTone[] = [
   "sand",
 ];
 
-export type CtaAction = "rsvp" | "partner";
+export type CtaAction = "rsvp" | "partner" | "tickets";
+
+/**
+ * One purchasable ticket type on an event: "Early Bird, 25 at $15".
+ *
+ * `id` is minted from the first name the tier is saved with and then never
+ * changes, because the sold counter and every issued ticket key off it;
+ * renaming "Early Bird" to "Early Bird II" must not orphan its sales.
+ * `priceCents` is an integer because money as a float loses cents.
+ * `capacity` lives here, on the definition, and nowhere else: the inventory
+ * counter tracks only how many are taken, so raising or lowering capacity is
+ * an ordinary event edit with no counter surgery.
+ */
+export type TicketTier = {
+  id: string;
+  name: string;
+  priceCents: number;
+  capacity: number;
+};
 
 export type EventRecord = {
   id: string;
@@ -57,6 +75,15 @@ export type EventRecord = {
    * With this off the card shows no RSVP button and /rsvp/<id> 404s.
    */
   rsvpEnabled: boolean;
+  /**
+   * Whether this event is selling tickets. Off by default and separate from
+   * rsvpEnabled: a free guest list and a paid door are different machines and
+   * either can run without the other. With this on and at least one tier
+   * defined, /tickets/<id> sells; otherwise it explains itself.
+   */
+  ticketsEnabled?: boolean;
+  /** The purchasable ticket types, in display order. */
+  ticketTiers?: TicketTier[];
   /**
    * A wordmark shown in the hero in place of the typed name while this event
    * is featured. The name itself stays in the markup for screen readers and

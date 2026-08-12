@@ -1,0 +1,200 @@
+import type { Metadata } from "next";
+import { listAllEvents } from "@/lib/store";
+import { stripeConfigured } from "@/lib/stripe";
+import { formatMoney } from "@/lib/tickets";
+import { listOrders, readInventory } from "@/lib/tickets-store";
+import type { EventRecord, TicketTier } from "@/lib/types";
+
+export const metadata: Metadata = { title: "Tickets" };
+export const dynamic = "force-dynamic";
+
+/**
+ * Sales, by event and tier: sold against capacity, holds in flight, money
+ * taken, and the order paper trail. Numbers here come from the same counters
+ * the oversell guard enforces, so what this page says is what the pool
+ * actually did.
+ */
+
+function phoenixTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    timeZone: "America/Phoenix",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+async function tierRows(event: EventRecord, tiers: TicketTier[]) {
+  const inventory = await readInventory(
+    event.id,
+    tiers.map((tier) => tier.id),
+  );
+  return tiers.map((tier) => {
+    const counts = inventory.get(tier.id) ?? { taken: 0, sold: 0 };
+    return {
+      tier,
+      sold: counts.sold,
+      held: Math.max(0, counts.taken - counts.sold),
+      remaining: Math.max(0, tier.capacity - counts.taken),
+      grossCents: counts.sold * tier.priceCents,
+    };
+  });
+}
+
+export default async function AdminTicketsPage() {
+  const events = (await listAllEvents()).filter(
+    (event) => (event.ticketTiers ?? []).length > 0,
+  );
+
+  const sections = await Promise.all(
+    events.map(async (event) => ({
+      event,
+      rows: await tierRows(event, event.ticketTiers ?? []),
+      orders: await listOrders([event.id, ...(event.formerIds ?? [])]),
+    })),
+  );
+
+  const configured = stripeConfigured();
+
+  return (
+    <div className="pb-16">
+      <h1 className="text-4xl">Tickets</h1>
+      <p className="text-ink/65 mt-3 max-w-2xl text-[0.9375rem] leading-relaxed">
+        Sales by ticket type, and every order. Sold counts come from the same
+        counter that stops overselling. Refunds happen in the Stripe
+        dashboard, which is also where the money itself lives.
+      </p>
+
+      {!configured ? (
+        <p className="border-sun/50 bg-sun/10 mt-6 max-w-2xl rounded-xl border px-5 py-4 text-[0.9375rem]">
+          Stripe isn&apos;t connected yet: STRIPE_SECRET_KEY and
+          STRIPE_WEBHOOK_SECRET are not set, so checkout is answering
+          &quot;sales aren&apos;t switched on&quot;. Ticket types can still be
+          set up on each event.
+        </p>
+      ) : null}
+
+      {sections.length === 0 ? (
+        <p className="border-ink/25 bg-bone/60 text-ink/65 mt-10 rounded-2xl border border-dashed px-6 py-10 text-center text-[0.9375rem]">
+          No events have ticket types yet. Add them on an event&apos;s edit
+          page, under Tickets.
+        </p>
+      ) : null}
+
+      {sections.map(({ event, rows, orders }) => (
+        <section
+          key={event.id}
+          className="border-ink/12 bg-bone mt-8 rounded-2xl border p-6"
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="font-display text-2xl">{event.name}</h2>
+            <p className="text-ink/55 text-[0.8125rem]">
+              {event.ticketsEnabled === true && event.published
+                ? "Selling"
+                : "Not selling"}
+              {" · "}
+              <span className="tabular-nums">
+                {formatMoney(rows.reduce((a, r) => a + r.grossCents, 0))}
+              </span>{" "}
+              taken
+            </p>
+          </div>
+
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-[0.875rem]">
+              <thead>
+                <tr className="text-ink/55 border-ink/10 border-b">
+                  <th className="py-2 pr-4 font-medium">Type</th>
+                  <th className="py-2 pr-4 font-medium">Price</th>
+                  <th className="py-2 pr-4 font-medium">Sold</th>
+                  <th className="py-2 pr-4 font-medium">On hold</th>
+                  <th className="py-2 pr-4 font-medium">Left</th>
+                  <th className="py-2 font-medium">Gross</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ tier, sold, held, remaining, grossCents }) => (
+                  <tr key={tier.id} className="border-ink/5 border-b">
+                    <td className="py-2.5 pr-4 font-medium">{tier.name}</td>
+                    <td className="py-2.5 pr-4 tabular-nums">
+                      {formatMoney(tier.priceCents)}
+                    </td>
+                    <td className="py-2.5 pr-4 tabular-nums">
+                      {sold} of {tier.capacity}
+                    </td>
+                    <td className="py-2.5 pr-4 tabular-nums">
+                      {held > 0 ? held : ""}
+                    </td>
+                    <td className="py-2.5 pr-4 tabular-nums">
+                      {remaining === 0 ? "Sold out" : remaining}
+                    </td>
+                    <td className="py-2.5 tabular-nums">
+                      {formatMoney(grossCents)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {orders.length > 0 ? (
+            <details className="mt-5">
+              <summary className="text-ink/70 cursor-pointer text-[0.875rem]">
+                {orders.length} {orders.length === 1 ? "order" : "orders"}
+              </summary>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[640px] text-left text-[0.8125rem]">
+                  <thead>
+                    <tr className="text-ink/55 border-ink/10 border-b">
+                      <th className="py-2 pr-4 font-medium">When</th>
+                      <th className="py-2 pr-4 font-medium">Type</th>
+                      <th className="py-2 pr-4 font-medium">Qty</th>
+                      <th className="py-2 pr-4 font-medium">Amount</th>
+                      <th className="py-2 pr-4 font-medium">Email</th>
+                      <th className="py-2 pr-4 font-medium">Status</th>
+                      <th className="py-2 font-medium">Codes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.slice(0, 100).map((order) => (
+                      <tr key={order.sessionId} className="border-ink/5 border-b align-top">
+                        <td className="py-2 pr-4 whitespace-nowrap tabular-nums">
+                          {phoenixTime(order.createdAt)}
+                        </td>
+                        <td className="py-2 pr-4">{order.tierName}</td>
+                        <td className="py-2 pr-4 tabular-nums">{order.quantity}</td>
+                        <td className="py-2 pr-4 tabular-nums">
+                          {formatMoney(order.amountCents)}
+                        </td>
+                        <td className="py-2 pr-4">{order.email ?? ""}</td>
+                        <td className="py-2 pr-4">
+                          <span
+                            className={
+                              order.status === "paid"
+                                ? "text-cobalt"
+                                : order.status === "pending"
+                                  ? "text-sun-deep"
+                                  : "text-ink/45"
+                            }
+                          >
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="py-2 font-mono text-[0.75rem]">
+                          {(order.codes ?? []).join(" ")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          ) : (
+            <p className="text-ink/55 mt-4 text-[0.875rem]">No orders yet.</p>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}

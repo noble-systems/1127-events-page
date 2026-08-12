@@ -114,6 +114,13 @@ export const RATE_LIMITS = {
    * Generous, because a real person clicking twice must never be blocked.
    */
   unsubscribe: { limit: 20, windowSeconds: 10 * 60 },
+  /**
+   * Starting a ticket checkout. Every call places a 30-minute hold on real
+   * inventory, so an unthrottled endpoint would let one griefer reserve a
+   * small tier into "sold out" for the price of some POSTs. Ten in ten
+   * minutes never blocks a real buyer retrying a card.
+   */
+  checkout: { limit: 10, windowSeconds: 10 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { registerHooks } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -24,11 +24,16 @@ const root = pathToFileURL(`${process.cwd()}/`).href;
 
 const EXTENSIONS = ["", ".ts", ".tsx", ".js", ".mjs", "/index.ts", "/index.tsx"];
 
-/** First candidate that exists on disk, or null to let Node report the miss. */
+/**
+ * First candidate that is a FILE on disk, or null to let Node report the
+ * miss. A bare directory hit ("@/lib/store" with no extension) must fall
+ * through to the "/index.ts" candidate, not resolve to the directory.
+ */
 function probe(base) {
   for (const ext of EXTENSIONS) {
     const url = new URL(base.href + ext);
-    if (existsSync(fileURLToPath(url))) return url.href;
+    const path = fileURLToPath(url);
+    if (existsSync(path) && statSync(path).isFile()) return url.href;
   }
   return null;
 }
@@ -39,6 +44,13 @@ registerHooks({
     // where probing actively breaks resolution. Only our own source needs help.
     if (context.parentURL?.includes("/node_modules/")) {
       return next(specifier, context);
+    }
+
+    // Next's own entry points resolve inside the bundler but not under bare
+    // Node, which wants the .js. Mapped here so tests can import real route
+    // handlers instead of copies of them.
+    if (specifier === "next/server" || specifier === "next/navigation") {
+      return next(`${specifier}.js`, context);
     }
 
     const base = specifier.startsWith("@/")

@@ -279,6 +279,14 @@ export async function renameEvent(
     await updateSubmission(row.pk, { eventIds });
   }
 
+  // Ticket counters key off the event id. Leaving them behind would reset the
+  // oversell guard to zero under the new id and resell every sold seat.
+  const tierIds = (existing.ticketTiers ?? []).map((tier) => tier.id);
+  if (tierIds.length > 0) {
+    const { renameInventory } = await import("../tickets-store.ts");
+    await renameInventory(existing.id, newId, tierIds);
+  }
+
   await store().deleteEvent(existing.id);
   return renamed;
 }

@@ -1047,6 +1047,73 @@ export type CampaignInput = {
  * This is the one kind of mail this app sends that IS bulk, so the rules are
  * the acknowledgements' rules inverted, deliberately: the designed shell with
  * the banner, because Promotions is the correct tab for a promo; the
+ * The tickets themselves, sent the moment Stripe confirms payment.
+ *
+ * Transactional through and through: no List-Unsubscribe, no marketing CTA,
+ * no opt-in check. Somebody who paid gets their tickets, full stop; even an
+ * unsubscribed address receives what it bought. Each code admits one person
+ * and is repeated in the plain-text part so it survives any mail client.
+ */
+export function renderTicketEmail(input: {
+  eventName: string;
+  tierName: string;
+  quantity: number;
+  totalLabel: string;
+  codes: string[];
+  date?: string;
+  location?: string;
+}) {
+  const subject = `Your ${input.eventName} ${input.quantity === 1 ? "ticket" : "tickets"}`;
+  const codeRows = input.codes
+    .map(
+      (code) =>
+        `<div style="font:600 18px/1.4 'Courier New',monospace;letter-spacing:1px;color:${INK};padding:10px 14px;background:rgba(25,23,19,0.05);border-radius:8px;margin:0 0 8px;">${escapeHtml(code)}</div>`,
+    )
+    .join("");
+
+  const meta = [
+    input.date?.trim() ? escapeHtml(input.date.trim()) : null,
+    input.location?.trim() ? escapeHtml(input.location.trim()) : null,
+  ]
+    .filter(Boolean)
+    .join(" &middot; ");
+
+  const html = receiptShell({
+    preheader: `${input.quantity} x ${input.tierName} for ${input.eventName}.`,
+    heading: "You're in.",
+    body: `
+      <p style="margin:0 0 6px;font:400 15px/1.6 Helvetica,Arial,sans-serif;color:${INK};">${escapeHtml(`${input.quantity} x ${input.tierName}`)} for <strong>${escapeHtml(input.eventName)}</strong>. ${escapeHtml(input.totalLabel)} paid.</p>
+      ${meta ? `<p style="margin:0 0 16px;font:400 13px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">${meta}</p>` : ""}
+      <p style="margin:16px 0 10px;font:400 14px/1.6 Helvetica,Arial,sans-serif;color:${INK};">Your ${input.codes.length === 1 ? "code" : "codes"}, one per person, at the door:</p>
+      ${codeRows}
+      <p style="margin:16px 0 0;font:400 13px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">Keep this email. Nothing to print; the code on a phone is enough.</p>`,
+    footer: `This is your receipt for ${escapeHtml(input.totalLabel)}, paid by card.`,
+  });
+
+  const text = [
+    `${input.quantity} x ${input.tierName} for ${input.eventName}. ${input.totalLabel} paid.`,
+    meta ? meta.replace(" &middot; ", ", ") : "",
+    "",
+    `Your ${input.codes.length === 1 ? "code" : "codes"}, one per person, at the door:`,
+    ...input.codes,
+    "",
+    "Keep this email. Nothing to print; the code on a phone is enough.",
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
+
+  return { subject, html, text };
+}
+
+export async function sendTicketEmail(
+  to: string,
+  input: Parameters<typeof renderTicketEmail>[0],
+): Promise<void> {
+  const { subject, html, text } = renderTicketEmail(input);
+  await sendDirect({ to: [to], subject, html, text });
+}
+
+/**
  * List-Unsubscribe header with One-Click, because Google requires it of bulk
  * senders and hiding from it burns the domain; a per-recipient unsubscribe
  * link, because CAN-SPAM requires a working opt-out in every message.

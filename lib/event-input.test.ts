@@ -4,9 +4,12 @@ import {
   EMPTY_EVENT,
   eventToFormValues,
   isValidEventId,
+  parsePriceCents,
+  priceToForm,
   readEventBody,
   slugify,
   toEventInput,
+  toTicketTiers,
   validateEvent,
   type EventFormValues,
 } from "./event-input.ts";
@@ -434,5 +437,106 @@ describe("hero logo spacing", () => {
     );
     assert.equal(back.heroLogoPadTop, "0");
     assert.equal(back.heroLogoPadBottom, "0");
+  });
+});
+
+describe("ticket prices parse like money", () => {
+  test("the ways people type prices", () => {
+    assert.equal(parsePriceCents("15"), 1500);
+    assert.equal(parsePriceCents("15.5"), 1550);
+    assert.equal(parsePriceCents("15.50"), 1550);
+    assert.equal(parsePriceCents("$1,250.75"), 125075);
+  });
+
+  test("junk is refused, not rounded", () => {
+    assert.equal(parsePriceCents(""), null);
+    assert.equal(parsePriceCents("free"), null);
+    assert.equal(parsePriceCents("15.999"), null);
+    assert.equal(parsePriceCents("-5"), null);
+  });
+
+  test("cents render back without noise", () => {
+    assert.equal(priceToForm(1500), "15");
+    assert.equal(priceToForm(1550), "15.50");
+  });
+});
+
+describe("tier ids are minted once and never move", () => {
+  test("new rows get slugs, colliding names stay distinct", () => {
+    const tiers = toTicketTiers([
+      { id: "", name: "Early Bird", price: "15", capacity: "25" },
+      { id: "", name: "GA", price: "20", capacity: "400" },
+      { id: "", name: "GA", price: "30", capacity: "50" },
+    ]);
+    assert.deepEqual(
+      tiers.map((tier) => tier.id),
+      ["early-bird", "ga", "ga-2"],
+    );
+    assert.equal(tiers[0].priceCents, 1500);
+    assert.equal(tiers[1].capacity, 400);
+  });
+
+  test("a renamed tier keeps the id its sales are counted under", () => {
+    const tiers = toTicketTiers([
+      { id: "early-bird", name: "Early Bird II", price: "18", capacity: "30" },
+    ]);
+    assert.equal(tiers[0].id, "early-bird");
+    assert.equal(tiers[0].name, "Early Bird II");
+  });
+});
+
+/**
+ * The wipe this guards against: the events list resubmits whole records
+ * through eventToFormValues -> JSON -> readEventBody -> toEventInput every
+ * time a checkbox is toggled. A field that does not survive that loop is
+ * silently erased by the next unrelated save.
+ */
+describe("ticket tiers survive the full form round-trip", () => {
+  test("record to form to JSON to input, nothing lost", () => {
+    const record = {
+      name: "Mirage",
+      tagline: "t",
+      summary: "s",
+      status: "On sale",
+      date: "Aug 30",
+      location: "Old Town",
+      venue: null,
+      tags: [],
+      genres: [],
+      tone: "dusk" as const,
+      featured: false,
+      published: true,
+      rsvpEnabled: true,
+      ticketsEnabled: true,
+      ticketTiers: [
+        { id: "early-bird", name: "Early Bird", priceCents: 1500, capacity: 25 },
+        { id: "ga", name: "GA", priceCents: 2050, capacity: 400 },
+      ],
+      order: 0,
+      shotNote: "",
+      image: null,
+      imageAlt: "",
+      ctaLabel: "Tickets",
+      ctaAction: "tickets" as const,
+      emailSubject: null,
+      emailHeading: null,
+      emailBody: null,
+    };
+
+    const values = eventToFormValues(record, []);
+    const wired = readEventBody(JSON.parse(JSON.stringify(values)), []);
+    const input = toEventInput("mirage", wired, []);
+
+    assert.equal(input.ticketsEnabled, true);
+    assert.deepEqual(input.ticketTiers, record.ticketTiers);
+    assert.equal(input.ctaAction, "tickets");
+  });
+
+  test("records from before ticketing round-trip to empty, not to broken", () => {
+    const values = readEventBody({ name: "X" }, []);
+    assert.equal(values.ticketsEnabled, false);
+    assert.deepEqual(values.tickets, []);
+    const input = toEventInput("x", values, []);
+    assert.deepEqual(input.ticketTiers, []);
   });
 });

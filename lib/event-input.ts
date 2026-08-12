@@ -13,6 +13,18 @@ import type { FormErrors } from "./validation.ts";
  * the dashboard form surfaces the same messages inline.
  */
 
+/**
+ * One ticket tier as the form holds it: everything a string, price in
+ * dollars. `id` is blank on a freshly added row and minted at save time;
+ * after that it rides along untouched so renames never orphan sales.
+ */
+export type TicketTierFormValues = {
+  id: string;
+  name: string;
+  price: string;
+  capacity: string;
+};
+
 export type EventFormValues = {
   name: string;
   tagline: string;
@@ -28,6 +40,8 @@ export type EventFormValues = {
   featured: boolean;
   published: boolean;
   rsvpEnabled: boolean;
+  ticketsEnabled: boolean;
+  tickets: TicketTierFormValues[];
   order: string;
   shotNote: string;
   image: string;
@@ -59,6 +73,9 @@ export const EMPTY_EVENT: EventFormValues = {
   published: false,
   // New events are usually created to collect signups, so this starts on.
   rsvpEnabled: true,
+  // Selling money is opt-in, so this starts off.
+  ticketsEnabled: false,
+  tickets: [],
   order: "0",
   shotNote: "",
   image: "",
@@ -145,7 +162,7 @@ export function validateEvent(values: EventFormValues): FormErrors {
     errors.tone = "Choose one of the listed palettes.";
   }
 
-  if (values.ctaAction !== "rsvp" && values.ctaAction !== "partner") {
+  if (!["rsvp", "partner", "tickets"].includes(values.ctaAction)) {
     errors.ctaAction = "Choose where the button should go.";
   }
 
@@ -180,7 +197,75 @@ export function validateEvent(values: EventFormValues): FormErrors {
     }
   }
 
+  values.tickets.forEach((tier, index) => {
+    if (!tier.name.trim()) {
+      errors[`ticket-${index}-name`] = "Every ticket type needs a name.";
+    } else if (tier.name.trim().length > 60) {
+      errors[`ticket-${index}-name`] = "Too long (max 60 characters).";
+    }
+    const cents = parsePriceCents(tier.price);
+    if (cents === null || cents < 100 || cents > 1_000_000) {
+      errors[`ticket-${index}-price`] = "Price is $1 to $10,000.";
+    }
+    const capacity = Number(tier.capacity);
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100_000) {
+      errors[`ticket-${index}-capacity`] = "How many can be sold, 1 to 100,000.";
+    }
+  });
+  if (values.tickets.length > 12) {
+    errors.tickets = "Twelve ticket types is the ceiling.";
+  }
+  if (values.ticketsEnabled && values.tickets.length === 0) {
+    errors.tickets = "Selling is on but there are no ticket types yet.";
+  }
+
   return errors;
+}
+
+/**
+ * A price the way people type prices: "15", "15.50", "$1,250". Returns whole
+ * cents or null; anything that would lose money in float arithmetic is
+ * rejected rather than rounded.
+ */
+export function parsePriceCents(raw: string): number | null {
+  const cleaned = raw.trim().replace(/^\$/, "").replace(/,/g, "");
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
+  const [dollars, cents = "0"] = cleaned.split(".");
+  return Number(dollars) * 100 + Number(cents.padEnd(2, "0"));
+}
+
+/** Cents back to what the form shows: "15" or "15.50", never "15.00". */
+export function priceToForm(cents: number): string {
+  return Number.isInteger(cents / 100)
+    ? String(cents / 100)
+    : (cents / 100).toFixed(2);
+}
+
+/**
+ * Form tier rows to stored tiers. Ids are the load-bearing part: a row that
+ * already has one keeps it verbatim (the sold counter and every issued ticket
+ * key off it), and a new row gets one minted from its name, deduplicated
+ * against its siblings so two tiers named "GA" stay distinguishable.
+ */
+export function toTicketTiers(
+  rows: readonly TicketTierFormValues[],
+): NonNullable<NewEventInput["ticketTiers"]> {
+  const taken = new Set(rows.map((row) => row.id).filter(Boolean));
+  return rows.map((row) => {
+    let id = row.id;
+    if (!id) {
+      const base = slugify(row.name);
+      id = base;
+      for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+      taken.add(id);
+    }
+    return {
+      id,
+      name: row.name.trim(),
+      priceCents: parsePriceCents(row.price) ?? 0,
+      capacity: Number(row.capacity),
+    };
+  });
 }
 
 /** Assumes `validateEvent` already passed. */
@@ -211,6 +296,8 @@ export function toEventInput(
     featured: Boolean(values.featured),
     published: Boolean(values.published),
     rsvpEnabled: Boolean(values.rsvpEnabled),
+    ticketsEnabled: Boolean(values.ticketsEnabled),
+    ticketTiers: toTicketTiers(values.tickets),
     order: Number(values.order),
     shotNote: values.shotNote.trim(),
     image: values.image.trim() || null,
@@ -226,6 +313,35 @@ export function toEventInput(
     emailHeading: values.emailHeading.trim() || null,
     emailBody: values.emailBody.trim() || null,
   };
+}
+
+/**
+ * Tier rows from an unknown body. Tolerates the stored TicketTier shape too
+ * (priceCents/capacity as numbers), because the events list resubmits whole
+ * records through this path when it toggles a checkbox, and a field that
+ * shape-shifted between read and write would silently wipe every tier.
+ */
+function readTicketRows(raw: unknown): TicketTierFormValues[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 12).map((row) => {
+    const r = (row ?? {}) as Record<string, unknown>;
+    return {
+      id: typeof r.id === "string" ? r.id : "",
+      name: typeof r.name === "string" ? r.name : "",
+      price:
+        typeof r.price === "string"
+          ? r.price
+          : typeof r.priceCents === "number"
+            ? priceToForm(r.priceCents)
+            : "",
+      capacity:
+        typeof r.capacity === "string"
+          ? r.capacity
+          : typeof r.capacity === "number"
+            ? String(r.capacity)
+            : "",
+    };
+  });
 }
 
 /** Normalises an unknown JSON body into form values. */
@@ -257,6 +373,9 @@ export function readEventBody(
     // written before this field existed, or a payload with a junk value, keeps
     // collecting rather than silently stopping.
     rsvpEnabled: raw.rsvpEnabled !== false && raw.rsvpEnabled !== "false",
+    // Money is the opposite of signups: only an explicit true sells.
+    ticketsEnabled: raw.ticketsEnabled === true || raw.ticketsEnabled === "true",
+    tickets: readTicketRows(raw.tickets),
     order: typeof raw.order === "number" ? String(raw.order) : str("order") || "0",
     shotNote: str("shotNote"),
     image: str("image"),
@@ -295,6 +414,13 @@ export function eventToFormValues(
     featured: boolean;
     published: boolean;
     rsvpEnabled?: boolean;
+    ticketsEnabled?: boolean;
+    ticketTiers?: Array<{
+      id: string;
+      name: string;
+      priceCents: number;
+      capacity: number;
+    }>;
     order: number;
     shotNote: string;
     image: string | null;
@@ -326,6 +452,13 @@ export function eventToFormValues(
     featured: event.featured,
     published: event.published,
     rsvpEnabled: event.rsvpEnabled !== false,
+    ticketsEnabled: event.ticketsEnabled === true,
+    tickets: (event.ticketTiers ?? []).map((tier) => ({
+      id: tier.id,
+      name: tier.name,
+      price: priceToForm(tier.priceCents),
+      capacity: String(tier.capacity),
+    })),
     order: String(event.order),
     shotNote: event.shotNote,
     image: event.image ?? "",
