@@ -1047,7 +1047,7 @@ export type CampaignInput = {
  * This is the one kind of mail this app sends that IS bulk, so the rules are
  * the acknowledgements' rules inverted, deliberately: the designed shell with
  * the banner, because Promotions is the correct tab for a promo; the
- * The tickets themselves, sent the moment Stripe confirms payment.
+ * The tickets themselves, sent the moment Square confirms payment.
  *
  * Transactional through and through: no List-Unsubscribe, no marketing CTA,
  * no opt-in check. Somebody who paid gets their tickets, full stop; even an

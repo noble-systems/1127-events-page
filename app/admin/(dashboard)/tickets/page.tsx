@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { listAllEvents } from "@/lib/store";
-import { stripeConfigured } from "@/lib/stripe";
+import { squareConfigured } from "@/lib/square";
 import { formatMoney } from "@/lib/tickets";
 import { listOrders, readInventory } from "@/lib/tickets-store";
 import type { EventRecord, TicketTier } from "@/lib/types";
@@ -55,21 +55,21 @@ export default async function AdminTicketsPage() {
     })),
   );
 
-  const configured = stripeConfigured();
+  const configured = squareConfigured();
 
   return (
     <div className="pb-16">
       <h1 className="text-4xl">Tickets</h1>
       <p className="text-ink/65 mt-3 max-w-2xl text-[0.9375rem] leading-relaxed">
         Sales by ticket type, and every order. Sold counts come from the same
-        counter that stops overselling. Refunds happen in the Stripe
+        counter that stops overselling. Refunds happen in the Square
         dashboard, which is also where the money itself lives.
       </p>
 
       {!configured ? (
         <p className="border-sun/50 bg-sun/10 mt-6 max-w-2xl rounded-xl border px-5 py-4 text-[0.9375rem]">
-          Stripe isn&apos;t connected yet: STRIPE_SECRET_KEY and
-          STRIPE_WEBHOOK_SECRET are not set, so checkout is answering
+          Square isn&apos;t connected yet: SQUARE_ACCESS_TOKEN, SQUARE_LOCATION_ID
+          and SQUARE_WEBHOOK_SIGNATURE_KEY are not set, so checkout is answering
           &quot;sales aren&apos;t switched on&quot;. Ticket types can still be
           set up on each event.
         </p>
@@ -158,7 +158,7 @@ export default async function AdminTicketsPage() {
                   </thead>
                   <tbody>
                     {orders.slice(0, 100).map((order) => (
-                      <tr key={order.sessionId} className="border-ink/5 border-b align-top">
+                      <tr key={order.ref} className="border-ink/5 border-b align-top">
                         <td className="py-2 pr-4 whitespace-nowrap tabular-nums">
                           {phoenixTime(order.createdAt)}
                         </td>
@@ -175,10 +175,14 @@ export default async function AdminTicketsPage() {
                                 ? "text-cobalt"
                                 : order.status === "pending"
                                   ? "text-sun-deep"
-                                  : "text-ink/45"
+                                  : order.status === "attention"
+                                    ? "text-terracotta-deep font-semibold"
+                                    : "text-ink/45"
                             }
                           >
-                            {order.status}
+                            {order.status === "attention"
+                              ? "attention: paid, no seats. Refund in Square."
+                              : order.status}
                           </span>
                         </td>
                         <td className="py-2 font-mono text-[0.75rem]">

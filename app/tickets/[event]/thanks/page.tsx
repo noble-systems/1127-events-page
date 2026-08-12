@@ -6,7 +6,7 @@ import { formatMoney } from "@/lib/tickets";
 import { getOrder } from "@/lib/tickets-store";
 
 /**
- * Where Stripe sends the buyer back. Reads the order fresh on every request,
+ * Where Square sends the buyer back. Reads the order fresh on every request,
  * because the webhook that settles it races the redirect here: a buyer can
  * land seconds before the "paid" write, and a cached "processing" would
  * stick.
@@ -17,16 +17,16 @@ export const metadata: Metadata = { title: "Your tickets" };
 
 type Props = {
   params: Promise<{ event: string }>;
-  searchParams: Promise<{ session?: string }>;
+  searchParams: Promise<{ ref?: string }>;
 };
 
 export default async function ThanksPage({ params, searchParams }: Props) {
-  const [{ event: eventId }, { session }] = await Promise.all([
+  const [{ event: eventId }, { ref }] = await Promise.all([
     params,
     searchParams,
   ]);
 
-  const order = session ? await getOrder(session) : null;
+  const order = ref ? await getOrder(ref) : null;
   const paid = order?.status === "paid";
 
   return (

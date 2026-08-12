@@ -812,7 +812,7 @@ export function EventForm({
       <section className="border-ink/12 bg-bone rounded-2xl border p-6 sm:p-8">
         <h2 className="font-display text-xl">Tickets</h2>
         <p className="text-ink/65 mt-2 max-w-2xl text-[0.8125rem] leading-relaxed">
-          Paid entry, charged through Stripe. Each type has its own price and
+          Paid entry, charged through Square. Each type has its own price and
           its own pool; the pool can never oversell. Selling needs the switch
           on and at least one type below.
         </p>

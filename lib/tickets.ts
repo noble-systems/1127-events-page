@@ -3,7 +3,7 @@ import type { EventRecord, TicketTier } from "./types.ts";
 
 /**
  * Ticketing's pure layer: money, codes, and the little rules every route
- * needs. Storage is in tickets-store.ts, Stripe in stripe.ts; this module has
+ * needs. Storage is in tickets-store.ts, Square in square.ts; this module has
  * no dependencies so the rules are testable without either.
  */
 
@@ -63,11 +63,18 @@ export function readQuantity(raw: unknown): number | null {
   return n;
 }
 
-/** One order as stored: the paper trail for one checkout session. */
+/**
+ * One order as stored: the paper trail for one checkout.
+ *
+ * "attention" is the one state that should never happen and must be loud
+ * when it does: money arrived for a hold the sweep had already released,
+ * and the seats were gone by then. The admin page surfaces it; the fix is
+ * a refund in the Square dashboard.
+ */
 export type TicketOrder = {
-  /** The Stripe Checkout session id; the natural idempotency key. */
-  sessionId: string;
-  status: "pending" | "paid" | "expired";
+  /** OUR order id, minted before the processor is ever called. */
+  ref: string;
+  status: "pending" | "paid" | "expired" | "attention";
   eventId: string;
   tierId: string;
   /** Snapshots, so the record still reads right after a rename or price change. */
@@ -75,6 +82,9 @@ export type TicketOrder = {
   tierName: string;
   quantity: number;
   amountCents: number;
+  /** Square's ids: the order the webhook names, and the link the sweep kills. */
+  squareOrderId?: string;
+  linkId?: string;
   email?: string | null;
   /** Issued codes, present once paid. */
   codes?: string[];

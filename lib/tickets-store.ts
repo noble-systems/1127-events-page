@@ -271,12 +271,14 @@ export async function renameInventory(
 /* Orders                                                                    */
 /* ------------------------------------------------------------------------- */
 
-const ordPk = (sessionId: string) => `ord#${sessionId}`;
+const ordPk = (ref: string) => `ord#${ref}`;
+/** Alias from Square's order id to our ref, for webhook lookups. */
+const sqoPk = (squareOrderId: string) => `sqo#${squareOrderId}`;
 
 function orderToItem(order: TicketOrder) {
   return {
-    pk: { S: ordPk(order.sessionId) },
-    sessionId: { S: order.sessionId },
+    pk: { S: ordPk(order.ref) },
+    ref: { S: order.ref },
     status: { S: order.status },
     eventId: { S: order.eventId },
     tierId: { S: order.tierId },
@@ -284,6 +286,8 @@ function orderToItem(order: TicketOrder) {
     tierName: { S: order.tierName },
     quantity: { N: String(order.quantity) },
     amountCents: { N: String(order.amountCents) },
+    ...(order.squareOrderId ? { squareOrderId: { S: order.squareOrderId } } : {}),
+    ...(order.linkId ? { linkId: { S: order.linkId } } : {}),
     ...(order.email ? { email: { S: order.email } } : {}),
     ...(order.codes?.length ? { codes: { SS: order.codes } } : {}),
     createdAt: { S: order.createdAt },
@@ -293,7 +297,7 @@ function orderToItem(order: TicketOrder) {
 
 function itemToOrder(item: Record<string, { S?: string; N?: string; SS?: string[] }>): TicketOrder {
   return {
-    sessionId: item.sessionId?.S ?? "",
+    ref: item.ref?.S ?? "",
     status: (item.status?.S ?? "pending") as TicketOrder["status"],
     eventId: item.eventId?.S ?? "",
     tierId: item.tierId?.S ?? "",
@@ -301,6 +305,8 @@ function itemToOrder(item: Record<string, { S?: string; N?: string; SS?: string[
     tierName: item.tierName?.S ?? "",
     quantity: Number(item.quantity?.N ?? 0),
     amountCents: Number(item.amountCents?.N ?? 0),
+    squareOrderId: item.squareOrderId?.S ?? undefined,
+    linkId: item.linkId?.S ?? undefined,
     email: item.email?.S ?? null,
     codes: item.codes?.SS ?? undefined,
     createdAt: item.createdAt?.S ?? "",
@@ -313,7 +319,7 @@ export async function createOrder(order: TicketOrder): Promise<void> {
 
   if (!table) {
     const data = await localRead();
-    data.orders[order.sessionId] = order;
+    data.orders[order.ref] = order;
     await localWrite(data);
     return;
   }
@@ -325,38 +331,79 @@ export async function createOrder(order: TicketOrder): Promise<void> {
       ConditionExpression: "attribute_not_exists(pk)",
     }),
   );
+  // The alias is written second: if this write is lost, the webhook falls
+  // back to asking Square for the order's reference_id.
+  if (order.squareOrderId) {
+    await db()
+      .send(
+        new PutItemCommand({
+          TableName: table,
+          Item: {
+            pk: { S: sqoPk(order.squareOrderId) },
+            ref: { S: order.ref },
+          },
+        }),
+      )
+      .catch((error) => console.error("[1127] order alias write failed", error));
+  }
 }
 
-export async function getOrder(sessionId: string): Promise<TicketOrder | null> {
+export async function getOrder(ref: string): Promise<TicketOrder | null> {
   const table = TABLE();
 
   if (!table) {
-    return (await localRead()).orders[sessionId] ?? null;
+    return (await localRead()).orders[ref] ?? null;
   }
 
   const out = await db().send(
-    new GetItemCommand({ TableName: table, Key: { pk: { S: ordPk(sessionId) } } }),
+    new GetItemCommand({ TableName: table, Key: { pk: { S: ordPk(ref) } } }),
   );
   return out.Item ? itemToOrder(out.Item as never) : null;
 }
 
+/** Our ref for a Square order id, from the alias row. */
+export async function getRefBySquareOrder(
+  squareOrderId: string,
+): Promise<string | null> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    return (
+      Object.values(data.orders).find((o) => o.squareOrderId === squareOrderId)
+        ?.ref ?? null
+    );
+  }
+
+  const out = await db().send(
+    new GetItemCommand({
+      TableName: table,
+      Key: { pk: { S: sqoPk(squareOrderId) } },
+    }),
+  );
+  return out.Item?.ref?.S ?? null;
+}
+
 /**
- * Claims a pending order and settles it in one conditional write: the status
- * check IS the idempotency gate for webhook redelivery. Returns false when
- * somebody else (an earlier delivery) already settled or expired it.
+ * Moves an order from one status to another in one conditional write: the
+ * from-status check IS the idempotency gate for webhook redelivery. Returns
+ * false when the order is not in `from` (an earlier delivery won). The
+ * default from is "pending"; the webhook's late-payment recovery is the one
+ * caller that settles from "expired".
  */
 export async function settleOrder(
-  sessionId: string,
-  status: "paid" | "expired",
+  ref: string,
+  status: "paid" | "expired" | "attention",
   patch: { email?: string | null; codes?: string[] } = {},
+  from: TicketOrder["status"] = "pending",
 ): Promise<boolean> {
   const table = TABLE();
   const now = new Date().toISOString();
 
   if (!table) {
     const data = await localRead();
-    const order = data.orders[sessionId];
-    if (!order || order.status !== "pending") return false;
+    const order = data.orders[ref];
+    if (!order || order.status !== from) return false;
     order.status = status;
     if (patch.email) order.email = patch.email;
     if (patch.codes) order.codes = patch.codes;
@@ -369,15 +416,15 @@ export async function settleOrder(
     await db().send(
       new UpdateItemCommand({
         TableName: table,
-        Key: { pk: { S: ordPk(sessionId) } },
+        Key: { pk: { S: ordPk(ref) } },
         UpdateExpression: `SET #s = :next, updatedAt = :now${
           patch.email ? ", email = :email" : ""
         }${patch.codes?.length ? ", codes = :codes" : ""}`,
-        ConditionExpression: "#s = :pending",
+        ConditionExpression: "#s = :from",
         ExpressionAttributeNames: { "#s": "status" },
         ExpressionAttributeValues: {
           ":next": { S: status },
-          ":pending": { S: "pending" },
+          ":from": { S: from },
           ":now": { S: now },
           ...(patch.email ? { ":email": { S: patch.email } } : {}),
           ...(patch.codes?.length ? { ":codes": { SS: patch.codes } } : {}),

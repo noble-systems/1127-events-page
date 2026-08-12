@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 
 /**
  * The tier chooser: radios for the type, a count, one button. Payment itself
- * happens on Stripe's page; this component's whole job is to ask for the
+ * happens on Square's page; this component's whole job is to ask for the
  * right thing and hand the browser over.
  */
 
@@ -56,7 +56,7 @@ export function TicketPicker({
       } | null;
 
       if (data?.ok && data.url) {
-        // Off to Stripe. busy stays true so the button cannot double-fire
+        // Off to Square. busy stays true so the button cannot double-fire
         // while the navigation happens.
         window.location.assign(data.url);
         return;
@@ -155,7 +155,7 @@ export function TicketPicker({
       ) : null}
 
       <p className="text-ink/55 mt-5 text-[0.8125rem] leading-relaxed">
-        Payment is handled by Stripe on a secure page. Your tickets arrive by
+        Payment is handled by Square on a secure page. Your tickets arrive by
         email the moment it goes through.
       </p>
     </div>

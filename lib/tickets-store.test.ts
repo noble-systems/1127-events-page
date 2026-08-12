@@ -8,19 +8,21 @@ import { beforeEach, describe, test } from "node:test";
 
 /**
  * Runs against the local JSON driver: cwd must move before the imports below,
- * same load-bearing order as store.test.ts. The webhook tests set fake Stripe
- * secrets and sign payloads themselves, because the signature scheme is
- * public (HMAC over "timestamp.payload") and a webhook handler that has
- * never seen a valid signature in tests is a handler nobody has tested.
+ * same load-bearing order as store.test.ts. The webhook tests set a fake
+ * Square signature key and sign payloads themselves, because the scheme is
+ * public (base64 HMAC over notificationUrl + body) and a webhook handler that
+ * has never seen a valid signature in tests is a handler nobody has tested.
  */
 process.chdir(mkdtempSync(path.join(tmpdir(), "1127-tickets-")));
-process.env.STRIPE_SECRET_KEY = "sk_test_1127_fake";
-process.env.STRIPE_WEBHOOK_SECRET = "whsec_1127_test_secret";
+process.env.SQUARE_ACCESS_TOKEN = "sq_test_1127_fake";
+process.env.SQUARE_LOCATION_ID = "L1127TEST";
+process.env.SQUARE_WEBHOOK_SIGNATURE_KEY = "sig_1127_test_key";
 
 const {
   createOrder,
   createTicket,
   getOrder,
+  getRefBySquareOrder,
   listOrders,
   markSold,
   readInventory,
@@ -30,15 +32,17 @@ const {
   settleOrder,
 } = await import("./tickets-store.ts");
 const { newTicketCode } = await import("./tickets.ts");
+const { sweepStaleHolds } = await import("./ticket-sweep.ts");
+const { siteUrl } = await import("./email.ts");
 const { createEvent } = await import("./store/index.ts");
-const { POST: webhook } = await import("../app/api/stripe/webhook/route.ts");
+const { POST: webhook } = await import("../app/api/square/webhook/route.ts");
 
 async function reset() {
   await rm(path.join(process.cwd(), ".data"), { recursive: true, force: true });
 }
 
-const order = (sessionId: string, over: Record<string, unknown> = {}) => ({
-  sessionId,
+const order = (ref: string, over: Record<string, unknown> = {}) => ({
+  ref,
   status: "pending" as const,
   eventId: "mirage",
   tierId: "early-bird",
@@ -46,10 +50,45 @@ const order = (sessionId: string, over: Record<string, unknown> = {}) => ({
   tierName: "Early Bird",
   quantity: 2,
   amountCents: 3000,
+  squareOrderId: `sq-${ref}`,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...over,
 });
+
+/** An event whose early-bird tier exists, for the webhook's recovery path. */
+async function seedEvent() {
+  await createEvent({
+    id: "mirage",
+    name: "Mirage",
+    tagline: "t",
+    summary: "s",
+    heroBody: "",
+    status: "On sale",
+    date: "Aug 30",
+    location: "Old Town",
+    venue: null,
+    tags: [],
+    genres: [],
+    tone: "dusk",
+    featured: false,
+    published: true,
+    rsvpEnabled: true,
+    ticketsEnabled: true,
+    ticketTiers: [
+      { id: "early-bird", name: "Early Bird", priceCents: 1500, capacity: 25 },
+    ],
+    order: 0,
+    shotNote: "",
+    image: null,
+    imageAlt: "",
+    ctaLabel: "Tickets",
+    ctaAction: "tickets",
+    emailSubject: null,
+    emailHeading: null,
+    emailBody: null,
+  } as never);
+}
 
 describe("the oversell guard", () => {
   beforeEach(reset);
@@ -104,20 +143,38 @@ describe("orders settle exactly once", () => {
   beforeEach(reset);
 
   test("the first settle wins, the redelivery is a no-op", async () => {
-    await createOrder(order("cs_1"));
-    assert.equal(await settleOrder("cs_1", "paid", { codes: ["AAA-AAA-AAA"] }), true);
-    assert.equal(await settleOrder("cs_1", "paid"), false);
-    assert.equal(await settleOrder("cs_1", "expired"), false);
+    await createOrder(order("r1"));
+    assert.equal(await settleOrder("r1", "paid", { codes: ["AAA-AAA-AAA"] }), true);
+    assert.equal(await settleOrder("r1", "paid"), false);
+    assert.equal(await settleOrder("r1", "expired"), false);
 
-    const row = await getOrder("cs_1");
+    const row = await getOrder("r1");
     assert.equal(row?.status, "paid");
     assert.deepEqual(row?.codes, ["AAA-AAA-AAA"]);
+  });
+
+  test("settling from a named status only moves that status", async () => {
+    await createOrder(order("r2"));
+    await settleOrder("r2", "expired");
+    assert.equal(
+      await settleOrder("r2", "paid", {}, "pending"),
+      false,
+      "expired is not pending",
+    );
+    assert.equal(await settleOrder("r2", "paid", {}, "expired"), true);
+    assert.equal((await getOrder("r2"))?.status, "paid");
+  });
+
+  test("a Square order id finds its ref", async () => {
+    await createOrder(order("r3"));
+    assert.equal(await getRefBySquareOrder("sq-r3"), "r3");
+    assert.equal(await getRefBySquareOrder("sq-nope"), null);
   });
 
   test("a duplicate ticket code is refused", async () => {
     const ticket = {
       code: newTicketCode(),
-      orderId: "cs_1",
+      orderId: "r1",
       eventId: "mirage",
       tierId: "ga",
       email: null,
@@ -129,85 +186,124 @@ describe("orders settle exactly once", () => {
   });
 
   test("orders are found under former event ids too", async () => {
-    await createOrder(order("cs_old", { eventId: "sun-club" }));
-    await createOrder(order("cs_new", { eventId: "mirage" }));
+    await createOrder(order("r-old", { eventId: "sun-club" }));
+    await createOrder(order("r-new", { eventId: "mirage" }));
     const rows = await listOrders(["mirage", "sun-club"]);
     assert.equal(rows.length, 2);
   });
 });
 
 /* -------------------------------------------------------------------------- */
-/* The webhook, driven exactly as Stripe drives it                            */
+/* The sweep: Square links do not expire themselves                           */
+/* -------------------------------------------------------------------------- */
+
+describe("sweepStaleHolds", () => {
+  beforeEach(reset);
+
+  const MIN = 60_000;
+
+  test("an abandoned hold is reclaimed after the window", async () => {
+    await reserveTickets("mirage", "early-bird", 25, 25);
+    await createOrder(
+      order("stale", {
+        quantity: 25,
+        createdAt: new Date(Date.now() - 40 * MIN).toISOString(),
+      }),
+    );
+
+    const freed = await sweepStaleHolds(["mirage"], "early-bird", Date.now());
+    assert.equal(freed, 25);
+    assert.equal((await getOrder("stale"))?.status, "expired");
+    assert.equal(
+      await reserveTickets("mirage", "early-bird", 25, 25),
+      true,
+      "the whole pool is sellable again",
+    );
+  });
+
+  test("a young hold is left alone", async () => {
+    await reserveTickets("mirage", "early-bird", 2, 25);
+    await createOrder(order("young"));
+
+    const freed = await sweepStaleHolds(["mirage"], "early-bird", Date.now());
+    assert.equal(freed, 0);
+    assert.equal((await getOrder("young"))?.status, "pending");
+  });
+
+  test("paid orders are never swept", async () => {
+    await reserveTickets("mirage", "early-bird", 2, 25);
+    await createOrder(
+      order("paid-old", {
+        createdAt: new Date(Date.now() - 90 * MIN).toISOString(),
+      }),
+    );
+    await settleOrder("paid-old", "paid");
+
+    const freed = await sweepStaleHolds(["mirage"], "early-bird", Date.now());
+    assert.equal(freed, 0);
+    const inv = await readInventory("mirage", ["early-bird"]);
+    assert.equal(inv.get("early-bird")?.taken, 2, "the sale kept its seats");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* The webhook, driven exactly as Square drives it                            */
 /* -------------------------------------------------------------------------- */
 
 function signedRequest(body: object): Request {
   const payload = JSON.stringify(body);
-  const timestamp = Math.floor(Date.now() / 1000);
-  const signature = createHmac("sha256", process.env.STRIPE_WEBHOOK_SECRET!)
-    .update(`${timestamp}.${payload}`)
-    .digest("hex");
-  return new Request("http://localhost/api/stripe/webhook", {
+  const url = `${siteUrl()}/api/square/webhook`;
+  const signature = createHmac(
+    "sha256",
+    process.env.SQUARE_WEBHOOK_SIGNATURE_KEY!,
+  )
+    .update(url + payload)
+    .digest("base64");
+  return new Request("http://localhost/api/square/webhook", {
     method: "POST",
-    headers: { "stripe-signature": `t=${timestamp},v1=${signature}` },
+    headers: { "x-square-hmacsha256-signature": signature },
     body: payload,
   });
 }
 
-const completedEvent = (sessionId: string, email = "buyer@example.com") => ({
-  id: "evt_test_1",
-  type: "checkout.session.completed",
-  data: { object: { id: sessionId, customer_details: { email } } },
+const completedEvent = (squareOrderId: string, email = "buyer@example.com") => ({
+  type: "payment.updated",
+  event_id: "evt_1",
+  data: {
+    object: {
+      payment: {
+        id: "pay_1",
+        status: "COMPLETED",
+        order_id: squareOrderId,
+        buyer_email_address: email,
+      },
+    },
+  },
 });
 
-describe("the Stripe webhook", () => {
+describe("the Square webhook", () => {
   beforeEach(reset);
 
   test("a forged signature is refused", async () => {
-    const payload = JSON.stringify(completedEvent("cs_x"));
     const response = await webhook(
-      new Request("http://localhost/api/stripe/webhook", {
+      new Request("http://localhost/api/square/webhook", {
         method: "POST",
-        headers: { "stripe-signature": "t=1,v1=deadbeef" },
-        body: payload,
+        headers: { "x-square-hmacsha256-signature": "bm90IHJlYWw=" },
+        body: JSON.stringify(completedEvent("sq-x")),
       }),
     );
     assert.equal(response.status, 400);
   });
 
   test("completed: settles, counts the sale, issues one code per ticket", async () => {
-    await createEvent({
-      id: "mirage",
-      name: "Mirage",
-      tagline: "t",
-      summary: "s",
-      heroBody: "",
-      status: "On sale",
-      date: "Aug 30",
-      location: "Old Town",
-      venue: null,
-      tags: [],
-      genres: [],
-      tone: "dusk",
-      featured: false,
-      published: true,
-      rsvpEnabled: true,
-      order: 0,
-      shotNote: "",
-      image: null,
-      imageAlt: "",
-      ctaLabel: "Tickets",
-      ctaAction: "tickets",
-      emailSubject: null,
-      emailHeading: null,
-      emailBody: null,
-    } as never);
+    await seedEvent();
     await reserveTickets("mirage", "early-bird", 2, 25);
-    await createOrder(order("cs_paid"));
+    await createOrder(order("rp"));
 
-    const response = await webhook(signedRequest(completedEvent("cs_paid")));
+    const response = await webhook(signedRequest(completedEvent("sq-rp")));
     assert.equal(response.status, 200);
 
-    const row = await getOrder("cs_paid");
+    const row = await getOrder("rp");
     assert.equal(row?.status, "paid");
     assert.equal(row?.email, "buyer@example.com");
     assert.equal(row?.codes?.length, 2, "one code per ticket bought");
@@ -217,55 +313,53 @@ describe("the Stripe webhook", () => {
   });
 
   test("a redelivered completed event changes nothing", async () => {
+    await seedEvent();
     await reserveTickets("mirage", "early-bird", 2, 25);
-    await createOrder(order("cs_dup"));
+    await createOrder(order("rd"));
 
-    await webhook(signedRequest(completedEvent("cs_dup")));
-    const first = await getOrder("cs_dup");
-    await webhook(signedRequest(completedEvent("cs_dup")));
-    const second = await getOrder("cs_dup");
+    await webhook(signedRequest(completedEvent("sq-rd")));
+    const first = await getOrder("rd");
+    await webhook(signedRequest(completedEvent("sq-rd")));
+    const second = await getOrder("rd");
 
     assert.deepEqual(second?.codes, first?.codes, "codes were not reissued");
     const inv = await readInventory("mirage", ["early-bird"]);
     assert.equal(inv.get("early-bird")?.sold, 2, "the sale counted once");
   });
 
-  test("expired: releases the hold so the seats sell again", async () => {
-    await reserveTickets("mirage", "early-bird", 25, 25);
-    await createOrder(order("cs_gone", { quantity: 25 }));
+  /**
+   * The race the sweep creates: a buyer pays in the seconds between the link
+   * being killed and the hold released. Seats remain, so the order revives.
+   */
+  test("payment after a sweep re-reserves and still issues", async () => {
+    await seedEvent();
+    await createOrder(order("late"));
+    await settleOrder("late", "expired");
 
-    const response = await webhook(
-      signedRequest({
-        id: "evt_test_2",
-        type: "checkout.session.expired",
-        data: { object: { id: "cs_gone" } },
-      }),
-    );
+    const response = await webhook(signedRequest(completedEvent("sq-late")));
     assert.equal(response.status, 200);
 
-    assert.equal((await getOrder("cs_gone"))?.status, "expired");
-    assert.equal(
-      await reserveTickets("mirage", "early-bird", 25, 25),
-      true,
-      "the whole pool is sellable again",
-    );
+    const row = await getOrder("late");
+    assert.equal(row?.status, "paid");
+    assert.equal(row?.codes?.length, 2);
+    const inv = await readInventory("mirage", ["early-bird"]);
+    assert.deepEqual(inv.get("early-bird"), { taken: 2, sold: 2 });
   });
 
-  test("expiry after payment cannot claw back a sale", async () => {
-    await reserveTickets("mirage", "early-bird", 2, 25);
-    await createOrder(order("cs_race"));
-    await webhook(signedRequest(completedEvent("cs_race")));
+  test("payment after a sweep with the tier resold goes to attention", async () => {
+    await seedEvent();
+    await createOrder(order("bad", { quantity: 2 }));
+    await settleOrder("bad", "expired");
+    // Somebody else took every seat in between.
+    await reserveTickets("mirage", "early-bird", 25, 25);
 
-    await webhook(
-      signedRequest({
-        id: "evt_test_3",
-        type: "checkout.session.expired",
-        data: { object: { id: "cs_race" } },
-      }),
-    );
+    const response = await webhook(signedRequest(completedEvent("sq-bad")));
+    assert.equal(response.status, 200);
 
-    assert.equal((await getOrder("cs_race"))?.status, "paid");
+    const row = await getOrder("bad");
+    assert.equal(row?.status, "attention");
+    assert.equal(row?.codes, undefined, "no codes for seats that don't exist");
     const inv = await readInventory("mirage", ["early-bird"]);
-    assert.equal(inv.get("early-bird")?.taken, 2, "the hold stayed converted");
+    assert.equal(inv.get("early-bird")?.sold, 0, "nothing was counted sold");
   });
 });

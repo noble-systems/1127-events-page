@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { consume } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request-meta";
@@ -5,20 +6,25 @@ import { siteUrl } from "@/lib/email";
 import { listPublicEvents } from "@/lib/store";
 import { readQuantity, sellableTiers, type TicketOrder } from "@/lib/tickets";
 import { createOrder, releaseTickets, reserveTickets } from "@/lib/tickets-store";
-import { createTicketCheckout, stripeConfigured } from "@/lib/stripe";
+import { sweepStaleHolds } from "@/lib/ticket-sweep";
+import { createTicketCheckout, squareConfigured } from "@/lib/square";
 
 /**
  * POST /api/checkout  { eventId, tierId, quantity }
  *
- * Starts a ticket purchase: holds the seats, creates a Stripe Checkout
- * session, answers with the URL to send the buyer to.
+ * Starts a ticket purchase: holds the seats, creates a Square payment link,
+ * answers with the URL to send the buyer to.
  *
  * The order of operations is the contract. The hold is taken FIRST, against
- * the atomic counter, and only then is the session created; if Stripe fails,
- * the hold is released on the way out. Done the other way around, two buyers
- * could both be standing at a payment page for the last ticket, and one of
- * them would have paid for nothing. If the buyer walks away, the session
- * expires after 30 minutes and the expiry webhook returns the seats.
+ * the atomic counter, and only then is the payment page created; if Square
+ * fails, the hold is released on the way out. Done the other way around, two
+ * buyers could both be standing at a payment page for the last ticket, and
+ * one of them would have paid for nothing.
+ *
+ * Square links do not expire by themselves, so a failed reserve first sweeps
+ * this tier's stale holds (abandoned checkouts older than 35 minutes, links
+ * deleted before seats return) and tries once more. "Sold out" is only ever
+ * said after that.
  */
 export async function POST(request: Request) {
   const ip = clientIp(request.headers) ?? "unknown";
@@ -30,7 +36,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!stripeConfigured()) {
+  if (!squareConfigured()) {
     return NextResponse.json(
       { ok: false, message: "Ticket sales aren't switched on yet. Check back soon." },
       { status: 503 },
@@ -63,7 +69,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const held = await reserveTickets(event.id, tier.id, quantity, tier.capacity);
+  let held = await reserveTickets(event.id, tier.id, quantity, tier.capacity);
+  if (!held) {
+    const swept = await sweepStaleHolds(
+      [event.id, ...(event.formerIds ?? [])],
+      tier.id,
+      Date.now(),
+    );
+    if (swept >= quantity) {
+      held = await reserveTickets(event.id, tier.id, quantity, tier.capacity);
+    }
+  }
   if (!held) {
     return NextResponse.json(
       {
@@ -78,17 +94,20 @@ export async function POST(request: Request) {
     );
   }
 
+  const ref = randomUUID();
+
   try {
-    const { sessionId, url } = await createTicketCheckout({
+    const { url, squareOrderId, linkId } = await createTicketCheckout({
       event,
       tier,
       quantity,
+      ref,
       siteUrl: siteUrl(),
     });
 
     const now = new Date().toISOString();
     const order: TicketOrder = {
-      sessionId,
+      ref,
       status: "pending",
       eventId: event.id,
       tierId: tier.id,
@@ -96,6 +115,8 @@ export async function POST(request: Request) {
       tierName: tier.name,
       quantity,
       amountCents: tier.priceCents * quantity,
+      squareOrderId,
+      linkId,
       createdAt: now,
       updatedAt: now,
     };
