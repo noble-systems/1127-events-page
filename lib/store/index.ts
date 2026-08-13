@@ -446,6 +446,9 @@ export async function recordSubmission(
     eventIds: event
       ? mergeEventIds(existing?.eventIds, [event.id])
       : existing?.eventIds,
+    // First touch wins: whoever brought them stays credited across repeat
+    // signups. The route has already verified the code is real and active.
+    via: existing?.via ?? (values.via || undefined),
     // Merged against the live list, not the seed, so a genre an admin created
     // today is recorded on somebody signing up today.
     genres: event

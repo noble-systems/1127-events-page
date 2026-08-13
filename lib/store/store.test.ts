@@ -578,3 +578,31 @@ describe("renameEvent moves the URL without stranding anything", () => {
     assert.deepEqual(saved.formerIds, ["sun-club"]);
   });
 });
+
+describe("ambassador attribution on signups", () => {
+  beforeEach(reset);
+
+  const signup = (via: string) => ({
+    name: "Sam",
+    email: "sam@example.com",
+    marketingOptIn: "true",
+    via,
+  });
+
+  test("the code is stored, and first touch wins", async () => {
+    await recordSubmission("rsvp", signup("DANI"));
+    let rows = await store().listSubmissions("rsvp");
+    assert.equal(rows[0].via, "DANI");
+
+    // A later signup through somebody else's link does not steal the credit.
+    await recordSubmission("rsvp", signup("MARCO"));
+    rows = await store().listSubmissions("rsvp");
+    assert.equal(rows[0].via, "DANI", "who brought them does not change");
+  });
+
+  test("no code means no field, not an empty one", async () => {
+    await recordSubmission("rsvp", signup(""));
+    const rows = await store().listSubmissions("rsvp");
+    assert.equal(rows[0].via, undefined);
+  });
+});

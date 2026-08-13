@@ -4,6 +4,8 @@ import { consume } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request-meta";
 import { siteUrl } from "@/lib/email";
 import { listPublicEvents } from "@/lib/store";
+import { normalizeAmbassadorCode } from "@/lib/ambassadors";
+import { activeAmbassadorCode } from "@/lib/ambassadors-store";
 import { readQuantity, sellableTiers, type TicketOrder } from "@/lib/tickets";
 import { createOrder, releaseTickets, reserveTickets } from "@/lib/tickets-store";
 import { sweepStaleHolds } from "@/lib/ticket-sweep";
@@ -47,11 +49,22 @@ export async function POST(request: Request) {
     eventId?: unknown;
     tierId?: unknown;
     quantity?: unknown;
+    via?: unknown;
   } | null;
 
   const eventId = typeof body?.eventId === "string" ? body.eventId : "";
   const tierId = typeof body?.tierId === "string" ? body.tierId : "";
   const quantity = readQuantity(body?.quantity);
+
+  /**
+   * The ambassador code, typed at checkout or carried by a share link. Only
+   * a real, active code is stored; a typo or a retired code never blocks a
+   * sale, it just earns nobody the credit.
+   */
+  const via =
+    typeof body?.via === "string" && body.via.trim()
+      ? await activeAmbassadorCode(normalizeAmbassadorCode(body.via))
+      : null;
 
   // Resolved against the published list, never trusted from the client: a
   // crafted id cannot buy a draft, and the price comes from the stored tier,
@@ -117,6 +130,7 @@ export async function POST(request: Request) {
       amountCents: tier.priceCents * quantity,
       squareOrderId,
       linkId,
+      ...(via ? { via } : {}),
       createdAt: now,
       updatedAt: now,
     };

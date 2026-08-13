@@ -24,6 +24,7 @@ const sections: readonly LegalSection[] = [
     body: [
       "A cookie is a small piece of text your browser stores for a site and sends back on later visits. First-party means it was set by this site rather than by someone else embedded in it.",
       "We also record technical details of the request when you submit a form, such as your IP address and browser. That is not done with cookies, and it is described in the privacy policy.",
+      "One more thing in the same spirit of saying everything: if you arrive through an ambassador's share link, their code rides in the address and in this tab's temporary storage so they get credit if you sign up or buy. It is not a cookie, it is never sent anywhere on its own, it identifies the ambassador rather than you, and it disappears when the tab closes.",
     ],
   },
   {

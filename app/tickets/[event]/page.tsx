@@ -19,7 +19,10 @@ import { readInventory } from "@/lib/tickets-store";
  */
 export const dynamic = "force-dynamic";
 
-type Params = { params: Promise<{ event: string }> };
+type Params = {
+  params: Promise<{ event: string }>;
+  searchParams: Promise<{ via?: string }>;
+};
 
 async function resolve(params: Params["params"]) {
   const [events, { event: id }] = await Promise.all([
@@ -56,8 +59,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-export default async function TicketsPage({ params }: Params) {
-  const { event, moved } = await resolve(params);
+export default async function TicketsPage({ params, searchParams }: Params) {
+  const [{ event, moved }, { via }] = await Promise.all([
+    resolve(params),
+    searchParams,
+  ]);
   if (!event) {
     if (moved) permanentRedirect(`/tickets/${encodeURIComponent(moved.id)}`);
     notFound();
@@ -156,7 +162,11 @@ export default async function TicketsPage({ params }: Params) {
                       Tickets
                     </h2>
                     <div className="mt-6">
-                      <TicketPicker eventId={event.id} tiers={pickerTiers} />
+                      <TicketPicker
+                        eventId={event.id}
+                        tiers={pickerTiers}
+                        via={via}
+                      />
                     </div>
                   </>
                 ) : (

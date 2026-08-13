@@ -85,6 +85,8 @@ export type TicketOrder = {
   /** Square's ids: the order the webhook names, and the link the sweep kills. */
   squareOrderId?: string;
   linkId?: string;
+  /** The ambassador code this sale is credited to, validated at checkout. */
+  via?: string;
   email?: string | null;
   /** Issued codes, present once paid. */
   codes?: string[];

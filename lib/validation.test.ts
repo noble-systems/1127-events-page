@@ -83,6 +83,9 @@ describe("validate", () => {
       // resolves it from the link they followed, and it is what makes promo
       // segmentation by genre possible.
       "eventId",
+      // Which ambassador brought them, from a share link. Also never shown;
+      // the guest still fills in exactly three things.
+      "via",
     ]);
     assert.ok(!fields.includes("groupSize"));
     // smsOptIn is deliberately absent: text consent is derived from the phone

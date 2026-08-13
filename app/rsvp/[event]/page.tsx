@@ -5,7 +5,10 @@ import { listPublicEvents } from "@/lib/store";
 
 export const revalidate = 60;
 
-type Params = { params: Promise<{ event: string }> };
+type Params = {
+  params: Promise<{ event: string }>;
+  searchParams: Promise<{ via?: string }>;
+};
 
 /**
  * A permanent RSVP URL for one event.
@@ -65,9 +68,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-export default async function EventRsvpPage({ params }: Params) {
-  const { event, moved } = await resolve(params);
-  if (event) return <RsvpPageView featured={event} />;
+export default async function EventRsvpPage({ params, searchParams }: Params) {
+  const [{ event, moved }, { via }] = await Promise.all([
+    resolve(params),
+    searchParams,
+  ]);
+  if (event) return <RsvpPageView featured={event} via={via} />;
   if (moved) permanentRedirect(`/rsvp/${encodeURIComponent(moved.id)}`);
   notFound();
 }

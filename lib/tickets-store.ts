@@ -288,6 +288,7 @@ function orderToItem(order: TicketOrder) {
     amountCents: { N: String(order.amountCents) },
     ...(order.squareOrderId ? { squareOrderId: { S: order.squareOrderId } } : {}),
     ...(order.linkId ? { linkId: { S: order.linkId } } : {}),
+    ...(order.via ? { via: { S: order.via } } : {}),
     ...(order.email ? { email: { S: order.email } } : {}),
     ...(order.codes?.length ? { codes: { SS: order.codes } } : {}),
     createdAt: { S: order.createdAt },
@@ -307,6 +308,7 @@ function itemToOrder(item: Record<string, { S?: string; N?: string; SS?: string[
     amountCents: Number(item.amountCents?.N ?? 0),
     squareOrderId: item.squareOrderId?.S ?? undefined,
     linkId: item.linkId?.S ?? undefined,
+    via: item.via?.S ?? undefined,
     email: item.email?.S ?? null,
     codes: item.codes?.SS ?? undefined,
     createdAt: item.createdAt?.S ?? "",
@@ -438,6 +440,35 @@ export async function settleOrder(
     }
     throw error;
   }
+}
+
+/** Every order across every event, for the ambassador payout sheet. */
+export async function listAllOrders(): Promise<TicketOrder[]> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    return Object.values(data.orders).sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    );
+  }
+
+  const rows: TicketOrder[] = [];
+  let cursor: Record<string, unknown> | undefined;
+  do {
+    const page = await db().send(
+      new ScanCommand({
+        TableName: table,
+        FilterExpression: "begins_with(pk, :o)",
+        ExpressionAttributeValues: { ":o": { S: "ord#" } },
+        ExclusiveStartKey: cursor as never,
+      }),
+    );
+    for (const item of page.Items ?? []) rows.push(itemToOrder(item as never));
+    cursor = page.LastEvaluatedKey;
+  } while (cursor);
+
+  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 /** Every order for a set of event ids (current id plus formerIds), newest first. */

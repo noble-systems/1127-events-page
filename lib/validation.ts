@@ -136,6 +136,9 @@ export const RULES: Record<FormType, readonly Rule[]> = {
     // reads it from the link they followed. Optional, because somebody landing
     // on /rsvp directly still needs to be able to sign up.
     { field: "eventId", label: "Event", max: 80 },
+    // The ambassador code carried by a share link. Hidden, optional, and
+    // verified against the active codes server-side before it is stored.
+    { field: "via", label: "Ambassador code", max: 24 },
   ],
   ambassador: [
     { field: "name", label: "Name", required: true, max: 120 },

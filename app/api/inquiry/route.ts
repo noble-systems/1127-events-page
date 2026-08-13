@@ -96,6 +96,18 @@ export async function POST(request: Request) {
     );
   }
 
+  /**
+   * An ambassador code rides in from a share link. Only a real, active code
+   * is worth storing; anything else is dropped rather than failing the
+   * signup, because attribution is bookkeeping and the signup is the point.
+   */
+  if (clean.via) {
+    const { activeAmbassadorCode } = await import("@/lib/ambassadors-store");
+    const { normalizeAmbassadorCode } = await import("@/lib/ambassadors");
+    clean.via =
+      (await activeAmbassadorCode(normalizeAmbassadorCode(clean.via))) ?? "";
+  }
+
   let outcome;
   try {
     const meta = buildRequestMeta(request.headers, context ?? {});

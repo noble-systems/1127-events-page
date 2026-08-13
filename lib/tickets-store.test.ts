@@ -363,3 +363,39 @@ describe("the Square webhook", () => {
     assert.equal(inv.get("early-bird")?.sold, 0, "nothing was counted sold");
   });
 });
+
+/* -------------------------------------------------------------------------- */
+/* Ambassador rows                                                            */
+/* -------------------------------------------------------------------------- */
+
+const { activeAmbassadorCode, createAmbassador, listAmbassadors, setAmbassadorActive } =
+  await import("./ambassadors-store.ts");
+
+describe("the ambassador roster", () => {
+  beforeEach(reset);
+
+  const dani = {
+    code: "DANI",
+    name: "Daniela",
+    active: true,
+    createdAt: new Date().toISOString(),
+  };
+
+  test("a code exists once", async () => {
+    assert.equal(await createAmbassador(dani), true);
+    assert.equal(await createAmbassador(dani), false);
+    assert.equal((await listAmbassadors()).length, 1);
+  });
+
+  test("only active codes attribute", async () => {
+    await createAmbassador(dani);
+    assert.equal(await activeAmbassadorCode("DANI"), "DANI");
+    assert.equal(await activeAmbassadorCode("NOBODY"), null);
+    assert.equal(await activeAmbassadorCode(""), null);
+
+    await setAmbassadorActive("DANI", false);
+    assert.equal(await activeAmbassadorCode("DANI"), null, "switched off");
+    await setAmbassadorActive("DANI", true);
+    assert.equal(await activeAmbassadorCode("DANI"), "DANI", "and back on");
+  });
+});

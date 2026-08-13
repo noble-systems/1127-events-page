@@ -152,6 +152,7 @@ export default async function AdminTicketsPage() {
                       <th className="py-2 pr-4 font-medium">Qty</th>
                       <th className="py-2 pr-4 font-medium">Amount</th>
                       <th className="py-2 pr-4 font-medium">Email</th>
+                      <th className="py-2 pr-4 font-medium">Via</th>
                       <th className="py-2 pr-4 font-medium">Status</th>
                       <th className="py-2 font-medium">Codes</th>
                     </tr>
@@ -168,6 +169,9 @@ export default async function AdminTicketsPage() {
                           {formatMoney(order.amountCents)}
                         </td>
                         <td className="py-2 pr-4">{order.email ?? ""}</td>
+                        <td className="py-2 pr-4 font-mono text-[0.75rem]">
+                          {order.via ?? ""}
+                        </td>
                         <td className="py-2 pr-4">
                           <span
                             className={

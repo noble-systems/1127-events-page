@@ -298,6 +298,12 @@ export type SubmissionRecord = {
    * bass in August belongs to both audiences.
    */
   eventIds?: string[];
+  /**
+   * The ambassador code that brought this person in, from a share link.
+   * First touch wins and later signups never overwrite it: "who brought
+   * them" is a fact about their arrival, and it has a payout attached.
+   */
+  via?: string;
   /** Union of the genres of every event above. What promo segments filter on. */
   genres?: string[];
   /** IP, device and campaign captured at submit time. See lib/request-meta.ts. */

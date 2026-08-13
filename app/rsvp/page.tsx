@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 export default async function RsvpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ event?: string }>;
+  searchParams: Promise<{ event?: string; via?: string }>;
 }) {
   const [events, params] = await Promise.all([listPublicEvents(), searchParams]);
 
@@ -62,7 +62,9 @@ export default async function RsvpPage({
   const open = events.filter((event) => event.rsvpEnabled !== false);
   const target = requested ?? open.find((event) => event.featured);
 
-  if (target) redirect(`/rsvp/${encodeURIComponent(target.id)}`);
+  // The ambassador code survives the hop to the event's own page.
+  const viaSuffix = params.via ? `?via=${encodeURIComponent(params.via)}` : "";
+  if (target) redirect(`/rsvp/${encodeURIComponent(target.id)}${viaSuffix}`);
 
-  return <RsvpPageView />;
+  return <RsvpPageView via={params.via} />;
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { recallVia, rememberVia } from "@/components/viaSession";
 import {
   Field,
   FormAlert,
@@ -22,6 +23,7 @@ const INITIAL = {
   // Joining this list is the email opt-in, so it is recorded rather than asked.
   marketingOptIn: "true",
   eventId: "",
+  via: "",
 };
 
 /**
@@ -32,6 +34,7 @@ const INITIAL = {
 export function RsvpForm({
   onDone,
   eventId = "",
+  via = "",
 }: {
   onDone?: () => void;
   /**
@@ -40,10 +43,27 @@ export function RsvpForm({
    * the guest: the form stays three fields.
    */
   eventId?: string;
+  /**
+   * The ambassador code carried by the share link that landed here. Hidden,
+   * like eventId: attribution bookkeeping, not a question for the guest. The
+   * mount effect below also recovers it from sessionStorage, so wandering
+   * around the site between the link tap and the signup keeps the credit.
+   */
+  via?: string;
 }) {
   const [trap, setTrap] = useState("");
   const { values, errors, status, errorMessage, setField, reset, handleSubmit } =
-    useForm("rsvp", { ...INITIAL, eventId });
+    useForm("rsvp", { ...INITIAL, eventId, via });
+
+  useEffect(() => {
+    if (via) rememberVia(via);
+    else {
+      const stored = recallVia();
+      if (stored) setField("via", stored);
+    }
+    // Runs once per link-borne value; setField identity is stable enough.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [via]);
 
   if (status === "success") {
     return (

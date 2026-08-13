@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { recallVia, rememberVia } from "@/components/viaSession";
 
 /**
  * The tier chooser: radios for the type, a count, one button. Payment itself
@@ -23,16 +24,38 @@ export type PickerTier = {
 export function TicketPicker({
   eventId,
   tiers,
+  via: viaFromLink,
 }: {
   eventId: string;
   tiers: PickerTier[];
+  /** Ambassador code carried by the share link that landed here, if any. */
+  via?: string;
 }) {
   const router = useRouter();
   const firstOpen = tiers.find((tier) => tier.max > 0);
   const [tierId, setTierId] = useState(firstOpen?.id ?? "");
   const [quantity, setQuantity] = useState(1);
+  const [via, setVia] = useState(viaFromLink ?? "");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  /**
+   * A link-borne code outlives the URL via sessionStorage, so wandering off
+   * to the lineup and back does not cost the ambassador their credit. The
+   * field stays editable: a typed code (from a flyer, a story screenshot)
+   * beats an absent one.
+   */
+  useEffect(() => {
+    if (viaFromLink) rememberVia(viaFromLink);
+    else {
+      const stored = recallVia();
+      // Reading storage in an effect (not in the initializer) keeps the
+      // server and client first renders identical; the one extra render on
+      // recall is the price of a clean hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (stored) setVia((current) => current || stored);
+    }
+  }, [viaFromLink]);
 
   const chosen = tiers.find((tier) => tier.id === tierId) ?? null;
   const max = chosen?.max ?? 0;
@@ -46,7 +69,12 @@ export function TicketPicker({
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId, tierId: chosen.id, quantity }),
+        body: JSON.stringify({
+          eventId,
+          tierId: chosen.id,
+          quantity,
+          ...(via.trim() ? { via: via.trim() } : {}),
+        }),
       });
       const data = (await response.json().catch(() => null)) as {
         ok?: boolean;
@@ -146,6 +174,23 @@ export function TicketPicker({
             {busy ? "Opening checkout…" : "Continue to payment"}
           </Button>
         </div>
+      ) : null}
+
+      {chosen && max > 0 ? (
+        <label className="text-ink/70 mt-4 flex items-center gap-2.5 text-[0.875rem]">
+          Ambassador code
+          <input
+            type="text"
+            value={via}
+            disabled={busy}
+            placeholder="optional"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            onChange={(e) => setVia(e.target.value.toUpperCase())}
+            className="border-ink/20 bg-bone w-36 rounded-lg border px-3 py-2 text-[0.875rem] tracking-wide uppercase"
+          />
+        </label>
       ) : null}
 
       {message ? (

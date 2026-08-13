@@ -37,7 +37,14 @@ function eventFacts(event?: EventRecord) {
   ];
 }
 
-export function RsvpPageView({ featured }: { featured?: EventRecord }) {
+export function RsvpPageView({
+  featured,
+  via,
+}: {
+  featured?: EventRecord;
+  /** Ambassador code from the share link, passed through to the form. */
+  via?: string;
+}) {
   /**
    * An event can be live on the site with its guest list closed. Its RSVP URL
    * keeps working in that state; the form is simply replaced by a plain
@@ -156,7 +163,7 @@ export function RsvpPageView({ featured }: { featured?: EventRecord }) {
                     </p>
 
                     <div className="mt-7">
-                      <RsvpForm eventId={featured?.id ?? ""} />
+                      <RsvpForm eventId={featured?.id ?? ""} via={via} />
                     </div>
                   </>
                 )}
