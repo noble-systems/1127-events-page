@@ -50,11 +50,31 @@ export async function POST(request: Request) {
     tierId?: unknown;
     quantity?: unknown;
     via?: unknown;
+    email?: unknown;
+    phone?: unknown;
+    optIn?: unknown;
   } | null;
 
   const eventId = typeof body?.eventId === "string" ? body.eventId : "";
   const tierId = typeof body?.tierId === "string" ? body.tierId : "";
   const quantity = readQuantity(body?.quantity);
+
+  /**
+   * The ticket email is collected HERE, on our page, not scraped back from
+   * the processor: where the tickets go must not depend on what a checkout
+   * page happens to report. Phone is optional; the marketing checkbox is
+   * explicit consent, default off.
+   */
+  const email =
+    typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+  const phone = typeof body?.phone === "string" ? body.phone.trim().slice(0, 40) : "";
+  const optIn = body?.optIn === true;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) {
+    return NextResponse.json(
+      { ok: false, message: "Enter the email your tickets should go to." },
+      { status: 400 },
+    );
+  }
 
   /**
    * The ambassador code, typed at checkout or carried by a share link. Only
@@ -125,6 +145,8 @@ export async function POST(request: Request) {
       quantity,
       ref,
       siteUrl: siteUrl(),
+      buyerEmail: email,
+      ...(phone ? { buyerPhone: phone } : {}),
     });
 
     const now = new Date().toISOString();
@@ -140,6 +162,9 @@ export async function POST(request: Request) {
       squareOrderId,
       linkId,
       ...(via ? { via } : {}),
+      email,
+      ...(phone ? { phone } : {}),
+      ...(optIn ? { optIn: true } : {}),
       createdAt: now,
       updatedAt: now,
     };

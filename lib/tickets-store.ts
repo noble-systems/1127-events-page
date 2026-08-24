@@ -290,13 +290,17 @@ function orderToItem(order: TicketOrder) {
     ...(order.linkId ? { linkId: { S: order.linkId } } : {}),
     ...(order.via ? { via: { S: order.via } } : {}),
     ...(order.email ? { email: { S: order.email } } : {}),
+    ...(order.phone ? { phone: { S: order.phone } } : {}),
+    ...(order.optIn ? { optIn: { BOOL: true } } : {}),
     ...(order.codes?.length ? { codes: { SS: order.codes } } : {}),
     createdAt: { S: order.createdAt },
     updatedAt: { S: order.updatedAt },
   };
 }
 
-function itemToOrder(item: Record<string, { S?: string; N?: string; SS?: string[] }>): TicketOrder {
+function itemToOrder(
+  item: Record<string, { S?: string; N?: string; SS?: string[]; BOOL?: boolean }>,
+): TicketOrder {
   return {
     ref: item.ref?.S ?? "",
     status: (item.status?.S ?? "pending") as TicketOrder["status"],
@@ -310,6 +314,8 @@ function itemToOrder(item: Record<string, { S?: string; N?: string; SS?: string[
     linkId: item.linkId?.S ?? undefined,
     via: item.via?.S ?? undefined,
     email: item.email?.S ?? null,
+    phone: item.phone?.S ?? null,
+    optIn: item.optIn?.BOOL === true,
     codes: item.codes?.SS ?? undefined,
     createdAt: item.createdAt?.S ?? "",
     updatedAt: item.updatedAt?.S ?? "",

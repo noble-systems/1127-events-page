@@ -97,7 +97,15 @@ export type TicketOrder = {
   linkId?: string;
   /** The ambassador code this sale is credited to, validated at checkout. */
   via?: string;
+  /**
+   * Collected on OUR page before Square ever loads: the ticket email must
+   * not depend on what a payment processor happens to hand back. Phone is
+   * optional, for day-of updates. optIn is the marketing checkbox, default
+   * off; buying a ticket is not a mailing-list signup.
+   */
   email?: string | null;
+  phone?: string | null;
+  optIn?: boolean;
   /** Issued codes, present once paid. */
   codes?: string[];
   createdAt: string;

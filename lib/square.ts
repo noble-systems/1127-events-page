@@ -72,8 +72,11 @@ export async function createTicketCheckout(input: {
   quantity: number;
   ref: string;
   siteUrl: string;
+  /** Collected on our page; prefills Square so nobody types it twice. */
+  buyerEmail?: string;
+  buyerPhone?: string;
 }): Promise<{ url: string; squareOrderId: string; linkId: string }> {
-  const { event, tier, quantity, ref, siteUrl } = input;
+  const { event, tier, quantity, ref, siteUrl, buyerEmail, buyerPhone } = input;
 
   const data = await call<{
     payment_link?: { id?: string; url?: string; order_id?: string };
@@ -97,6 +100,14 @@ export async function createTicketCheckout(input: {
       enable_coupon: false,
       enable_loyalty: false,
     },
+    ...(buyerEmail || buyerPhone
+      ? {
+          pre_populated_data: {
+            ...(buyerEmail ? { buyer_email: buyerEmail } : {}),
+            ...(buyerPhone ? { buyer_phone_number: buyerPhone } : {}),
+          },
+        }
+      : {}),
   });
 
   const link = data.payment_link;

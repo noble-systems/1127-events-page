@@ -36,6 +36,9 @@ export function TicketPicker({
   const [tierId, setTierId] = useState(firstOpen?.id ?? "");
   const [quantity, setQuantity] = useState(1);
   const [via, setVia] = useState(viaFromLink ?? "");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [optIn, setOptIn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -59,9 +62,10 @@ export function TicketPicker({
 
   const chosen = tiers.find((tier) => tier.id === tierId) ?? null;
   const max = chosen?.max ?? 0;
+  const emailOk = /^[^@]+@[^@]+[.][^@]+$/.test(email.trim());
 
   const buy = async () => {
-    if (!chosen || busy) return;
+    if (!chosen || busy || !emailOk) return;
     setBusy(true);
     setMessage(null);
 
@@ -73,6 +77,9 @@ export function TicketPicker({
           eventId,
           tierId: chosen.id,
           quantity,
+          email: email.trim(),
+          ...(phone.trim() ? { phone: phone.trim() } : {}),
+          optIn,
           ...(via.trim() ? { via: via.trim() } : {}),
         }),
       });
@@ -153,6 +160,46 @@ export function TicketPicker({
       </fieldset>
 
       {chosen && max > 0 ? (
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <label className="text-ink/70 block text-[0.875rem]">
+            Email for your tickets
+            <input
+              type="email"
+              value={email}
+              disabled={busy}
+              required
+              placeholder="you@example.com"
+              autoComplete="email"
+              onChange={(e) => setEmail(e.target.value)}
+              className="border-ink/20 bg-bone mt-1.5 block w-full rounded-lg border px-3 py-2 text-[0.9375rem]"
+            />
+          </label>
+          <label className="text-ink/70 block text-[0.875rem]">
+            Phone (optional, day-of updates)
+            <input
+              type="tel"
+              value={phone}
+              disabled={busy}
+              placeholder="(480) 555-0123"
+              autoComplete="tel"
+              onChange={(e) => setPhone(e.target.value)}
+              className="border-ink/20 bg-bone mt-1.5 block w-full rounded-lg border px-3 py-2 text-[0.9375rem]"
+            />
+          </label>
+          <label className="text-ink/65 flex items-start gap-2.5 text-[0.8125rem] leading-relaxed sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={optIn}
+              disabled={busy}
+              onChange={(e) => setOptIn(e.target.checked)}
+              className="accent-ink mt-0.5 h-4 w-4 shrink-0"
+            />
+            Email me about future 1127 events. Tickets arrive either way.
+          </label>
+        </div>
+      ) : null}
+
+      {chosen && max > 0 ? (
         <div className="mt-5 flex items-center gap-4">
           <label className="text-ink/70 flex items-center gap-2.5 text-[0.9375rem]">
             How many
@@ -170,7 +217,12 @@ export function TicketPicker({
             </select>
           </label>
 
-          <Button onClick={buy} disabled={busy} variant="primary" size="lg">
+          <Button
+            onClick={buy}
+            disabled={busy || !emailOk}
+            variant="primary"
+            size="lg"
+          >
             {busy ? "Opening checkout…" : "Continue to payment"}
           </Button>
         </div>

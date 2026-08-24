@@ -34,7 +34,7 @@ const {
 const { newTicketCode } = await import("./tickets.ts");
 const { sweepStaleHolds } = await import("./ticket-sweep.ts");
 const { siteUrl } = await import("./email.ts");
-const { createEvent } = await import("./store/index.ts");
+const { createEvent, listSubmissions } = await import("./store/index.ts");
 const { POST: webhook } = await import("../app/api/square/webhook/route.ts");
 
 async function reset() {
@@ -397,5 +397,47 @@ describe("the ambassador roster", () => {
     assert.equal(await activeAmbassadorCode("DANI"), null, "switched off");
     await setAmbassadorActive("DANI", true);
     assert.equal(await activeAmbassadorCode("DANI"), "DANI", "and back on");
+  });
+});
+
+describe("buyer contact collected on our page", () => {
+  beforeEach(reset);
+
+  test("our email beats the processor echo, and the buyer lands in the CRM", async () => {
+    await seedEvent();
+    await reserveTickets("mirage", "early-bird", 2, 25);
+    await createOrder(
+      order("crm", {
+        email: "ours@example.com",
+        phone: "480-555-0123",
+        optIn: true,
+        via: "DANI",
+      }),
+    );
+
+    await webhook(signedRequest(completedEvent("sq-crm", "square@example.com")));
+
+    const row = await getOrder("crm");
+    assert.equal(row?.email, "ours@example.com", "collected address wins");
+
+    const people = await listSubmissions("rsvp");
+    assert.equal(people.length, 1);
+    assert.equal(people[0].email, "ours@example.com");
+    assert.equal(people[0].phone, "480-555-0123");
+    assert.equal(people[0].marketingOptIn, true, "box was ticked");
+    assert.equal(people[0].via, "DANI", "ambassador credit carried");
+    assert.deepEqual(people[0].eventIds, ["mirage"], "attendance recorded");
+  });
+
+  test("no opt-in means present in CRM but not mailable", async () => {
+    await seedEvent();
+    await reserveTickets("mirage", "early-bird", 2, 25);
+    await createOrder(order("quiet", { email: "quiet@example.com" }));
+
+    await webhook(signedRequest(completedEvent("sq-quiet")));
+
+    const people = await listSubmissions("rsvp");
+    assert.equal(people.length, 1);
+    assert.equal(people[0].marketingOptIn, false);
   });
 });

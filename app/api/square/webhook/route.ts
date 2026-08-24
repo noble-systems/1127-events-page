@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendTicketEmail, siteUrl } from "@/lib/email";
-import { getEvent } from "@/lib/store";
+import { getEvent, recordSubmission } from "@/lib/store";
 import { fetchOrderReference, verifySquareSignature } from "@/lib/square";
 import { formatMoney, newTicketCode, sellableTiers } from "@/lib/tickets";
 import {
@@ -82,7 +82,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const email = payment.buyer_email_address ?? null;
+  // The address collected on our page wins; the processor's echo is the
+  // fallback for orders from before the field existed.
+  const email = order.email ?? payment.buyer_email_address ?? null;
   const codes = Array.from({ length: order.quantity }, () => newTicketCode());
 
   let claimed = await settleOrder(ref, "paid", { email, codes });
@@ -153,6 +155,23 @@ export async function POST(request: Request) {
         date: eventRecord?.date,
         location: eventRecord?.venue ?? eventRecord?.location,
       });
+
+      /**
+       * The buyer becomes a person in the CRM: attendance recorded against
+       * the event, ambassador credit attached, mailable ONLY when the
+       * opt-in box was ticked. Buying a ticket is attendance, not a
+       * mailing-list signup.
+       */
+      await recordSubmission("rsvp", {
+        name: "",
+        email,
+        ...(order.phone ? { phone: order.phone } : {}),
+        marketingOptIn: order.optIn === true ? "true" : "false",
+        eventId: order.eventId,
+        ...(order.via ? { via: order.via } : {}),
+      }).catch((error) =>
+        console.error("[1127] buyer CRM record failed", order.ref, error),
+      );
     }
   } catch (error) {
     // The order is settled and the codes are on it; the admin orders page
