@@ -22,9 +22,16 @@ import { navLinks } from "@/content/site";
 export function SiteHeader({
   overlay = true,
   rsvpOpen = true,
+  ticketsHref = null,
 }: {
   overlay?: boolean;
   rsvpOpen?: boolean;
+  /**
+   * When the featured event is selling tickets, the header button sells
+   * them instead of collecting signups: money beats mailing list. Null
+   * falls back to the RSVP behavior.
+   */
+  ticketsHref?: string | null;
 }) {
   const [scrolled, setScrolled] = useState(!overlay);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -156,14 +163,14 @@ export function SiteHeader({
 
           <div className="flex items-center gap-2">
             <Link
-              href="/rsvp"
+              href={ticketsHref ?? "/rsvp"}
               className={buttonClass(
                 solid ? "primary" : "sun",
                 "sm",
                 "hidden sm:inline-flex",
               )}
             >
-              {rsvpOpen ? "RSVP" : "Join the list"}
+              {ticketsHref ? "Buy tickets" : rsvpOpen ? "RSVP" : "Join the list"}
             </Link>
 
             <button
@@ -236,11 +243,11 @@ export function SiteHeader({
 
             <div className="mt-9 flex flex-col gap-3">
               <Link
-                href="/rsvp"
+                href={ticketsHref ?? "/rsvp"}
                 onClick={closeMenu}
                 className={buttonClass("sun", "lg", "w-full")}
               >
-                {rsvpOpen ? "RSVP" : "Join the list"}
+                {ticketsHref ? "Buy tickets" : rsvpOpen ? "RSVP" : "Join the list"}
               </Link>
               <a
                 href="/partner"

@@ -382,7 +382,10 @@ export function readEventBody(
     rsvpEnabled: raw.rsvpEnabled !== false && raw.rsvpEnabled !== "false",
     // Money is the opposite of signups: only an explicit true sells.
     ticketsEnabled: raw.ticketsEnabled === true || raw.ticketsEnabled === "true",
-    tickets: readTicketRows(raw.tickets),
+    // Both spellings, because two callers exist: the form posts `tickets`
+    // (form rows), the events-list toggles resubmit the raw record, which
+    // stores `ticketTiers`. Reading only one wiped the other's tiers.
+    tickets: readTicketRows(raw.tickets ?? raw.ticketTiers),
     order: typeof raw.order === "number" ? String(raw.order) : str("order") || "0",
     shotNote: str("shotNote"),
     image: str("image"),

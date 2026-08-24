@@ -31,9 +31,27 @@ export function HomeSections({
   // never describe different events.
   const featured = events.find((event) => event.featured) ?? null;
 
+  // Inline rather than lib/tickets' isSelling: this renders in the live
+  // editor's client bundle, and that module pulls node:crypto.
+  const selling = Boolean(
+    featured?.published &&
+      featured.ticketsEnabled === true &&
+      (featured.ticketTiers ?? []).some(
+        (tier) =>
+          tier.capacity > 0 && tier.priceCents > 0 && tier.hidden !== true,
+      ),
+  );
+
   return (
     <>
-      <SiteHeader rsvpOpen={Boolean(featured && featured.rsvpEnabled !== false)} />
+      <SiteHeader
+        rsvpOpen={Boolean(featured && featured.rsvpEnabled !== false)}
+        ticketsHref={
+          selling && featured
+            ? `/tickets/${encodeURIComponent(featured.id)}`
+            : null
+        }
+      />
       <main id="main">
         <Hero content={content.hero} event={featured} />
         <UpcomingEvents

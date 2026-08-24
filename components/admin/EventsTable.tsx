@@ -38,11 +38,11 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
 
   /**
    * Same shape as togglePublished below: the whole event goes back through the
-   * validated PUT with one flag flipped. Off removes the RSVP button from the
-   * card, 404s the event's signup page, and turns the header button into
-   * "Join the list" while this event is featured.
+   * validated PUT with one flag flipped. On means /tickets/<id> sells,
+   * provided the event has ticket types; the server refuses the flip when
+   * there are none, and that message is shown rather than a generic one.
    */
-  const toggleRsvp = async (event: EventRecord) => {
+  const toggleSelling = async (event: EventRecord) => {
     setBusyId(event.id);
     setError(null);
 
@@ -54,12 +54,20 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
         tags: event.tags.join(", "),
         venue: event.venue ?? "",
         image: event.image ?? "",
-        rsvpEnabled: event.rsvpEnabled === false,
+        ticketsEnabled: event.ticketsEnabled !== true,
       }),
     });
 
     if (!response.ok) {
-      setError("Couldn't change RSVPs for that event.");
+      const data = (await response.json().catch(() => null)) as {
+        errors?: Record<string, string>;
+        message?: string;
+      } | null;
+      setError(
+        data?.errors?.tickets ??
+          data?.message ??
+          "Couldn't change selling for that event.",
+      );
       setBusyId(null);
       return;
     }
@@ -190,9 +198,9 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
                 >
                   {event.published ? "Live" : "Draft"}
                 </span>
-                {event.rsvpEnabled === false ? (
-                  <span className="bg-clay/15 text-terracotta-deep rounded-full px-2.5 py-1 text-[0.75rem] tracking-[0.08em] uppercase">
-                    RSVPs closed
+                {event.ticketsEnabled === true ? (
+                  <span className="bg-sun/20 text-sun-deep rounded-full px-2.5 py-1 text-[0.75rem] tracking-[0.08em] uppercase">
+                    Selling
                   </span>
                 ) : null}
               </div>
@@ -226,16 +234,16 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
               </label>
               <button
                 type="button"
-                onClick={() => toggleRsvp(event)}
+                onClick={() => toggleSelling(event)}
                 disabled={busyId === event.id}
                 title={
-                  event.rsvpEnabled === false
-                    ? "Signups are closed: no RSVP button, and the event's signup page answers 404"
-                    : "Signups are open at /rsvp/" + event.id
+                  event.ticketsEnabled === true
+                    ? "Tickets are on sale at /tickets/" + event.id
+                    : "Start selling at /tickets/" + event.id + " (needs ticket types on the event first)"
                 }
                 className="border-ink/20 hover:border-ink/45 rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors duration-200 disabled:opacity-50"
               >
-                {event.rsvpEnabled === false ? "Open RSVPs" : "Close RSVPs"}
+                {event.ticketsEnabled === true ? "Stop selling" : "Start selling"}
               </button>
               <button
                 type="button"

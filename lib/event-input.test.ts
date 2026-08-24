@@ -555,3 +555,43 @@ describe("hidden tiers survive the round-trip too", () => {
     assert.equal(values.tickets[1].hidden, false);
   });
 });
+
+/**
+ * The wipe the events-list toggles nearly caused: they resubmit the RAW
+ * record, whose tiers live under `ticketTiers`, while the form posts
+ * `tickets`. Reading only the form's key returned an empty list, which
+ * failed validation on selling events and silently erased tiers on the
+ * rest.
+ */
+describe("readEventBody accepts the stored ticketTiers key too", () => {
+  test("a raw record round-trips its tiers", () => {
+    const values = readEventBody(
+      {
+        name: "Mirage",
+        ticketsEnabled: true,
+        ticketTiers: [
+          { id: "eb", name: "Early Bird", priceCents: 1500, capacity: 25 },
+        ],
+      },
+      [],
+    );
+    assert.equal(values.tickets.length, 1);
+    assert.equal(values.tickets[0].id, "eb");
+    assert.equal(values.tickets[0].price, "15");
+    const input = toEventInput("mirage", values, []);
+    assert.deepEqual(input.ticketTiers, [
+      { id: "eb", name: "Early Bird", priceCents: 1500, capacity: 25 },
+    ]);
+  });
+
+  test("the form's own key wins when both exist", () => {
+    const values = readEventBody(
+      {
+        tickets: [{ id: "a", name: "A", price: "10", capacity: "5" }],
+        ticketTiers: [{ id: "b", name: "B", priceCents: 2000, capacity: 9 }],
+      },
+      [],
+    );
+    assert.equal(values.tickets[0].id, "a");
+  });
+});

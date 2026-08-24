@@ -6,6 +6,7 @@ import { Media } from "@/components/ui/Media";
 import { Reveal } from "@/components/ui/Reveal";
 import { Eyebrow, Section } from "@/components/ui/Section";
 import { hero, sunClub } from "@/content/site";
+import { isSelling } from "@/lib/tickets";
 import type { EventRecord } from "@/lib/types";
 
 /**
@@ -58,6 +59,11 @@ export function RsvpPageView({
       <SiteHeader
         overlay={false}
         rsvpOpen={Boolean(featured && featured.rsvpEnabled !== false)}
+        ticketsHref={
+          featured && isSelling(featured)
+            ? `/tickets/${encodeURIComponent(featured.id)}`
+            : null
+        }
       />
 
       <main id="main" className="bg-bone pt-[4.5rem] lg:pt-20">
