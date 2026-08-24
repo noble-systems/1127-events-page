@@ -88,7 +88,7 @@ export default async function AdminOverviewPage() {
               : "bg-terracotta/15 text-terracotta-deep"
           }`}
         >
-          {email.guest ? "RSVP email on" : "RSVP email off"}
+          {email.guest ? "Guest email on" : "Guest email off"}
         </span>
         <span className="min-w-0 flex-1">
           {email.detail}
@@ -123,7 +123,7 @@ export default async function AdminOverviewPage() {
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
-          label="RSVP list"
+          label="Subscriber list"
           value={rsvps.length}
           hint="People, not signups. One person can RSVP to several events."
           href="/admin/list"
@@ -150,7 +150,7 @@ export default async function AdminOverviewPage() {
 
       <section className="mt-12">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="font-display text-2xl">RSVPs by event</h2>
+          <h2 className="font-display text-2xl">Signups by event</h2>
           <Link
             href="/admin/audience"
             className="text-cobalt text-[0.875rem] underline-offset-4 hover:underline"
@@ -161,7 +161,7 @@ export default async function AdminOverviewPage() {
 
         {perEvent.length === 0 ? (
           <p className="border-ink/25 bg-bone/60 text-ink/65 mt-5 rounded-2xl border border-dashed px-6 py-10 text-center text-[0.9375rem]">
-            No RSVPs attributed to an event yet.
+            No signups attributed to an event yet.
           </p>
         ) : (
           <ul className="border-ink/12 bg-bone divide-ink/10 mt-5 divide-y overflow-hidden rounded-2xl border">
@@ -194,7 +194,7 @@ export default async function AdminOverviewPage() {
       <div className="mt-12 grid gap-6 lg:grid-cols-3">
         <section className="lg:col-span-2">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="font-display text-2xl">Latest RSVPs</h2>
+            <h2 className="font-display text-2xl">Latest signups</h2>
             <Link
               href="/admin/list"
               className="text-cobalt text-[0.875rem] underline-offset-4 hover:underline"
@@ -255,7 +255,7 @@ export default async function AdminOverviewPage() {
               className="border-ink/12 bg-bone hover:border-ink/30 block rounded-2xl border px-5 py-4 transition-colors duration-300"
             >
               <span className="block text-[0.9375rem] font-medium">
-                Export the RSVP list
+                Export the subscriber list
               </span>
               <span className="text-ink/65 mt-1 block text-[0.8125rem]">
                 CSV for your email platform

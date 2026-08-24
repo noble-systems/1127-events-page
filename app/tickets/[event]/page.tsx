@@ -105,7 +105,6 @@ export default async function TicketsPage({ params, searchParams }: Params) {
     <>
       <SiteHeader
         overlay={false}
-        rsvpOpen={Boolean(event.rsvpEnabled !== false)}
       />
 
       <main id="main" className="bg-bone pt-[4.5rem] lg:pt-20">

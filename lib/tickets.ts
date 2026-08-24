@@ -106,6 +106,8 @@ export type TicketOrder = {
   email?: string | null;
   phone?: string | null;
   optIn?: boolean;
+  /** Terms version accepted at checkout; the consent paper trail. */
+  termsVersion?: string;
   /** Issued codes, present once paid. */
   codes?: string[];
   createdAt: string;

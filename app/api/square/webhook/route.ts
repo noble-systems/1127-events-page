@@ -167,6 +167,7 @@ export async function POST(request: Request) {
         email,
         ...(order.phone ? { phone: order.phone } : {}),
         marketingOptIn: order.optIn === true ? "true" : "false",
+        ...(order.termsVersion ? { agreeTerms: "true" } : {}),
         eventId: order.eventId,
         ...(order.via ? { via: order.via } : {}),
       }).catch((error) =>

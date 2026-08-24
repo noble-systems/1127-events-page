@@ -58,7 +58,6 @@ export function RsvpPageView({
     <>
       <SiteHeader
         overlay={false}
-        rsvpOpen={Boolean(featured && featured.rsvpEnabled !== false)}
         ticketsHref={
           featured && isSelling(featured)
             ? `/tickets/${encodeURIComponent(featured.id)}`

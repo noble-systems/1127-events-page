@@ -146,7 +146,7 @@ export default async function AdminTicketsPage() {
           </div>
 
           {orders.length > 0 ? (
-            <details className="mt-5">
+            <details className="mt-5" open>
               <summary className="text-ink/70 cursor-pointer text-[0.875rem]">
                 {orders.length} {orders.length === 1 ? "order" : "orders"}
               </summary>
@@ -159,6 +159,7 @@ export default async function AdminTicketsPage() {
                       <th className="py-2 pr-4 font-medium">Qty</th>
                       <th className="py-2 pr-4 font-medium">Amount</th>
                       <th className="py-2 pr-4 font-medium">Email</th>
+                      <th className="py-2 pr-4 font-medium">Phone</th>
                       <th className="py-2 pr-4 font-medium">Via</th>
                       <th className="py-2 pr-4 font-medium">Status</th>
                       <th className="py-2 font-medium">Codes</th>
@@ -176,6 +177,9 @@ export default async function AdminTicketsPage() {
                           {formatMoney(order.amountCents)}
                         </td>
                         <td className="py-2 pr-4">{order.email ?? ""}</td>
+                        <td className="py-2 pr-4 whitespace-nowrap tabular-nums">
+                          {order.phone ?? ""}
+                        </td>
                         <td className="py-2 pr-4 font-mono text-[0.75rem]">
                           {order.via ?? ""}
                         </td>

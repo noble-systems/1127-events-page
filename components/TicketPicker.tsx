@@ -38,6 +38,7 @@ export function TicketPicker({
   const [via, setVia] = useState(viaFromLink ?? "");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -64,7 +65,7 @@ export function TicketPicker({
   const emailOk = /^[^@]+@[^@]+[.][^@]+$/.test(email.trim());
 
   const buy = async () => {
-    if (!chosen || busy || !emailOk) return;
+    if (!chosen || busy || !emailOk || !agreed) return;
     setBusy(true);
     setMessage(null);
 
@@ -79,6 +80,7 @@ export function TicketPicker({
           email: email.trim(),
           ...(phone.trim() ? { phone: phone.trim() } : {}),
           optIn: true,
+          agreeTerms: true,
           ...(via.trim() ? { via: via.trim() } : {}),
         }),
       });
@@ -189,6 +191,29 @@ export function TicketPicker({
       ) : null}
 
       {chosen && max > 0 ? (
+        <label className="text-ink/70 mt-4 flex items-start gap-2.5 text-[0.8125rem] leading-relaxed">
+          <input
+            type="checkbox"
+            checked={agreed}
+            disabled={busy}
+            onChange={(e) => setAgreed(e.target.checked)}
+            className="accent-ink mt-0.5 h-4 w-4 shrink-0"
+          />
+          <span>
+            I accept the{" "}
+            <a href="/terms" target="_blank" className="underline underline-offset-2">
+              terms and conditions
+            </a>{" "}
+            and{" "}
+            <a href="/privacy" target="_blank" className="underline underline-offset-2">
+              privacy policy
+            </a>
+            .
+          </span>
+        </label>
+      ) : null}
+
+      {chosen && max > 0 ? (
         <div className="mt-5 flex items-center gap-4">
           <label className="text-ink/70 flex items-center gap-2.5 text-[0.9375rem]">
             How many
@@ -208,7 +233,7 @@ export function TicketPicker({
 
           <Button
             onClick={buy}
-            disabled={busy || !emailOk}
+            disabled={busy || !emailOk || !agreed}
             variant="primary"
             size="lg"
           >

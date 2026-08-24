@@ -86,8 +86,9 @@ export const EMPTY_EVENT: EventFormValues = {
   heroLogoPadTop: "0",
   heroLogoPadBottom: "0",
   imageAlt: "",
-  ctaLabel: "RSVP",
-  ctaAction: "rsvp",
+  // Tickets are the business now; the free list is the fallback.
+  ctaLabel: "Get tickets",
+  ctaAction: "tickets",
   emailSubject: "",
   emailHeading: "",
   emailBody: "",

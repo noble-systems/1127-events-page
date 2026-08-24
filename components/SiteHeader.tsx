@@ -7,25 +7,16 @@ import { buttonClass } from "@/components/ui/Button";
 import { navLinks } from "@/content/site";
 
 /**
- * `rsvpOpen` is whether the featured event is currently taking signups.
- *
- * The header button leads to /rsvp, which forwards to the featured event's
- * signup page. With that event's RSVPs closed (or nothing featured) /rsvp
- * renders the general join-the-list page instead, so a button still reading
- * "RSVP" would promise something the destination cannot do. The label follows
- * the destination: "Join the list" is what that page actually is.
- *
- * Pages that render statically (partner, legal) cannot know the live state and
- * leave the default; the worst case there is the generic label on a page that
- * is one click away from the honest one.
+ * The header button follows the money: with the featured event selling,
+ * "Buy tickets" straight to its page; otherwise "Join the list" to /rsvp,
+ * which is exactly what that page is. Pages that render statically cannot
+ * know the live state and leave the default.
  */
 export function SiteHeader({
   overlay = true,
-  rsvpOpen = true,
   ticketsHref = null,
 }: {
   overlay?: boolean;
-  rsvpOpen?: boolean;
   /**
    * When the featured event is selling tickets, the header button sells
    * them instead of collecting signups: money beats mailing list. Null
@@ -170,7 +161,7 @@ export function SiteHeader({
                 "hidden sm:inline-flex",
               )}
             >
-              {ticketsHref ? "Buy tickets" : rsvpOpen ? "RSVP" : "Join the list"}
+              {ticketsHref ? "Buy tickets" : "Join the list"}
             </Link>
 
             <button
@@ -247,7 +238,7 @@ export function SiteHeader({
                 onClick={closeMenu}
                 className={buttonClass("sun", "lg", "w-full")}
               >
-                {ticketsHref ? "Buy tickets" : rsvpOpen ? "RSVP" : "Join the list"}
+                {ticketsHref ? "Buy tickets" : "Join the list"}
               </Link>
               <a
                 href="/partner"

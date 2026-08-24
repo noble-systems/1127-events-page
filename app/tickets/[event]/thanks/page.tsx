@@ -31,7 +31,7 @@ export default async function ThanksPage({ params, searchParams }: Props) {
 
   return (
     <>
-      <SiteHeader overlay={false} rsvpOpen={false} />
+      <SiteHeader overlay={false} />
 
       <main id="main" className="bg-bone pt-[4.5rem] lg:pt-20">
         <section className="shell py-16 md:py-24">

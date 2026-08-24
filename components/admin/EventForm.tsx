@@ -585,11 +585,13 @@ export function EventForm({
           <div className="border-ink/12 bg-bone-soft space-y-5 rounded-2xl border p-5">
             <div>
               <h3 className="text-[1.0625rem] font-medium">
-                Confirmation email for this event
+                List signup confirmation email
               </h3>
               <p className="text-ink/65 mt-1.5 text-[0.8125rem] leading-relaxed">
-                Sent to anyone who RSVPs while this is the featured event. Leave
-                blank to use the standard wording. Write{" "}
+                Sent to anyone who joins the free list from this event&apos;s
+                page. Ticket buyers are separate: they automatically get a
+                receipt with their door codes. Leave blank for the standard
+                wording. Write{" "}
                 <code className="bg-ink/[0.06] rounded px-1">{"{name}"}</code> for
                 their first name and{" "}
                 <code className="bg-ink/[0.06] rounded px-1">{"{event}"}</code> for
@@ -756,11 +758,16 @@ export function EventForm({
             />
           </Field>
 
-          <Field id="ev-cta-action" label="Button goes to" error={errors.ctaAction}>
+          <Field
+            id="ev-cta-action"
+            label="Button goes to"
+            error={errors.ctaAction}
+            hint="While tickets are on sale the card shows Get tickets regardless; this decides the button when they are not. rsvp is the free list signup."
+          >
             <Select
               id="ev-cta-action"
               name="ctaAction"
-              options={["rsvp", "partner", "tickets"]}
+              options={["tickets", "rsvp", "partner"]}
               placeholder="Choose a destination"
               value={values.ctaAction}
               error={errors.ctaAction}
@@ -799,8 +806,8 @@ export function EventForm({
             />
             <Toggle
               id="ev-rsvp-enabled"
-              label="Accepting RSVPs"
-              hint="Off removes the RSVP button and closes this event's signup page. Use it for an event worth showing before there is a date to sign up to."
+              label="Free list signups"
+              hint="The no-ticket mailing list signup at /rsvp. Off removes its button and closes this event's signup page. Ticket selling has its own switch in the Tickets section below."
               checked={values.rsvpEnabled}
               disabled={busy}
               onChange={(value) => set("rsvpEnabled", value)}

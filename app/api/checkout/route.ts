@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { consume } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request-meta";
 import { siteUrl } from "@/lib/email";
+import { LEGAL_VERSION } from "@/content/site";
 import { listPublicEvents } from "@/lib/store";
 import { normalizeAmbassadorCode } from "@/lib/ambassadors";
 import { activeAmbassadorCode } from "@/lib/ambassadors-store";
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
     email?: unknown;
     phone?: unknown;
     optIn?: unknown;
+    agreeTerms?: unknown;
   } | null;
 
   const eventId = typeof body?.eventId === "string" ? body.eventId : "";
@@ -69,6 +71,12 @@ export async function POST(request: Request) {
     typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const phone = typeof body?.phone === "string" ? body.phone.trim().slice(0, 40) : "";
   const optIn = body?.optIn === true;
+  if (body?.agreeTerms !== true) {
+    return NextResponse.json(
+      { ok: false, message: "Accept the terms and conditions to continue." },
+      { status: 400 },
+    );
+  }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) {
     return NextResponse.json(
       { ok: false, message: "Enter the email your tickets should go to." },
@@ -165,6 +173,7 @@ export async function POST(request: Request) {
       email,
       ...(phone ? { phone } : {}),
       ...(optIn ? { optIn: true } : {}),
+      termsVersion: LEGAL_VERSION,
       createdAt: now,
       updatedAt: now,
     };

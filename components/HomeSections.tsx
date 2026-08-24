@@ -45,7 +45,6 @@ export function HomeSections({
   return (
     <>
       <SiteHeader
-        rsvpOpen={Boolean(featured && featured.rsvpEnabled !== false)}
         ticketsHref={
           selling && featured
             ? `/tickets/${encodeURIComponent(featured.id)}`

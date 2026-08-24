@@ -30,7 +30,7 @@ import {
 type TabValue = SubmissionType;
 
 const TABS: Array<{ value: TabValue; label: string }> = [
-  { value: "rsvp", label: "RSVP list" },
+  { value: "rsvp", label: "Subscribers" },
   { value: "talent", label: "Talent" },
   { value: "ambassador", label: "Ambassadors" },
   { value: "partner", label: "Partner inquiries" },
@@ -52,7 +52,14 @@ function detailFor(row: SubmissionRecord): string {
   return row.role || row.community || row.company || row.inquiryType || "Not given";
 }
 
-export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
+export function SubscriberTable({
+  rows,
+  ticketsByEmail = {},
+}: {
+  rows: SubmissionRecord[];
+  /** "2 x Early Bird (Mirage)" style summaries, keyed by lowercase email. */
+  ticketsByEmail?: Record<string, string>;
+}) {
   const router = useRouter();
   const [tab, setTab] = useState<TabValue>("rsvp");
   /**
@@ -301,6 +308,11 @@ export function SubscriberTable({ rows }: { rows: SubmissionRecord[] }) {
                       <p className="text-ink/65 mt-1 text-[0.8125rem]">
                         {row.email}
                       </p>
+                      {ticketsByEmail[row.email] ? (
+                        <p className="text-sun-deep mt-1 text-[0.8125rem]">
+                          {ticketsByEmail[row.email]}
+                        </p>
+                      ) : null}
                     </td>
                     <td className="text-ink/70 px-5 py-4 text-[0.875rem] capitalize">
                       {row.type}
