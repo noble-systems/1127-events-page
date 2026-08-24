@@ -23,6 +23,7 @@ export type TicketTierFormValues = {
   name: string;
   price: string;
   capacity: string;
+  hidden: boolean;
 };
 
 export type EventFormValues = {
@@ -264,6 +265,8 @@ export function toTicketTiers(
       name: row.name.trim(),
       priceCents: parsePriceCents(row.price) ?? 0,
       capacity: Number(row.capacity),
+      // Stored only when true, so rows from before this flag stay identical.
+      ...(row.hidden === true ? { hidden: true } : {}),
     };
   });
 }
@@ -340,6 +343,7 @@ function readTicketRows(raw: unknown): TicketTierFormValues[] {
           : typeof r.capacity === "number"
             ? String(r.capacity)
             : "",
+      hidden: r.hidden === true || r.hidden === "true",
     };
   });
 }
@@ -420,6 +424,7 @@ export function eventToFormValues(
       name: string;
       priceCents: number;
       capacity: number;
+      hidden?: boolean;
     }>;
     order: number;
     shotNote: string;
@@ -458,6 +463,7 @@ export function eventToFormValues(
       name: tier.name,
       price: priceToForm(tier.priceCents),
       capacity: String(tier.capacity),
+      hidden: tier.hidden === true,
     })),
     order: String(event.order),
     shotNote: event.shotNote,

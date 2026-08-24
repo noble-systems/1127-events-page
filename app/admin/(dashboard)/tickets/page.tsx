@@ -116,7 +116,14 @@ export default async function AdminTicketsPage() {
               <tbody>
                 {rows.map(({ tier, sold, held, remaining, grossCents }) => (
                   <tr key={tier.id} className="border-ink/5 border-b">
-                    <td className="py-2.5 pr-4 font-medium">{tier.name}</td>
+                    <td className="py-2.5 pr-4 font-medium">
+                      {tier.name}
+                      {tier.hidden ? (
+                        <span className="text-ink/45 ml-2 text-[0.75rem] font-normal">
+                          hidden
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="py-2.5 pr-4 tabular-nums">
                       {formatMoney(tier.priceCents)}
                     </td>

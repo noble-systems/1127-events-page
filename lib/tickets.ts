@@ -39,11 +39,11 @@ export function newTicketCode(): string {
   return code;
 }
 
-/** The tiers an event actually sells: selling switched on and tiers defined. */
+/** The tiers an event actually sells: selling on, tier real, tier not hidden. */
 export function sellableTiers(event: EventRecord): TicketTier[] {
   if (event.ticketsEnabled !== true || !event.published) return [];
   return (event.ticketTiers ?? []).filter(
-    (tier) => tier.capacity > 0 && tier.priceCents > 0,
+    (tier) => tier.capacity > 0 && tier.priceCents > 0 && tier.hidden !== true,
   );
 }
 

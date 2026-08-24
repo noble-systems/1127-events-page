@@ -38,6 +38,13 @@ export type TicketTier = {
   name: string;
   priceCents: number;
   capacity: number;
+  /**
+   * Hidden tiers vanish from the public page and refuse checkout, but keep
+   * their definition, their sold counts and their history. This is how a
+   * tier is staged before its moment or retired after it, without the
+   * destructive finality of removal.
+   */
+  hidden?: boolean;
 };
 
 export type EventRecord = {

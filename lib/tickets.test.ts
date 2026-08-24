@@ -89,4 +89,19 @@ describe("what an event sells", () => {
       ["c"],
     );
   });
+
+  test("a hidden tier neither shows nor sells; the rest still do", () => {
+    const tiers = sellableTiers(
+      event({
+        ticketTiers: [
+          { id: "eb", name: "Early Bird", priceCents: 1500, capacity: 25, hidden: true },
+          { id: "ga", name: "GA", priceCents: 2000, capacity: 100 },
+        ],
+      }),
+    );
+    assert.deepEqual(
+      tiers.map((tier) => tier.id),
+      ["ga"],
+    );
+  });
 });

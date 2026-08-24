@@ -879,19 +879,33 @@ export function EventForm({
                   onChange={(e) => setTier(index, { capacity: e.target.value })}
                 />
               </Field>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() =>
-                  set(
-                    "tickets",
-                    values.tickets.filter((_, i) => i !== index),
-                  )
-                }
-                className="text-ink/55 hover:text-ink mt-1 justify-self-start text-[0.8125rem] underline underline-offset-2 sm:mt-8"
-              >
-                Remove
-              </button>
+              <div className="mt-1 flex gap-4 justify-self-start sm:mt-8">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setTier(index, { hidden: !tier.hidden })}
+                  className={`text-[0.8125rem] underline underline-offset-2 ${
+                    tier.hidden
+                      ? "text-sun-deep hover:text-ink font-medium"
+                      : "text-ink/55 hover:text-ink"
+                  }`}
+                >
+                  {tier.hidden ? "Hidden. Show" : "Hide"}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    set(
+                      "tickets",
+                      values.tickets.filter((_, i) => i !== index),
+                    )
+                  }
+                  className="text-ink/55 hover:text-ink text-[0.8125rem] underline underline-offset-2"
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           ))}
 
@@ -910,7 +924,7 @@ export function EventForm({
               onClick={() =>
                 set("tickets", [
                   ...values.tickets,
-                  { id: "", name: "", price: "", capacity: "" },
+                  { id: "", name: "", price: "", capacity: "", hidden: false },
                 ])
               }
             >
@@ -918,8 +932,9 @@ export function EventForm({
             </Button>
             {values.tickets.length > 0 ? (
               <p className="text-ink/55 text-[0.8125rem]">
-                Removing a type stops future sales; tickets already sold stay
-                sold.
+                Hide takes a type off the public page but keeps it and its
+                sales; Remove drops it entirely. Either way, tickets already
+                sold stay sold.
               </p>
             ) : null}
           </div>
