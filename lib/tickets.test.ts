@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
+  extractTicketCode,
   MAX_TICKETS_PER_ORDER,
   formatMoney,
   isSelling,
@@ -123,5 +124,31 @@ describe("manual sold out", () => {
       }),
     );
     assert.equal(tiers.length, 1, "still listed; the page greys it");
+  });
+});
+
+describe("extractTicketCode", () => {
+  test("bare codes, lowercase, and door URLs all normalise", () => {
+    assert.equal(extractTicketCode("K7M-PQ2-9XT"), "K7M-PQ2-9XT");
+    assert.equal(extractTicketCode("k7m-pq2-9xt"), "K7M-PQ2-9XT");
+    assert.equal(
+      extractTicketCode("https://1127.events/admin/door?code=K7M-PQ2-9XT"),
+      "K7M-PQ2-9XT",
+    );
+  });
+
+  test("junk is refused", () => {
+    assert.equal(extractTicketCode(""), null);
+    assert.equal(extractTicketCode("hello"), null);
+    assert.equal(extractTicketCode("K7M-PQ2"), null);
+    assert.equal(extractTicketCode("https://evil.example/?x=1"), null);
+    assert.equal(extractTicketCode("K7M-PQ2-9X0"), null, "0 is not in the alphabet");
+  });
+
+  test("every code the minter produces round-trips", () => {
+    for (let i = 0; i < 50; i++) {
+      const code = newTicketCode();
+      assert.equal(extractTicketCode(code), code);
+    }
   });
 });

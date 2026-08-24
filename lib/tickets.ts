@@ -120,6 +120,22 @@ export type TicketRecord = {
   eventId: string;
   tierId: string;
   email: string | null;
-  status: "valid" | "revoked";
+  /** "used" is stamped by the door scanner, exactly once. */
+  status: "valid" | "used" | "revoked";
+  usedAt?: string;
   createdAt: string;
 };
+
+/**
+ * Pulls a ticket code out of whatever a QR scan produced.
+ *
+ * The QR encodes the door URL so a native camera app also lands somewhere
+ * useful, which means the scanner sees URLs, and a hand-typed entry sees the
+ * bare code. Both normalise here; junk returns null.
+ */
+export function extractTicketCode(raw: string): string | null {
+  const text = raw.trim();
+  const fromUrl = text.match(/[?&]code=([A-Za-z0-9-]+)/)?.[1] ?? text;
+  const code = fromUrl.trim().toUpperCase();
+  return /^[A-Z2-9]{3}-[A-Z2-9]{3}-[A-Z2-9]{3}$/.test(code) ? code : null;
+}

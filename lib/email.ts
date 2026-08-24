@@ -1064,10 +1064,18 @@ export function renderTicketEmail(input: {
   location?: string;
 }) {
   const subject = `Your ${input.eventName} ${input.quantity === 1 ? "ticket" : "tickets"}`;
+  /**
+   * Each code renders as a QR (scanned at the door) above the code itself
+   * (the fallback when a camera or an image-blocking mail client fails).
+   * The image lives at a URL because Gmail strips data: URIs.
+   */
   const codeRows = input.codes
     .map(
       (code) =>
-        `<div style="font:600 18px/1.4 'Courier New',monospace;letter-spacing:1px;color:${INK};padding:10px 14px;background:rgba(25,23,19,0.05);border-radius:8px;margin:0 0 8px;">${escapeHtml(code)}</div>`,
+        `<div style="padding:12px 14px;background:rgba(25,23,19,0.05);border-radius:8px;margin:0 0 10px;text-align:center;">
+          <img src="${siteUrl()}/api/ticket-qr/${encodeURIComponent(code)}" alt="QR for ${escapeHtml(code)}" width="160" height="160" style="display:block;margin:0 auto 8px;border-radius:6px;" />
+          <div style="font:600 18px/1.4 'Courier New',monospace;letter-spacing:1px;color:${INK};">${escapeHtml(code)}</div>
+        </div>`,
     )
     .join("");
 
@@ -1084,9 +1092,9 @@ export function renderTicketEmail(input: {
     body: `
       <p style="margin:0 0 6px;font:400 15px/1.6 Helvetica,Arial,sans-serif;color:${INK};">${escapeHtml(`${input.quantity} x ${input.tierName}`)} for <strong>${escapeHtml(input.eventName)}</strong>. ${escapeHtml(input.totalLabel)} paid.</p>
       ${meta ? `<p style="margin:0 0 16px;font:400 13px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">${meta}</p>` : ""}
-      <p style="margin:16px 0 10px;font:400 14px/1.6 Helvetica,Arial,sans-serif;color:${INK};">Your ${input.codes.length === 1 ? "code" : "codes"}, one per person, at the door:</p>
+      <p style="margin:16px 0 10px;font:400 14px/1.6 Helvetica,Arial,sans-serif;color:${INK};">Your ${input.codes.length === 1 ? "ticket" : "tickets"}, one per person. Show the QR at the door:</p>
       ${codeRows}
-      <p style="margin:16px 0 0;font:400 13px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">Keep this email. Nothing to print; the code on a phone is enough.</p>`,
+      <p style="margin:16px 0 0;font:400 13px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">Keep this email. Nothing to print; the QR on a phone is enough, and the code under it works if the picture doesn't load.</p>`,
     footer: `This is your receipt for ${escapeHtml(input.totalLabel)}, paid by card.`,
   });
 

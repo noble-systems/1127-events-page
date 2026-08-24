@@ -441,3 +441,45 @@ describe("buyer contact collected on our page", () => {
     assert.equal(people[0].marketingOptIn, false);
   });
 });
+
+describe("the door", () => {
+  beforeEach(reset);
+
+  const issue = async (code: string) =>
+    createTicket({
+      code,
+      orderId: "r-door",
+      eventId: "mirage",
+      tierId: "early-bird",
+      email: "guest@example.com",
+      status: "valid",
+      createdAt: new Date().toISOString(),
+    });
+
+  test("a ticket checks in exactly once", async () => {
+    const { getTicket, checkInTicket } = await import("./tickets-store.ts");
+    await issue("AAA-BBB-CCC");
+
+    const first = await checkInTicket("AAA-BBB-CCC");
+    assert.equal(first.ok, true);
+    assert.equal(first.ticket?.status, "used");
+    assert.ok(first.ticket?.usedAt, "the walk-in time is stamped");
+
+    const second = await checkInTicket("AAA-BBB-CCC");
+    assert.equal(second.ok, false, "the screenshot bounces");
+    assert.equal(second.ticket?.status, "used");
+    assert.equal(
+      second.ticket?.usedAt,
+      first.ticket?.usedAt,
+      "the original stamp survives",
+    );
+    assert.equal((await getTicket("AAA-BBB-CCC"))?.status, "used");
+  });
+
+  test("an unknown code is nobody's ticket", async () => {
+    const { checkInTicket } = await import("./tickets-store.ts");
+    const out = await checkInTicket("ZZZ-ZZZ-ZZZ");
+    assert.equal(out.ok, false);
+    assert.equal(out.ticket, null);
+  });
+});

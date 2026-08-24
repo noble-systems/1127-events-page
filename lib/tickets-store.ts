@@ -518,6 +518,76 @@ export async function listOrders(
 /* Issued tickets                                                            */
 /* ------------------------------------------------------------------------- */
 
+export async function getTicket(code: string): Promise<TicketRecord | null> {
+  const table = TABLE();
+
+  if (!table) {
+    return (await localRead()).tickets[code] ?? null;
+  }
+
+  const out = await db().send(
+    new GetItemCommand({ TableName: table, Key: { pk: { S: `tkt#${code}` } } }),
+  );
+  if (!out.Item) return null;
+  const item = out.Item as Record<string, { S?: string }>;
+  return {
+    code: item.code?.S ?? "",
+    orderId: item.orderId?.S ?? "",
+    eventId: item.eventId?.S ?? "",
+    tierId: item.tierId?.S ?? "",
+    email: item.email?.S ?? null,
+    status: (item.status?.S ?? "valid") as TicketRecord["status"],
+    usedAt: item.usedAt?.S ?? undefined,
+    createdAt: item.createdAt?.S ?? "",
+  };
+}
+
+/**
+ * The door itself: flips one ticket valid -> used, exactly once, atomically.
+ * The conditional write is the whole defence against a screenshot shared to
+ * five friends; four of them see "already used" with the original stamp.
+ */
+export async function checkInTicket(
+  code: string,
+): Promise<{ ok: boolean; ticket: TicketRecord | null }> {
+  const table = TABLE();
+  const now = new Date().toISOString();
+
+  if (!table) {
+    const data = await localRead();
+    const ticket = data.tickets[code];
+    if (!ticket) return { ok: false, ticket: null };
+    if (ticket.status !== "valid") return { ok: false, ticket };
+    ticket.status = "used";
+    ticket.usedAt = now;
+    await localWrite(data);
+    return { ok: true, ticket };
+  }
+
+  try {
+    await db().send(
+      new UpdateItemCommand({
+        TableName: table,
+        Key: { pk: { S: `tkt#${code}` } },
+        UpdateExpression: "SET #s = :used, usedAt = :now",
+        ConditionExpression: "#s = :valid",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: {
+          ":used": { S: "used" },
+          ":valid": { S: "valid" },
+          ":now": { S: now },
+        },
+      }),
+    );
+    return { ok: true, ticket: await getTicket(code) };
+  } catch (error) {
+    if ((error as { name?: string }).name === "ConditionalCheckFailedException") {
+      return { ok: false, ticket: await getTicket(code) };
+    }
+    throw error;
+  }
+}
+
 /**
  * Writes one ticket, refusing a code that already exists. The caller retries
  * with a fresh code; at ~10^13 possible codes the loop runs once.
