@@ -883,6 +883,18 @@ export function EventForm({
                 <button
                   type="button"
                   disabled={busy}
+                  onClick={() => setTier(index, { soldOut: !tier.soldOut })}
+                  className={`text-[0.8125rem] underline underline-offset-2 ${
+                    tier.soldOut
+                      ? "text-terracotta-deep hover:text-ink font-medium"
+                      : "text-ink/55 hover:text-ink"
+                  }`}
+                >
+                  {tier.soldOut ? "Sold out. Reopen" : "Mark sold out"}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
                   onClick={() => setTier(index, { hidden: !tier.hidden })}
                   className={`text-[0.8125rem] underline underline-offset-2 ${
                     tier.hidden
@@ -924,7 +936,14 @@ export function EventForm({
               onClick={() =>
                 set("tickets", [
                   ...values.tickets,
-                  { id: "", name: "", price: "", capacity: "", hidden: false },
+                  {
+                    id: "",
+                    name: "",
+                    price: "",
+                    capacity: "",
+                    hidden: false,
+                    soldOut: false,
+                  },
                 ])
               }
             >
@@ -932,9 +951,9 @@ export function EventForm({
             </Button>
             {values.tickets.length > 0 ? (
               <p className="text-ink/55 text-[0.8125rem]">
-                Hide takes a type off the public page but keeps it and its
-                sales; Remove drops it entirely. Either way, tickets already
-                sold stay sold.
+                Mark sold out keeps the type visible but greyed and closed;
+                Hide takes it off the page entirely; Remove drops it. Every
+                one of them keeps tickets already sold.
               </p>
             ) : null}
           </div>

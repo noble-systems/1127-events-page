@@ -24,6 +24,7 @@ export type TicketTierFormValues = {
   price: string;
   capacity: string;
   hidden: boolean;
+  soldOut: boolean;
 };
 
 export type EventFormValues = {
@@ -265,8 +266,9 @@ export function toTicketTiers(
       name: row.name.trim(),
       priceCents: parsePriceCents(row.price) ?? 0,
       capacity: Number(row.capacity),
-      // Stored only when true, so rows from before this flag stay identical.
+      // Stored only when true, so rows from before these flags stay identical.
       ...(row.hidden === true ? { hidden: true } : {}),
+      ...(row.soldOut === true ? { soldOut: true } : {}),
     };
   });
 }
@@ -344,6 +346,7 @@ function readTicketRows(raw: unknown): TicketTierFormValues[] {
             ? String(r.capacity)
             : "",
       hidden: r.hidden === true || r.hidden === "true",
+      soldOut: r.soldOut === true || r.soldOut === "true",
     };
   });
 }
@@ -425,6 +428,7 @@ export function eventToFormValues(
       priceCents: number;
       capacity: number;
       hidden?: boolean;
+      soldOut?: boolean;
     }>;
     order: number;
     shotNote: string;
@@ -464,6 +468,7 @@ export function eventToFormValues(
       price: priceToForm(tier.priceCents),
       capacity: String(tier.capacity),
       hidden: tier.hidden === true,
+      soldOut: tier.soldOut === true,
     })),
     order: String(event.order),
     shotNote: event.shotNote,

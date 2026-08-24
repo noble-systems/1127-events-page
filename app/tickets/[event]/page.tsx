@@ -9,7 +9,12 @@ import { Eyebrow } from "@/components/ui/Section";
 import { PRESENTS } from "@/content/site";
 import { hero } from "@/content/site";
 import { listPublicEvents } from "@/lib/store";
-import { formatMoney, sellableTiers, MAX_TICKETS_PER_ORDER } from "@/lib/tickets";
+import {
+  formatMoney,
+  remainingFor,
+  sellableTiers,
+  MAX_TICKETS_PER_ORDER,
+} from "@/lib/tickets";
 import { readInventory } from "@/lib/tickets-store";
 
 /**
@@ -86,7 +91,7 @@ export default async function TicketsPage({ params, searchParams }: Params) {
 
   const pickerTiers: PickerTier[] = tiers.map((tier) => {
     const taken = inventory.get(tier.id)?.taken ?? 0;
-    const remaining = Math.max(0, tier.capacity - taken);
+    const remaining = remainingFor(tier, taken);
     return {
       id: tier.id,
       name: tier.name,

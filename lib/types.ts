@@ -45,6 +45,13 @@ export type TicketTier = {
    * destructive finality of removal.
    */
   hidden?: boolean;
+  /**
+   * Manually sold out. The tier stays VISIBLE, greyed with "Sold out", and
+   * refuses checkout regardless of what the counter says. Different job from
+   * hidden: hidden pretends the tier never existed; this announces it was
+   * wanted. Flip it back off and sales resume from the real counts.
+   */
+  soldOut?: boolean;
 };
 
 export type EventRecord = {

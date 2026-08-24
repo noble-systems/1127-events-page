@@ -6,6 +6,7 @@ import {
   isSelling,
   newTicketCode,
   readQuantity,
+  remainingFor,
   sellableTiers,
 } from "./tickets.ts";
 import type { EventRecord } from "./types.ts";
@@ -103,5 +104,24 @@ describe("what an event sells", () => {
       tiers.map((tier) => tier.id),
       ["ga"],
     );
+  });
+});
+
+describe("manual sold out", () => {
+  const tier = { id: "eb", name: "EB", priceCents: 1500, capacity: 25 };
+
+  test("flag forces zero remaining regardless of the counter", () => {
+    assert.equal(remainingFor(tier, 0), 25);
+    assert.equal(remainingFor(tier, 20), 5);
+    assert.equal(remainingFor({ ...tier, soldOut: true }, 0), 0);
+  });
+
+  test("a sold-out tier stays visible, unlike a hidden one", () => {
+    const tiers = sellableTiers(
+      event({
+        ticketTiers: [{ ...tier, soldOut: true }],
+      }),
+    );
+    assert.equal(tiers.length, 1, "still listed; the page greys it");
   });
 });

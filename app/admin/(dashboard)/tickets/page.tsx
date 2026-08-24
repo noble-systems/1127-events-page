@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { listAllEvents } from "@/lib/store";
 import { squareConfigured } from "@/lib/square";
-import { formatMoney } from "@/lib/tickets";
+import { formatMoney, remainingFor } from "@/lib/tickets";
 import { listOrders, readInventory } from "@/lib/tickets-store";
 import type { EventRecord, TicketTier } from "@/lib/types";
 
@@ -36,7 +36,7 @@ async function tierRows(event: EventRecord, tiers: TicketTier[]) {
       tier,
       sold: counts.sold,
       held: Math.max(0, counts.taken - counts.sold),
-      remaining: Math.max(0, tier.capacity - counts.taken),
+      remaining: remainingFor(tier, counts.taken),
       grossCents: counts.sold * tier.priceCents,
     };
   });

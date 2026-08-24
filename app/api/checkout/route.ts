@@ -82,6 +82,15 @@ export async function POST(request: Request) {
     );
   }
 
+  // Manually flagged sold out beats whatever the counter says; the sweep
+  // retry below must not resurrect a tier the admin closed on purpose.
+  if (tier.soldOut === true) {
+    return NextResponse.json(
+      { ok: false, soldOut: true, message: "That ticket type just sold out." },
+      { status: 409 },
+    );
+  }
+
   let held = await reserveTickets(event.id, tier.id, quantity, tier.capacity);
   if (!held) {
     const swept = await sweepStaleHolds(

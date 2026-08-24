@@ -53,6 +53,16 @@ export function isSelling(event: EventRecord): boolean {
 }
 
 /**
+ * Seats actually offerable right now: zero when manually flagged sold out,
+ * otherwise capacity minus everything held or sold. Every surface that says
+ * "sold out" or counts availability goes through this one door.
+ */
+export function remainingFor(tier: TicketTier, taken: number): number {
+  if (tier.soldOut === true) return 0;
+  return Math.max(0, tier.capacity - taken);
+}
+
+/**
  * A quantity from the outside world, clamped to something orderable.
  * Returns null rather than guessing when the input is not a whole number.
  */

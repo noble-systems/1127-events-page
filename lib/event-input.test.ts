@@ -464,9 +464,9 @@ describe("ticket prices parse like money", () => {
 describe("tier ids are minted once and never move", () => {
   test("new rows get slugs, colliding names stay distinct", () => {
     const tiers = toTicketTiers([
-      { id: "", name: "Early Bird", price: "15", capacity: "25", hidden: false },
-      { id: "", name: "GA", price: "20", capacity: "400", hidden: false },
-      { id: "", name: "GA", price: "30", capacity: "50", hidden: false },
+      { id: "", name: "Early Bird", price: "15", capacity: "25", hidden: false, soldOut: false },
+      { id: "", name: "GA", price: "20", capacity: "400", hidden: false, soldOut: false },
+      { id: "", name: "GA", price: "30", capacity: "50", hidden: false, soldOut: false },
     ]);
     assert.deepEqual(
       tiers.map((tier) => tier.id),
@@ -478,7 +478,7 @@ describe("tier ids are minted once and never move", () => {
 
   test("a renamed tier keeps the id its sales are counted under", () => {
     const tiers = toTicketTiers([
-      { id: "early-bird", name: "Early Bird II", price: "18", capacity: "30", hidden: false },
+      { id: "early-bird", name: "Early Bird II", price: "18", capacity: "30", hidden: false, soldOut: false },
     ]);
     assert.equal(tiers[0].id, "early-bird");
     assert.equal(tiers[0].name, "Early Bird II");
@@ -544,8 +544,8 @@ describe("ticket tiers survive the full form round-trip", () => {
 describe("hidden tiers survive the round-trip too", () => {
   test("hidden true persists; absent stays absent", () => {
     const tiers = toTicketTiers([
-      { id: "eb", name: "Early Bird", price: "15", capacity: "25", hidden: true },
-      { id: "ga", name: "GA", price: "20", capacity: "400", hidden: false },
+      { id: "eb", name: "Early Bird", price: "15", capacity: "25", hidden: true, soldOut: false },
+      { id: "ga", name: "GA", price: "20", capacity: "400", hidden: false, soldOut: false },
     ]);
     assert.equal(tiers[0].hidden, true);
     assert.equal("hidden" in tiers[1], false, "false is not stored");
