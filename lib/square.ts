@@ -33,7 +33,9 @@ export function squareConfigured(): boolean {
 }
 
 function baseUrl(): string {
-  return process.env.SQUARE_ENVIRONMENT?.trim() === "sandbox"
+  // Case-insensitive: "Sandbox" typed in a console field must not silently
+  // aim a sandbox token at the production API.
+  return process.env.SQUARE_ENVIRONMENT?.trim().toLowerCase() === "sandbox"
     ? "https://connect.squareupsandbox.com"
     : "https://connect.squareup.com";
 }
@@ -76,7 +78,16 @@ export async function createTicketCheckout(input: {
   buyerEmail?: string;
   buyerPhone?: string;
 }): Promise<{ url: string; squareOrderId: string; linkId: string }> {
-  const { event, tier, quantity, ref, siteUrl, buyerEmail, buyerPhone } = input;
+  const { event, tier, quantity, ref, siteUrl, buyerEmail } = input;
+  const digits = (input.buyerPhone ?? "").replace(/[^0-9+]/g, "");
+  const buyerPhone =
+    /^\+[0-9]{11,15}$/.test(digits)
+      ? digits
+      : /^[0-9]{10}$/.test(digits)
+        ? `+1${digits}`
+        : /^1[0-9]{10}$/.test(digits)
+          ? `+${digits}`
+          : undefined;
 
   const data = await call<{
     payment_link?: { id?: string; url?: string; order_id?: string };

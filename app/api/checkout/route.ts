@@ -175,8 +175,21 @@ export async function POST(request: Request) {
     // The hold must not outlive a failed checkout start.
     await releaseTickets(event.id, tier.id, quantity);
     console.error("[1127] checkout failed", error);
+    /**
+     * The Square error rides in the response, because this platform's SSR
+     * console never reaches CloudWatch: without this line a misconfigured
+     * token or location is undiagnosable from outside. The message carries
+     * an error CODE and status, never credentials.
+     */
+    const detail =
+      error instanceof Error && error.message.startsWith("Square")
+        ? ` (${error.message.slice(0, 160)})`
+        : "";
     return NextResponse.json(
-      { ok: false, message: "The payment page couldn't be opened. Try again." },
+      {
+        ok: false,
+        message: `The payment page couldn't be opened. Try again.${detail}`,
+      },
       { status: 502 },
     );
   }
