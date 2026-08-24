@@ -94,6 +94,13 @@ export const CONTENT_GROUPS: ContentGroup[] = [
     description:
       "The full-height block at the top of the homepage. Its name, tagline, paragraph, date, location and photograph all come from whichever event is marked Featured, so edit those on the event. Only the three button labels are set here. The line above the name is always \"1127 Events Presents\" and is not editable.",
     fields: [
+      { key: "hero.image", label: "Homepage backdrop", kind: "image" },
+      {
+        key: "hero.imageAlt",
+        label: "Backdrop alt text",
+        kind: "text",
+        altFor: "hero.image",
+      },
       { key: "hero.primaryCta.label", label: "First button", kind: "text" },
       { key: "hero.secondaryCta.label", label: "Second button", kind: "text" },
       { key: "hero.rsvpCta", label: "Third button", kind: "text" },

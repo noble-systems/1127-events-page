@@ -246,3 +246,16 @@ as long as that holds.
 10. **Terms coverage.** The existing terms page predates paid sales. It
     should say what a ticket buys, that codes admit one person each, and
     what happens if an event is cancelled or rescheduled.
+
+11. **Buyers auto-join the email list (changed Aug 2026).** Every ticket
+    buyer is added to the marketing list at purchase; disclosure appears
+    on the checkout card and every email carries one-click unsubscribe.
+    Under CAN-SPAM this reads as compliant (existing business
+    relationship, working opt-out, postal address in footer), but confirm
+    with counsel, and note it does NOT meet GDPR-style consent if EU
+    buyers ever matter.
+12. **Phone at checkout is event-operations only.** The field is labeled
+    day-of updates for the purchased event. TCPA requires express written
+    consent for MARKETING texts; the current framing does not grant that.
+    Do not send promotional SMS to these numbers without adding a real
+    consent checkbox.

@@ -1,4 +1,5 @@
 import { Editable } from "@/components/edit/Editable";
+import { EditableImage } from "@/components/edit/EditableImage";
 import { EditHeroLogo } from "@/components/edit/EditHeroLogo";
 import { EditNotice } from "@/components/edit/EditNotice";
 import { resolveImageSrc } from "@/lib/images";
@@ -31,8 +32,24 @@ export function Hero({
   const tagline = event?.tagline?.trim() || content.tagline;
   const location = event?.location?.trim() || content.location;
   const date = event?.date?.trim() || content.date;
-  const image = event?.image ?? content.image;
-  const imageAlt = event?.imageAlt?.trim() || content.imageAlt;
+  /**
+   * The homepage backdrop is its OWN image, set in the page editor, so the
+   * hero can look like the brand while the event card looks like the event.
+   * The featured event fills in only when the page has none of its own.
+   */
+  const image = content.image?.trim() ? content.image : (event?.image ?? null);
+  const imageAlt = content.image?.trim()
+    ? content.imageAlt
+    : event?.imageAlt?.trim() || content.imageAlt;
+  // Inline rather than lib/tickets isSelling: this renders in the live
+  // editor client bundle, and that module pulls node:crypto.
+  const selling = Boolean(
+    event?.published &&
+      event.ticketsEnabled === true &&
+      (event.ticketTiers ?? []).some(
+        (tier) => tier.capacity > 0 && tier.priceCents > 0 && tier.hidden !== true,
+      ),
+  );
   const shotNote = event?.shotNote?.trim() || content.shotNote;
 
   /**
@@ -66,8 +83,13 @@ export function Hero({
       aria-labelledby="hero-title"
       className="on-dark bg-deep text-bone relative isolate flex min-h-[92svh] flex-col justify-end overflow-hidden"
     >
-      {/* Backdrop: the featured event's photograph, or its designed gradient */}
+      {/* Backdrop: the page's own image, else the featured event's */}
       <div className="absolute inset-0 -z-10">
+        <EditableImage
+          path="hero.image"
+          altPath="hero.imageAlt"
+          className="absolute inset-0"
+        >
         <Media
           tone="dusk"
           src={image}
@@ -79,6 +101,7 @@ export function Hero({
           overlay="strong"
           className="h-full w-full"
         />
+        </EditableImage>
         {/* Warm light off the low sun, breathing very slowly */}
         <div
           aria-hidden="true"
@@ -168,7 +191,15 @@ export function Hero({
             className="animate-rise mt-10 flex flex-wrap items-center gap-3"
             style={{ ["--rise-delay" as string]: "420ms" }}
           >
-            <ButtonLink href={content.primaryCta.href} variant="sun" size="lg">
+            <ButtonLink
+              href={
+                selling && event
+                  ? `/tickets/${encodeURIComponent(event.id)}`
+                  : content.primaryCta.href
+              }
+              variant="sun"
+              size="lg"
+            >
               <Editable path="hero.primaryCta.label">
                 {content.primaryCta.label}
               </Editable>

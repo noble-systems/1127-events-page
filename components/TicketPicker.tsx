@@ -38,7 +38,6 @@ export function TicketPicker({
   const [via, setVia] = useState(viaFromLink ?? "");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [optIn, setOptIn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -79,7 +78,7 @@ export function TicketPicker({
           quantity,
           email: email.trim(),
           ...(phone.trim() ? { phone: phone.trim() } : {}),
-          optIn,
+          optIn: true,
           ...(via.trim() ? { via: via.trim() } : {}),
         }),
       });
@@ -186,16 +185,6 @@ export function TicketPicker({
               className="border-ink/20 bg-bone mt-1.5 block w-full rounded-lg border px-3 py-2 text-[0.9375rem]"
             />
           </label>
-          <label className="text-ink/65 flex items-start gap-2.5 text-[0.8125rem] leading-relaxed sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={optIn}
-              disabled={busy}
-              onChange={(e) => setOptIn(e.target.checked)}
-              className="accent-ink mt-0.5 h-4 w-4 shrink-0"
-            />
-            Email me about future 1127 events. Tickets arrive either way.
-          </label>
         </div>
       ) : null}
 
@@ -253,7 +242,9 @@ export function TicketPicker({
 
       <p className="text-ink/55 mt-5 text-[0.8125rem] leading-relaxed">
         Payment is handled by Square on a secure page. Your tickets arrive by
-        email the moment it goes through.
+        email the moment it goes through. Buying adds you to the 1127 events
+        list; every email has a one-click unsubscribe. The phone number is
+        only for updates about this event.
       </p>
     </div>
   );

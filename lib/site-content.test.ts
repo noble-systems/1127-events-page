@@ -33,10 +33,12 @@ describe("the schema matches the real content", () => {
     // search. Pairing them in the schema is what makes the editor show them
     // together.
     const images = [...CONTENT_FIELDS.values()].filter((f) => f.kind === "image");
-    // Just the ambassadors photograph. The hero's comes from the featured
-    // event, and the eight media tiles are archived with their section until
-    // there is footage to fill them. If this count moves, check it was meant.
-    assert.equal(images.length, 1, `expected 1 image field, got ${images.length}`);
+    // The ambassadors photograph and the homepage backdrop. The backdrop
+    // became page content deliberately (Aug 2026): the hero should look like
+    // the brand while the event card looks like the event, with the featured
+    // event's photo only as fallback. The eight media tiles stay archived
+    // with their section. If this count moves, check it was meant.
+    assert.equal(images.length, 2, `expected 2 image fields, got ${images.length}`);
     for (const image of images) {
       const alt = [...CONTENT_FIELDS.values()].find((f) => f.altFor === image.key);
       assert.ok(alt, `no alt-text field for ${image.key}`);
@@ -198,8 +200,8 @@ describe("the hero follows the featured event", () => {
       "hero.body",
       "hero.date",
       "hero.location",
-      "hero.image",
-      "hero.imageAlt",
+      // hero.image and hero.imageAlt are NOT in this list any more: the
+      // backdrop is page-owned by design now, event photo as fallback only.
     ]) {
       assert.equal(
         CONTENT_FIELDS.has(key),
@@ -317,9 +319,11 @@ describe("every event can be the featured one", () => {
     const heroFields = [...CONTENT_FIELDS.keys()].filter((key) =>
       key.startsWith("hero."),
     );
-    // The three button labels are the only things in that block that belong to
-    // the site rather than to a night.
+    // The button labels and the page's own backdrop: everything else in the
+    // hero belongs to the featured event.
     assert.deepEqual(heroFields.sort(), [
+      "hero.image",
+      "hero.imageAlt",
       "hero.primaryCta.label",
       "hero.rsvpCta",
       "hero.secondaryCta.label",

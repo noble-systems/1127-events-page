@@ -42,8 +42,11 @@ export function EventCard({ event }: { event: EventRecord }) {
   // leads to a 404. Its other CTA still works, so "More concepts in
   // development" can still point at /partner. Tickets follow the same rule:
   // the button only exists while the event actually sells.
-  const rsvp = event.ctaAction === "rsvp" && event.rsvpEnabled !== false;
-  const tickets = event.ctaAction === "tickets" && isSelling(event);
+  // Selling promotes itself: a card with tickets on sale gets the tickets
+  // button whatever the configured action says, because money on the table
+  // beats a stale dropdown.
+  const tickets = isSelling(event);
+  const rsvp = !tickets && event.ctaAction === "rsvp" && event.rsvpEnabled !== false;
   const showCta = rsvp || tickets || event.ctaAction === "partner";
 
   const cta = !showCta ? null : (
@@ -61,7 +64,7 @@ export function EventCard({ event }: { event: EventRecord }) {
       variant={rsvp || tickets ? "primary" : "outline"}
       size={featured ? "lg" : "md"}
     >
-      {event.ctaLabel}
+      {tickets && event.ctaAction !== "tickets" ? "Get tickets" : event.ctaLabel}
       <ArrowIcon />
     </ButtonLink>
   );
