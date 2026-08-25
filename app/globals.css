@@ -229,6 +229,37 @@
   }
 }
 
+/* The door scanner's whole-screen blink: one scan, one unmissable flash. */
+@keyframes door-flash {
+  0% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-door-flash {
+  animation: door-flash 500ms ease-out forwards;
+}
+
+/* The verdict card pops on every NEW scan, so back-to-back greens still
+   visibly change. */
+@keyframes door-pop {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-door-pop {
+  animation: door-pop 260ms cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
+}
+
 @keyframes rise {
   from {
     opacity: 0;

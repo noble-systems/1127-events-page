@@ -29,11 +29,14 @@ type Verdict = {
   usedAt?: string | null;
 };
 
-const VERDICT_STYLE: Record<Verdict["result"], { bg: string; label: string }> = {
-  "checked-in": { bg: "bg-cobalt text-bone", label: "Checked in" },
-  "already-used": { bg: "bg-sun text-ink", label: "ALREADY USED" },
-  revoked: { bg: "bg-terracotta text-bone", label: "REVOKED" },
-  unknown: { bg: "bg-ink text-bone", label: "Not a ticket" },
+const VERDICT_STYLE: Record<
+  Verdict["result"],
+  { bg: string; flash: string; label: string }
+> = {
+  "checked-in": { bg: "bg-cobalt text-bone", flash: "bg-cobalt", label: "Checked in" },
+  "already-used": { bg: "bg-sun text-ink", flash: "bg-sun", label: "ALREADY USED" },
+  revoked: { bg: "bg-terracotta text-bone", flash: "bg-terracotta", label: "REVOKED" },
+  unknown: { bg: "bg-ink text-bone", flash: "bg-ink", label: "Not a ticket" },
 };
 
 function phoenixClock(iso: string): string {
@@ -44,11 +47,16 @@ function phoenixClock(iso: string): string {
   });
 }
 
-function VerdictCard({ verdict }: { verdict: Verdict }) {
+function VerdictCard({ verdict, count }: { verdict: Verdict; count?: number }) {
   const style = VERDICT_STYLE[verdict.result];
   return (
-    <div className={`rounded-2xl p-5 text-center shadow-lg ${style.bg}`}>
-      <p className="text-3xl leading-tight font-semibold">{style.label}</p>
+    <div className={`animate-door-pop rounded-2xl p-5 text-center shadow-lg ${style.bg}`}>
+      <p className="text-3xl leading-tight font-semibold">
+        {style.label}
+        {verdict.result === "checked-in" && count ? (
+          <span className="ml-2 opacity-70">#{count}</span>
+        ) : null}
+      </p>
       {verdict.result === "already-used" && verdict.usedAt ? (
         <p className="mt-0.5 text-lg">at {phoenixClock(verdict.usedAt)}</p>
       ) : null}
@@ -77,6 +85,13 @@ export function DoorScanner({ prefill = "" }: { prefill?: string }) {
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [manual, setManual] = useState("");
   const [tally, setTally] = useState(0);
+  /**
+   * Bumps on every response, even two identical greens in a row: it keys
+   * the flash and the card so both re-run their animations. Without it the
+   * second of two clean check-ins changed nothing but a small code, and the
+   * door guy could not tell the scan had landed.
+   */
+  const [seq, setSeq] = useState(0);
 
   const submit = useCallback(async (code: string) => {
     if (busyRef.current) return;
@@ -90,12 +105,14 @@ export function DoorScanner({ prefill = "" }: { prefill?: string }) {
       const data = (await response.json().catch(() => null)) as Verdict | null;
       const result = data?.result ?? "unknown";
       setVerdict({ ...data, result });
+      setSeq((n) => n + 1);
       if (result === "checked-in") setTally((n) => n + 1);
       if (navigator.vibrate) {
         navigator.vibrate(result === "checked-in" ? 80 : [80, 60, 80]);
       }
     } catch {
       setVerdict({ result: "unknown" });
+      setSeq((n) => n + 1);
     } finally {
       busyRef.current = false;
     }
@@ -198,13 +215,24 @@ export function DoorScanner({ prefill = "" }: { prefill?: string }) {
         />
         <canvas ref={canvasRef} className="hidden" />
 
+        {/* The whole screen blinks the verdict color for half a second on
+            every scan; keyed by seq so consecutive identical verdicts still
+            blink. */}
+        {verdict ? (
+          <div
+            key={seq}
+            aria-hidden="true"
+            className={`animate-door-flash pointer-events-none absolute inset-0 ${VERDICT_STYLE[verdict.result].flash}`}
+          />
+        ) : null}
+
         {/* Verdict banner, past the notch. */}
         <div
           className="absolute inset-x-0 top-0 p-4"
           style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}
         >
           {verdict ? (
-            <VerdictCard verdict={verdict} />
+            <VerdictCard key={seq} verdict={verdict} count={tally} />
           ) : (
             <p className="bg-ink/70 text-bone mx-auto w-fit rounded-full px-5 py-2.5 text-center text-[0.9375rem] backdrop-blur">
               Point at a ticket QR
@@ -256,7 +284,7 @@ export function DoorScanner({ prefill = "" }: { prefill?: string }) {
 
       {verdict ? (
         <div className="mt-5">
-          <VerdictCard verdict={verdict} />
+          <VerdictCard key={seq} verdict={verdict} count={tally} />
         </div>
       ) : null}
 
