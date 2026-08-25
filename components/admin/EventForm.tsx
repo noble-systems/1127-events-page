@@ -491,7 +491,7 @@ export function EventForm({
               <TextInput
                 id="ev-image"
                 name="image"
-                placeholder="s3:events/sun-club/hero.jpg or /media/sun-club-01.jpg"
+                placeholder="s3:events/<event>/hero.jpg or /media/photo-01.jpg"
                 value={values.image}
                 error={errors.image}
                 disabled={busy || uploading}

@@ -127,7 +127,7 @@ function RemoveButton({ onClick, label }: { onClick: () => void; label: string }
       title={label}
       aria-label={label}
       onClick={onClick}
-      className="text-clay/60 hover:text-clay ml-1.5 shrink-0 align-middle text-[0.75rem] leading-none opacity-40 transition-opacity duration-150 hover:opacity-100"
+      className="text-terracotta/60 hover:text-terracotta ml-1.5 shrink-0 align-middle text-[0.75rem] leading-none opacity-40 transition-opacity duration-150 hover:opacity-100"
     >
       ✕
     </button>

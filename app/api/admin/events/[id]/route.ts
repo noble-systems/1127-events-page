@@ -70,6 +70,15 @@ export async function PUT(request: Request, { params }: Params) {
       errors.newId = "Use lowercase letters, numbers and hyphens only.";
     } else if (await getEvent(newId)) {
       errors.newId = "Another event already uses this URL.";
+    } else {
+      // Former ids of OTHER events are redirects in the wild; taking one
+      // would hijack their old links.
+      const { listAllEvents } = await import("@/lib/store");
+      const all = await listAllEvents();
+      const shadowed = all.some(
+        (row) => row.id !== id && (row.formerIds ?? []).includes(newId),
+      );
+      if (shadowed) errors.newId = "That URL is a former address of another event.";
     }
   }
 

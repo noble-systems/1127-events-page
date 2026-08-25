@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { formatMoney } from "@/lib/tickets";
 import { getOrder, getTicket } from "@/lib/tickets-store";
 
@@ -34,7 +33,18 @@ export default async function TicketWalletPage({
 }) {
   const { ref } = await params;
   const order = ref && /^[a-f0-9-]{20,40}$/i.test(ref) ? await getOrder(ref) : null;
-  if (!order || order.status !== "paid" || !order.codes?.length) notFound();
+  if (!order || order.status !== "paid" || !order.codes?.length) {
+    return (
+      <main className="bg-deep text-bone flex h-dvh flex-col items-center justify-center px-6 text-center">
+        <p className="font-display text-3xl">These tickets do not exist</p>
+        <p className="text-bone/60 mt-3 max-w-sm text-[0.9375rem] leading-relaxed">
+          This link does not match any paid order. If you just bought
+          tickets, use the button in your confirmation email; that link is
+          the real one.
+        </p>
+      </main>
+    );
+  }
 
   const tickets = await Promise.all(
     order.codes.map(async (code) => ({

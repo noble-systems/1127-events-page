@@ -77,8 +77,7 @@ export function UnsubscribeForm({
         Unsubscribe from 1127 emails
       </h1>
       <p className="text-ink/70 mt-5 text-[1.0625rem] leading-relaxed">
-        This removes <strong className="font-medium">{email}</strong> from the Sun
-        Club list. We&apos;ll stop emailing you about upcoming dates.
+        This removes <strong className="font-medium">{email}</strong> from the 1127 Events list. We&apos;ll stop emailing you about upcoming dates.
       </p>
 
       {status === "error" && message ? (

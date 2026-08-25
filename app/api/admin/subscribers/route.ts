@@ -5,7 +5,13 @@ import { deleteSubmission, listSubmissions } from "@/lib/store";
 import type { SubmissionType } from "@/lib/types";
 
 function isType(value: string | null): value is SubmissionType {
-  return value === "rsvp" || value === "ambassador" || value === "partner";
+  return (
+    value === "rsvp" ||
+    value === "ambassador" ||
+    value === "partner" ||
+    // talent was missing, so ?type=talent silently exported EVERYONE.
+    value === "talent"
+  );
 }
 
 export async function GET(request: Request) {

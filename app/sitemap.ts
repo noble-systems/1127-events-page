@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { brand } from "@/content/site";
 import { listPublicEvents } from "@/lib/store";
+import { isSelling } from "@/lib/tickets";
 
 /**
  * Rendered per request, not at build.
@@ -44,6 +45,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(event.updatedAt),
       changeFrequency: "weekly" as const,
       priority: event.featured ? 0.9 : 0.7,
+    })),
+    ...events.filter(isSelling).map((event) => ({
+      url: `${brand.domain}/tickets/${event.id}`,
+      lastModified: new Date(event.updatedAt),
+      changeFrequency: "daily" as const,
+      priority: 0.9,
     })),
     {
       url: `${brand.domain}/opportunities`,

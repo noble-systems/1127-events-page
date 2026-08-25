@@ -781,7 +781,7 @@ export async function notifyAmbassador(
 
 export function renderTalentApplicantEmail(record: SubmissionRecord) {
   const unsubUrl = unsubscribeUrl(record.email);
-  const firstName = record.name.trim().split(/s+/)[0] || "there";
+  const firstName = record.name.trim().split(/\s+/)[0] || "there";
 
   const body = `
     <p style="margin:0 0 16px;font:400 16px/1.65 Helvetica,Arial,sans-serif;color:${INK};">Thanks ${escapeHtml(firstName)}, we've got your application to work with 1127.</p>

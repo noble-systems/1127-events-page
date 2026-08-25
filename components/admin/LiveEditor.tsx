@@ -367,7 +367,7 @@ export function LiveEditor({
           </div>
 
           {error ? (
-            <p className="bg-clay/90 text-bone px-4 py-2 text-[0.8125rem] sm:px-6">
+            <p className="bg-terracotta/90 text-bone px-4 py-2 text-[0.8125rem] sm:px-6">
               {error}
             </p>
           ) : null}

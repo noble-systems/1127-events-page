@@ -102,7 +102,7 @@ export function SubscriptionsView({
     <>
       <div className="mt-10 grid gap-4 sm:grid-cols-3">
         <Stat
-          label="On the RSVP list"
+          label="On the subscriber list"
           value={rsvps}
           hint="Everyone who has ever RSVPed. This number does not go down when somebody unsubscribes."
         />
@@ -114,7 +114,7 @@ export function SubscriptionsView({
         <Stat
           label="Unsubscribed"
           value={summary.unsubscribed}
-          hint="Asked to stop, or never opted in. Still on the RSVP list."
+          hint="Asked to stop, or never opted in. Still on the subscriber list."
         />
       </div>
 

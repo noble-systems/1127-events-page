@@ -179,7 +179,7 @@ export function validateEvent(values: EventFormValues): FormErrors {
   // and two copies of a security check drift apart.
   if (!isValidImageRef(values.image)) {
     errors.image =
-      "Upload a photo, or use a path inside /public such as /media/sun-club-01.jpg";
+      "Upload a photo, or use a path inside /public such as /media/photo-01.jpg";
   }
 
   // Same rule as the photograph, same reason: the ref reaches an img src.

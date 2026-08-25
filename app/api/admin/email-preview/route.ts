@@ -19,7 +19,7 @@ import type { SubmissionRecord } from "@/lib/types";
  * Renders each email with sample data so you can see exactly what goes out
  * before switching SES on. Nothing is sent.
  */
-export const PREVIEW_TYPES = [
+const PREVIEW_TYPES = [
   { value: "guest", label: "RSVP, to the guest" },
   { value: "team", label: "RSVP, to the team" },
   { value: "ambassador-applicant", label: "Ambassador, to the applicant" },

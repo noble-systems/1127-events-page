@@ -36,7 +36,11 @@ export async function POST(request: Request) {
 
   // Slugs double as the DynamoDB key, so make sure it's free.
   const existing = await listAllEvents();
-  const taken = new Set(existing.map((event) => event.id));
+  // Former ids stay reserved: they are live redirect targets in old texts
+  // and printed QR codes, and a new event claiming one would shadow them.
+  const taken = new Set(
+    existing.flatMap((event) => [event.id, ...(event.formerIds ?? [])]),
+  );
   const base = slugify(values.name);
   let id = base;
   let suffix = 2;
