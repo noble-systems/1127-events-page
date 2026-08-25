@@ -7,7 +7,7 @@ import type { DoorPass } from "@/lib/door-store";
 
 /**
  * The roster of door PINs. Mint one per person or per post, hand the PIN
- * over at call time, and when a phone goes missing hit "Sign out phones":
+ * over at call time, and when a phone goes missing hit "Sign out of devices":
  * every session on that pass dies instantly while the PIN keeps working for
  * a fresh sign-in. Deactivate kills PIN and sessions both.
  */
@@ -44,8 +44,8 @@ export function DoorPassManager({ passes }: { passes: DoorPass[] }) {
       <h2 className="font-display text-xl">Door passes</h2>
       <p className="text-ink/65 mt-2 max-w-2xl text-[0.8125rem] leading-relaxed">
         Door staff sign in at 1127.events/door with a PIN from this list; a
-        session lasts 24 hours and opens nothing but the scanner. Sign out
-        phones ends every session on a pass the moment it lands; Deactivate
+        session lasts 24 hours and opens nothing but the scanner. Sign out of
+        devices ends every session on a pass the moment it lands; Deactivate
         retires the PIN too. Show QR puts the sign-in on screen: staff scan
         it with their camera and the phone is in, no typing.
       </p>
@@ -100,11 +100,15 @@ export function DoorPassManager({ passes }: { passes: DoorPass[] }) {
             <tbody>
               {passes.map((pass) => (
                 <Fragment key={pass.id}>
-                <tr
-                  className={`border-ink/5 border-b ${pass.active ? "" : "opacity-50"}`}
-                >
-                  <td className="py-2.5 pr-4 font-medium">{pass.label}</td>
-                  <td className="py-2.5 pr-4 font-mono tracking-wider select-all">
+                <tr className="border-ink/5 border-b">
+                  <td
+                    className={`py-2.5 pr-4 font-medium ${pass.active ? "" : "opacity-50"}`}
+                  >
+                    {pass.label}
+                  </td>
+                  <td
+                    className={`py-2.5 pr-4 font-mono tracking-wider select-all ${pass.active ? "" : "opacity-50"}`}
+                  >
                     {pass.pin}
                   </td>
                   <td className="text-ink/65 py-2.5 pr-4">
@@ -138,7 +142,7 @@ export function DoorPassManager({ passes }: { passes: DoorPass[] }) {
                             onClick={() => patch(pass.id, "revoke")}
                             className="text-ink/60 hover:text-ink text-[0.8125rem] underline underline-offset-2"
                           >
-                            Sign out phones
+                            Sign out of devices
                           </button>
                           <button
                             type="button"

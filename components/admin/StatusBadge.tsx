@@ -31,7 +31,9 @@ export function StatusBadge({
 }
 
 export const TYPE_LABELS: Record<string, string> = {
-  rsvp: "RSVP",
+  // The stored type stays "rsvp" (it is a storage key); the word people see
+  // follows the product, which sells tickets and keeps a subscriber list.
+  rsvp: "Subscriber",
   talent: "Talent",
   ambassador: "Ambassador",
   partner: "Partner inquiry",

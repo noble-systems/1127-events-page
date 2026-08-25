@@ -181,31 +181,42 @@ export async function patchDoorPass(
     return;
   }
 
+  /**
+   * Every attribute goes through a #name alias, because DynamoDB reserves a
+   * long list of words and an expression that trips one is rejected whole.
+   * The first version wrote raw names AND swallowed the rejection into a
+   * server log nobody can reach on this platform, so Deactivate and Sign out
+   * looked like they worked and did nothing. Failures now throw, and the
+   * admin route turns them into an error the screen actually shows.
+   */
   const sets: string[] = [];
+  const names: Record<string, string> = {};
   const values: Record<string, unknown> = {};
   if (patch.active !== undefined) {
-    sets.push("active = :a");
+    sets.push("#a = :a");
+    names["#a"] = "active";
     values[":a"] = { BOOL: patch.active };
   }
   if (patch.revokedAfter !== undefined) {
-    sets.push("revokedAfter = :r");
+    sets.push("#r = :r");
+    names["#r"] = "revokedAfter";
     values[":r"] = { N: String(patch.revokedAfter) };
   }
   if (patch.lastUsedAt !== undefined) {
-    sets.push("lastUsedAt = :l");
+    sets.push("#l = :l");
+    names["#l"] = "lastUsedAt";
     values[":l"] = { S: patch.lastUsedAt };
   }
   if (sets.length === 0) return;
 
-  await db()
-    .send(
-      new UpdateItemCommand({
-        TableName: table,
-        Key: { pk: { S: pk(id) } },
-        UpdateExpression: `SET ${sets.join(", ")}`,
-        ConditionExpression: "attribute_exists(pk)",
-        ExpressionAttributeValues: values as never,
-      }),
-    )
-    .catch((error) => console.error("[1127] door pass patch failed", error));
+  await db().send(
+    new UpdateItemCommand({
+      TableName: table,
+      Key: { pk: { S: pk(id) } },
+      UpdateExpression: `SET ${sets.join(", ")}`,
+      ConditionExpression: "attribute_exists(pk)",
+      ExpressionAttributeNames: names,
+      ExpressionAttributeValues: values as never,
+    }),
+  );
 }

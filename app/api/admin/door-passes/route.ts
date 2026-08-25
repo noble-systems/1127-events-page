@@ -58,11 +58,23 @@ export async function PATCH(request: Request) {
     );
   }
 
-  if (action === "revoke") await patchDoorPass(id, { revokedAfter: Date.now() });
-  if (action === "deactivate") {
-    await patchDoorPass(id, { active: false, revokedAfter: Date.now() });
+  try {
+    if (action === "revoke") {
+      await patchDoorPass(id, { revokedAfter: Date.now() });
+    }
+    if (action === "deactivate") {
+      await patchDoorPass(id, { active: false, revokedAfter: Date.now() });
+    }
+    if (action === "activate") await patchDoorPass(id, { active: true });
+  } catch (error) {
+    console.error("[1127] door pass change failed", error);
+    const detail =
+      error instanceof Error ? ` (${error.name}: ${error.message.slice(0, 120)})` : "";
+    return NextResponse.json(
+      { ok: false, message: `That change didn't stick.${detail}` },
+      { status: 502 },
+    );
   }
-  if (action === "activate") await patchDoorPass(id, { active: true });
 
   return NextResponse.json({ ok: true });
 }

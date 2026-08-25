@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Pager } from "@/components/admin/Paginate";
 import { PAGE_SIZE, pageOf } from "@/lib/paginate";
-import { StatusBadge } from "@/components/admin/StatusBadge";
+import { StatusBadge, TYPE_LABELS } from "@/components/admin/StatusBadge";
 import { toUrlId } from "@/lib/ids";
 import { describeSource } from "@/lib/request-meta";
 import {
@@ -314,8 +314,8 @@ export function SubscriberTable({
                         </p>
                       ) : null}
                     </td>
-                    <td className="text-ink/70 px-5 py-4 text-[0.875rem] capitalize">
-                      {row.type}
+                    <td className="text-ink/70 px-5 py-4 text-[0.875rem]">
+                      {TYPE_LABELS[row.type] ?? row.type}
                     </td>
                     <td className="text-ink/70 px-5 py-4 text-[0.875rem]">
                       {detailFor(row)}
