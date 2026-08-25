@@ -4,7 +4,7 @@ import { squareConfigured } from "@/lib/square";
 import { formatMoney, remainingFor } from "@/lib/tickets";
 import { MintTickets } from "@/components/admin/MintTickets";
 import { listOrders, listTicketsForEvents, readInventory } from "@/lib/tickets-store";
-import type { TicketRecord } from "@/lib/tickets";
+import type { TicketOrder, TicketRecord } from "@/lib/tickets";
 import type { EventRecord, TicketTier } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Tickets" };
@@ -53,19 +53,36 @@ function phoenixTime(iso: string): string {
   });
 }
 
-async function tierRows(event: EventRecord, tiers: TicketTier[]) {
+async function tierRows(
+  event: EventRecord,
+  tiers: TicketTier[],
+  orders: TicketOrder[],
+) {
   const inventory = await readInventory(
     event.id,
     tiers.map((tier) => tier.id),
   );
   return tiers.map((tier) => {
     const counts = inventory.get(tier.id) ?? { taken: 0, sold: 0 };
+    // Comped seats, minted or rewarded, live inside the same sold counter
+    // that guards the pool. Split them out so Sold means paying people and
+    // Gross means money that actually arrived.
+    const comped = orders
+      .filter(
+        (order) =>
+          order.status === "paid" &&
+          order.comp === true &&
+          order.tierId === tier.id,
+      )
+      .reduce((total, order) => total + order.quantity, 0);
+    const sold = Math.max(0, counts.sold - comped);
     return {
       tier,
-      sold: counts.sold,
+      sold,
+      comped,
       held: Math.max(0, counts.taken - counts.sold),
       remaining: remainingFor(tier, counts.taken),
-      grossCents: counts.sold * tier.priceCents,
+      grossCents: sold * tier.priceCents,
     };
   });
 }
@@ -79,10 +96,11 @@ export default async function AdminTicketsPage() {
     events.map(async (event) => {
       const ids = [event.id, ...(event.formerIds ?? [])];
       const tickets = await listTicketsForEvents(ids);
+      const orders = await listOrders(ids);
       return {
         event,
-        rows: await tierRows(event, event.ticketTiers ?? []),
-        orders: await listOrders(ids),
+        rows: await tierRows(event, event.ticketTiers ?? [], orders),
+        orders,
         // code -> ticket, so each code in the orders table can wear its
         // check-in state without a lookup per code.
         byCode: new Map(tickets.map((ticket) => [ticket.code, ticket])),
@@ -98,8 +116,9 @@ export default async function AdminTicketsPage() {
       <h1 className="text-4xl">Tickets</h1>
       <p className="text-ink/65 mt-3 max-w-2xl text-[0.9375rem] leading-relaxed">
         Sales by ticket type, and every order. Sold counts come from the same
-        counter that stops overselling. Refunds happen in the Square
-        dashboard, which is also where the money itself lives.
+        counter that stops overselling; comps, minted or rewarded, sit in
+        their own column and never count as sales. Refunds happen in the
+        Square dashboard, which is also where the money itself lives.
       </p>
 
       {!configured ? (
@@ -159,6 +178,7 @@ export default async function AdminTicketsPage() {
                   <th className="py-2 pr-4 font-medium">Type</th>
                   <th className="py-2 pr-4 font-medium">Price</th>
                   <th className="py-2 pr-4 font-medium">Sold</th>
+                  <th className="py-2 pr-4 font-medium">Comps</th>
                   <th className="py-2 pr-4 font-medium">On hold</th>
                   <th className="py-2 pr-4 font-medium">Left</th>
                   <th className="py-2 pr-4 font-medium">In</th>
@@ -166,7 +186,7 @@ export default async function AdminTicketsPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ tier, sold, held, remaining, grossCents }) => (
+                {rows.map(({ tier, sold, comped, held, remaining, grossCents }) => (
                   <tr key={tier.id} className="border-ink/5 border-b">
                     <td className="py-2.5 pr-4 font-medium">
                       {tier.name}
@@ -183,6 +203,9 @@ export default async function AdminTicketsPage() {
                       {sold} of {tier.capacity}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">
+                      {comped > 0 ? comped : ""}
+                    </td>
+                    <td className="py-2.5 pr-4 tabular-nums">
                       {held > 0 ? held : ""}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">
@@ -193,7 +216,7 @@ export default async function AdminTicketsPage() {
                         const walked = checkedIn.filter(
                           (ticket) => ticket.tierId === tier.id,
                         ).length;
-                        return walked > 0 ? `${walked} of ${sold}` : "";
+                        return walked > 0 ? `${walked} of ${sold + comped}` : "";
                       })()}
                     </td>
                     <td className="py-2.5 tabular-nums">

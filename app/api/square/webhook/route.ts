@@ -193,9 +193,8 @@ export async function POST(request: Request) {
     try {
       const { REWARD_EVERY_DEFAULT, rewardsEarned, ticketsSoldBy } =
         await import("@/lib/ambassadors");
-      const { claimReward, getAmbassador, getRewardEvery } = await import(
-        "@/lib/ambassadors-store"
-      );
+      const { claimReward, getAmbassador, getRewardEvery, getRewardTierName } =
+        await import("@/lib/ambassadors-store");
       const { listAllOrders } = await import("@/lib/tickets-store");
       const { issueCompTickets } = await import("@/lib/comp-tickets");
 
@@ -209,9 +208,14 @@ export async function POST(request: Request) {
         while (given < earned) {
           if (!(await claimReward(order.via, given))) break;
           const eventRecord = await getEvent(order.eventId).catch(() => null);
-          const tier = eventRecord?.ticketTiers?.find(
-            (row) => row.id === order.tierId,
-          );
+          // The dashboard picks the reward type by NAME; a name the sold
+          // event does not have falls back to the type that triggered it.
+          const wantName = await getRewardTierName();
+          const tier =
+            eventRecord?.ticketTiers?.find(
+              (row) => wantName && row.name === wantName,
+            ) ??
+            eventRecord?.ticketTiers?.find((row) => row.id === order.tierId);
           if (!eventRecord || !tier) break;
           const issued = await issueCompTickets({
             event: eventRecord,

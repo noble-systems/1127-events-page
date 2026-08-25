@@ -77,6 +77,7 @@ async function seedEvent() {
     ticketsEnabled: true,
     ticketTiers: [
       { id: "early-bird", name: "Early Bird", priceCents: 1500, capacity: 25 },
+      { id: "ga", name: "General Admission", priceCents: 2500, capacity: 100 },
     ],
     order: 0,
     shotNote: "",
@@ -612,6 +613,36 @@ describe("the ambassador reward", () => {
       (await listOrders(["mirage"])).filter((row) => row.comp === true).length,
       1,
     );
+  });
+
+  test("the free ticket is the type the dashboard picked", async () => {
+    await seedEvent();
+    const { setRewardTierName } = await import("./ambassadors-store.ts");
+    await setRewardTierName("General Admission");
+    await mintAmb({
+      code: "LUZ",
+      name: "Luz",
+      email: "luz@example.com",
+      active: true,
+      createdAt: new Date().toISOString(),
+    });
+
+    // Three early-bird sales; the reward comes back as GA anyway.
+    for (const ref of ["g1", "g2", "g3"]) {
+      await reserveTickets("mirage", "early-bird", 1, 25);
+      await createOrder(order(ref, { quantity: 1, via: "LUZ", email: "b@x.co" }));
+      await webhook(signedRequest(completedEvent(`sq-${ref}`)));
+    }
+
+    const comps = (await listOrders(["mirage"])).filter(
+      (row) => row.comp === true,
+    );
+    assert.equal(comps.length, 1);
+    assert.equal(comps[0].tierId, "ga", "the comp is the picked type");
+    assert.equal(comps[0].amountCents, 0);
+
+    const inv = await readInventory("mirage", ["ga"]);
+    assert.equal(inv.get("ga")?.sold, 1, "the free seat came from the GA pool");
   });
 
   test("no email on file means no reward and a loud log, not a crash", async () => {

@@ -272,9 +272,54 @@ export async function setRewardEvery(every: number): Promise<void> {
   }
 
   await db().send(
-    new PutItemCommand({
+    new UpdateItemCommand({
       TableName: table,
-      Item: { pk: { S: REWARD_CFG_PK }, n: { N: String(every) } },
+      Key: { pk: { S: REWARD_CFG_PK } },
+      UpdateExpression: "SET #n = :n",
+      ExpressionAttributeNames: { "#n": "n" },
+      ExpressionAttributeValues: { ":n": { N: String(every) } },
+    }),
+  );
+}
+
+const LOCAL_TIER_KEY = "__reward_tier__";
+
+/**
+ * Which ticket TYPE the free ticket is, matched by tier name against the
+ * sold event. Empty means "same type as the ticket that triggered it".
+ */
+export async function getRewardTierName(): Promise<string> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    const raw = (data as Record<string, unknown>)[LOCAL_TIER_KEY];
+    return typeof raw === "string" ? raw : "";
+  }
+
+  const out = await db().send(
+    new GetItemCommand({ TableName: table, Key: { pk: { S: REWARD_CFG_PK } } }),
+  );
+  return out.Item?.tier?.S ?? "";
+}
+
+export async function setRewardTierName(tierName: string): Promise<void> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    (data as Record<string, unknown>)[LOCAL_TIER_KEY] = tierName;
+    await localWrite(data);
+    return;
+  }
+
+  await db().send(
+    new UpdateItemCommand({
+      TableName: table,
+      Key: { pk: { S: REWARD_CFG_PK } },
+      UpdateExpression: "SET #t = :t",
+      ExpressionAttributeNames: { "#t": "tier" },
+      ExpressionAttributeValues: { ":t": { S: tierName } },
     }),
   );
 }

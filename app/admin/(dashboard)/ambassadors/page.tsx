@@ -3,11 +3,12 @@ import { AmbassadorManager } from "@/components/admin/AmbassadorManager";
 import { REWARD_EVERY_DEFAULT, ambassadorStats } from "@/lib/ambassadors";
 import {
   getRewardEvery,
+  getRewardTierName,
   listAmbassadors,
   readAmbassadorClicks,
 } from "@/lib/ambassadors-store";
 import { siteUrl } from "@/lib/email";
-import { listSubmissions } from "@/lib/store";
+import { listAllEvents, listSubmissions } from "@/lib/store";
 import { listAllOrders } from "@/lib/tickets-store";
 
 export const metadata: Metadata = { title: "Ambassadors" };
@@ -19,12 +20,22 @@ export const dynamic = "force-dynamic";
  * load, never from counters that could drift from it.
  */
 export default async function AdminAmbassadorsPage() {
-  const [ambassadors, orders, rsvps, rewardEvery] = await Promise.all([
-    listAmbassadors(),
-    listAllOrders(),
-    listSubmissions("rsvp"),
-    getRewardEvery(REWARD_EVERY_DEFAULT),
-  ]);
+  const [ambassadors, orders, rsvps, rewardEvery, rewardTierName, events] =
+    await Promise.all([
+      listAmbassadors(),
+      listAllOrders(),
+      listSubmissions("rsvp"),
+      getRewardEvery(REWARD_EVERY_DEFAULT),
+      getRewardTierName(),
+      listAllEvents(),
+    ]);
+  const tierNames = [
+    ...new Set(
+      events.flatMap((event) =>
+        (event.ticketTiers ?? []).map((tier) => tier.name),
+      ),
+    ),
+  ];
   const clicks = await readAmbassadorClicks(ambassadors.map((a) => a.code));
 
   const stats = ambassadorStats(ambassadors, orders, rsvps, clicks);
@@ -46,6 +57,8 @@ export default async function AdminAmbassadorsPage() {
           stats={stats}
           siteUrl={siteUrl()}
           rewardEvery={rewardEvery}
+          rewardTierName={rewardTierName}
+          tierNames={tierNames}
         />
       </div>
     </div>

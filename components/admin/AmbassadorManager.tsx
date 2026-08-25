@@ -36,11 +36,17 @@ export function AmbassadorManager({
   stats,
   siteUrl,
   rewardEvery,
+  rewardTierName,
+  tierNames,
 }: {
   stats: AmbassadorStats[];
   siteUrl: string;
   /** How many sales earn a free ticket, from the dashboard setting. */
   rewardEvery: number;
+  /** Which ticket type the free one is; empty means same as the one sold. */
+  rewardTierName: string;
+  /** Every tier name across events, for the picker. */
+  tierNames: string[];
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -48,6 +54,7 @@ export function AmbassadorManager({
   const [code, setCode] = useState("");
   const [codeTouched, setCodeTouched] = useState(false);
   const [threshold, setThreshold] = useState(String(rewardEvery));
+  const [rewardTier, setRewardTier] = useState(rewardTierName);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -178,23 +185,51 @@ export function AmbassadorManager({
             <span className="text-ink/65">tickets sold</span>
           </span>
         </label>
+        <label className="text-ink/70 block text-[0.875rem]">
+          Free ticket type
+          <select
+            value={rewardTier}
+            disabled={busy}
+            onChange={(e) => setRewardTier(e.target.value)}
+            className="border-ink/20 bg-bone-soft mt-1.5 block rounded-lg border px-3 py-2 text-[0.9375rem]"
+          >
+            <option value="">Same type as the ticket sold</option>
+            {tierNames.map((tierName) => (
+              <option key={tierName} value={tierName}>
+                {tierName}
+              </option>
+            ))}
+          </select>
+        </label>
         <Button
           variant="outline"
           size="md"
-          disabled={busy || Number(threshold) === rewardEvery}
-          onClick={() =>
-            call({
-              method: "PATCH",
-              body: JSON.stringify({ rewardEvery: Number(threshold) }),
-            })
+          disabled={
+            busy ||
+            (Number(threshold) === rewardEvery && rewardTier === rewardTierName)
           }
+          onClick={async () => {
+            if (Number(threshold) !== rewardEvery) {
+              await call({
+                method: "PATCH",
+                body: JSON.stringify({ rewardEvery: Number(threshold) }),
+              });
+            }
+            if (rewardTier !== rewardTierName) {
+              await call({
+                method: "PATCH",
+                body: JSON.stringify({ rewardTierName: rewardTier }),
+              });
+            }
+          }}
         >
-          Save threshold
+          Save reward settings
         </Button>
         <p className="text-ink/55 basis-full text-[0.8125rem] leading-relaxed">
           When an ambassador&apos;s sales cross a multiple of this, a free
           ticket for the event they just sold lands in their email
-          automatically. Free tickets never count as sales.
+          automatically, as the type picked here when the event has it. Free
+          tickets never count as sales.
         </p>
       </div>
 
@@ -237,9 +272,10 @@ export function AmbassadorManager({
                     <td className="py-2.5 pr-4 tabular-nums">{row.rsvps}</td>
                     <td className="py-2.5 pr-4 tabular-nums">{row.tickets}</td>
                     <td className="py-2.5 pr-4 tabular-nums">
-                      {row.grossCents > 0
-                        ? `${(row.grossCents / 100).toFixed(2).replace(/\.00$/, "")}`
-                        : ""}
+                      {"$" +
+                        (row.grossCents / 100)
+                          .toFixed(2)
+                          .replace(/\.00$/, "")}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">
                       {row.rewardsGiven ?? 0}

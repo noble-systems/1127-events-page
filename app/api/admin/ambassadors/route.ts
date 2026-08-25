@@ -10,6 +10,7 @@ import {
   patchAmbassador,
   setAmbassadorActive,
   setRewardEvery,
+  setRewardTierName,
 } from "@/lib/ambassadors-store";
 import { renameAmbassador } from "@/lib/ambassador-admin";
 
@@ -97,6 +98,7 @@ export async function PATCH(request: Request) {
     newCode?: unknown;
     email?: unknown;
     rewardEvery?: unknown;
+    rewardTierName?: unknown;
   } | null;
   const code = normalizeAmbassadorCode(
     typeof body?.code === "string" ? body.code : "",
@@ -113,6 +115,12 @@ export async function PATCH(request: Request) {
       );
     }
     await setRewardEvery(every);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (typeof body?.rewardTierName === "string") {
+    const tierName = body.rewardTierName.trim().slice(0, 60);
+    await setRewardTierName(tierName);
     return NextResponse.json({ ok: true });
   }
 
