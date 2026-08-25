@@ -29,7 +29,7 @@ const sections: readonly LegalSection[] = [
   {
     heading: "What you give us",
     body: [
-      "This site has four forms: the RSVP list, the talent application, the ambassador application, and the partnership inquiry. We keep what you type into them.",
+      "This site has four forms: the mailing list, the talent application, the ambassador application, and the partnership inquiry. We keep what you type into them.",
       "We also count page views on our own servers: which pages are read, on which days, from which countries and referring sites, in aggregate. No cookies are set for this, no advertising or analytics service receives anything, and nothing counted can identify you. Browsers that send Do Not Track or Global Privacy Control are not counted at all.",
     ],
     list: [
@@ -67,7 +67,7 @@ const sections: readonly LegalSection[] = [
   {
     heading: "Why we are allowed to hold it",
     body: [
-      "Marketing email goes only to people who asked for it by joining the RSVP list. That is consent, and you can withdraw it at any time using the unsubscribe link in any email.",
+      "Marketing email goes only to people who asked for it by joining the mailing list. That is consent, and you can withdraw it at any time using the unsubscribe link in any email.",
       "Applications and partnership inquiries are handled because you asked us to consider them, which is a step taken at your request before any agreement.",
       "The technical details of a submission are kept because we have a genuine interest in keeping the forms free of spam and in understanding which of our campaigns work. We think that interest is reasonable and does not override your rights, and you can object to it.",
     ],
@@ -90,7 +90,7 @@ const sections: readonly LegalSection[] = [
   {
     heading: "How long we keep it",
     body: [
-      "RSVP records stay on the list until you unsubscribe or ask to be removed. Applications and partnership inquiries are kept while they are useful for planning events and considering people for future dates, and are reviewed periodically so that stale records are deleted.",
+      "Mailing list records stay on the list until you unsubscribe or ask to be removed. Applications and partnership inquiries are kept while they are useful for planning events and considering people for future dates, and are reviewed periodically so that stale records are deleted.",
       "When you unsubscribe, every record we hold for that email address is deleted, not just flagged.",
     ],
   },

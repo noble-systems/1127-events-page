@@ -39,9 +39,9 @@ const sections: readonly LegalSection[] = [
     ],
   },
   {
-    heading: "RSVPs",
+    heading: "The mailing list",
     body: [
-      "The RSVP list registers your interest and gets you the announcement first. It is for individuals: one person, one signup. It does not reserve a place, guarantee entry, or create any obligation on either side.",
+      "The mailing list registers your interest and gets you the announcement first. It is for individuals: one person, one signup. It does not reserve a place, guarantee entry, or create any obligation on either side.",
       "Admission on the day is at the discretion of 1127 and of the venue hosting the event, and is subject to capacity, age requirements, and the venue's own conditions of entry.",
     ],
   },
@@ -90,7 +90,7 @@ const sections: readonly LegalSection[] = [
     heading: "Events we cannot control",
     body: [
       "An event may be delayed, cut short, moved or cancelled for reasons outside our reasonable control, including weather, a venue becoming unavailable, an artist withdrawing, power or equipment failure, illness, or action by a public authority. Where that happens we will say so as early as we can.",
-      "Because the RSVP list is free and reserves nothing, cancellation does not create a refund or a claim.",
+      "Because the mailing list is free and reserves nothing, cancellation does not create a refund or a claim.",
     ],
   },
   {
