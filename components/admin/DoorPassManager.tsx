@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import type { DoorPass } from "@/lib/door-store";
@@ -14,6 +14,7 @@ import type { DoorPass } from "@/lib/door-store";
 export function DoorPassManager({ passes }: { passes: DoorPass[] }) {
   const router = useRouter();
   const [label, setLabel] = useState("");
+  const [qrFor, setQrFor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -45,7 +46,8 @@ export function DoorPassManager({ passes }: { passes: DoorPass[] }) {
         Door staff sign in at 1127.events/door with a PIN from this list; a
         session lasts 24 hours and opens nothing but the scanner. Sign out
         phones ends every session on a pass the moment it lands; Deactivate
-        retires the PIN too.
+        retires the PIN too. Show QR puts the sign-in on screen: staff scan
+        it with their camera and the phone is in, no typing.
       </p>
 
       <form
@@ -97,8 +99,8 @@ export function DoorPassManager({ passes }: { passes: DoorPass[] }) {
             </thead>
             <tbody>
               {passes.map((pass) => (
+                <Fragment key={pass.id}>
                 <tr
-                  key={pass.id}
                   className={`border-ink/5 border-b ${pass.active ? "" : "opacity-50"}`}
                 >
                   <td className="py-2.5 pr-4 font-medium">{pass.label}</td>
@@ -120,6 +122,16 @@ export function DoorPassManager({ passes }: { passes: DoorPass[] }) {
                     <div className="flex gap-3">
                       {pass.active ? (
                         <>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              setQrFor(qrFor === pass.id ? null : pass.id)
+                            }
+                            className="text-cobalt text-[0.8125rem] underline underline-offset-2"
+                          >
+                            {qrFor === pass.id ? "Hide QR" : "Show QR"}
+                          </button>
                           <button
                             type="button"
                             disabled={busy}
@@ -150,6 +162,28 @@ export function DoorPassManager({ passes }: { passes: DoorPass[] }) {
                     </div>
                   </td>
                 </tr>
+                {qrFor === pass.id && pass.active ? (
+                  <tr className="border-ink/5 border-b">
+                    <td colSpan={4} className="py-4">
+                      <div className="flex items-center gap-5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`/api/admin/door-passes/qr?id=${encodeURIComponent(pass.id)}`}
+                          alt={`Sign-in QR for ${pass.label}`}
+                          width={200}
+                          height={200}
+                          className="rounded-xl bg-white p-2"
+                        />
+                        <p className="text-ink/65 max-w-xs text-[0.8125rem] leading-relaxed">
+                          Have {pass.label} scan this with their phone camera.
+                          It signs them in for 24 hours. This picture is the
+                          key; show it to your own people only.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+                </Fragment>
               ))}
             </tbody>
           </table>

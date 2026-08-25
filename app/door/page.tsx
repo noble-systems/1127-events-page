@@ -17,9 +17,9 @@ export const dynamic = "force-dynamic";
 export default async function DoorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ code?: string }>;
+  searchParams: Promise<{ code?: string; bad?: string }>;
 }) {
-  const [{ code }, pass, admin] = await Promise.all([
+  const [{ code, bad }, pass, admin] = await Promise.all([
     searchParams,
     currentDoorPass(),
     currentAdmin().catch(() => null),
@@ -45,9 +45,14 @@ export default async function DoorPage({
         ) : (
           <>
             <p className="text-ink/65 mt-2 text-[0.9375rem] leading-relaxed">
-              Enter the door PIN you were given. It signs this phone in for
-              the next 24 hours.
+              Enter the door PIN you were given, or scan the sign-in QR from
+              the admin. Either signs this phone in for the next 24 hours.
             </p>
+            {bad ? (
+              <p role="alert" className="text-terracotta-deep mt-3 text-[0.875rem]">
+                That QR or PIN didn&apos;t open the door. Ask for a fresh one.
+              </p>
+            ) : null}
             <div className="mt-6">
               <DoorLogin />
             </div>

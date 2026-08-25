@@ -13,6 +13,42 @@ import { clientIp } from "@/lib/request-meta";
  * losing career. The PIN is normalised (case, hyphens, spaces) because it
  * gets typed on a phone in the dark.
  */
+/**
+ * GET /api/door/login?pin=...  the QR path: the admin page renders a QR of
+ * this URL per pass, a phone's native camera scans it, and the phone is
+ * signed in and standing on /door with no typing at a dark call time. Same
+ * normalisation, same rate limit, same cookie as the typed path; failure
+ * redirects back to the PIN form with its message.
+ */
+export async function GET(request: Request) {
+  const ip = clientIp(request.headers) ?? "unknown";
+  const throttle = await consume("doorLogin", ip);
+  const url = new URL(request.url);
+
+  if (throttle.allowed) {
+    const raw = url.searchParams.get("pin") ?? "";
+    const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const pin =
+      cleaned.length === 8 ? `${cleaned.slice(0, 4)}-${cleaned.slice(4)}` : "";
+    const pass = pin ? await findDoorPassByPin(pin) : null;
+
+    if (pass) {
+      const jar = await cookies();
+      jar.set(DOOR_COOKIE, mintDoorToken(pass.id), {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: DOOR_SESSION_HOURS * 60 * 60,
+      });
+      await patchDoorPass(pass.id, { lastUsedAt: new Date().toISOString() });
+      return NextResponse.redirect(new URL("/door", url), 303);
+    }
+  }
+
+  return NextResponse.redirect(new URL("/door?bad=1", url), 303);
+}
+
 export async function POST(request: Request) {
   const ip = clientIp(request.headers) ?? "unknown";
   const throttle = await consume("doorLogin", ip);
