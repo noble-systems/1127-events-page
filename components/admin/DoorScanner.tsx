@@ -82,7 +82,7 @@ export function DoorScanner({ prefill = "" }: { prefill?: string }) {
     if (busyRef.current) return;
     busyRef.current = true;
     try {
-      const response = await fetch("/api/admin/door", {
+      const response = await fetch("/api/door/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),

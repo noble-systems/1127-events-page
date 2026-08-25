@@ -25,7 +25,7 @@ export async function GET(
   if (!code) return NextResponse.json({ ok: false }, { status: 400 });
 
   const png = await QRCode.toBuffer(
-    `${siteUrl()}/admin/door?code=${encodeURIComponent(code)}`,
+    `${siteUrl()}/door?code=${encodeURIComponent(code)}`,
     { width: 480, margin: 1, errorCorrectionLevel: "M" },
   );
 

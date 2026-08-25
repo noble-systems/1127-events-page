@@ -483,3 +483,43 @@ describe("the door", () => {
     assert.equal(out.ticket, null);
   });
 });
+
+/* -------------------------------------------------------------------------- */
+/* Door passes and their sessions                                             */
+/* -------------------------------------------------------------------------- */
+
+const { createDoorPass, findDoorPassByPin, getDoorPass, patchDoorPass } =
+  await import("./door-store.ts");
+const { mintDoorToken } = await import("./door-auth.ts");
+const { verifyToken } = await import("./tokens.ts");
+
+describe("door passes", () => {
+  beforeEach(reset);
+
+  test("a pass opens by PIN while active, and not after", async () => {
+    const pass = await createDoorPass("Marco");
+    assert.match(pass.pin, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    assert.equal((await findDoorPassByPin(pass.pin))?.id, pass.id);
+
+    await patchDoorPass(pass.id, { active: false });
+    assert.equal(await findDoorPassByPin(pass.pin), null, "deactivated");
+    await patchDoorPass(pass.id, { active: true });
+    assert.equal((await findDoorPassByPin(pass.pin))?.id, pass.id, "and back");
+  });
+
+  test("revoking sessions outlives the cookie but not the PIN", async () => {
+    const pass = await createDoorPass("west door");
+    const issuedBefore = Date.now() - 1000;
+    const token = mintDoorToken(pass.id, issuedBefore);
+    const claims = verifyToken(token);
+    assert.equal((claims as { door?: string })?.door, pass.id);
+
+    await patchDoorPass(pass.id, { revokedAfter: Date.now() });
+    const revoked = await getDoorPass(pass.id);
+    // The auth layer refuses cookies born before revokedAfter; the pass and
+    // its PIN stay usable for a fresh sign-in.
+    assert.ok(revoked?.revokedAfter && issuedBefore <= revoked.revokedAfter);
+    assert.equal(revoked?.active, true);
+    assert.equal((await findDoorPassByPin(pass.pin))?.id, pass.id);
+  });
+});

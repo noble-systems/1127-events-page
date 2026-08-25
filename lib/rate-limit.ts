@@ -121,6 +121,12 @@ export const RATE_LIMITS = {
    * minutes never blocks a real buyer retrying a card.
    */
   checkout: { limit: 10, windowSeconds: 10 * 60 },
+  /**
+   * Door PIN attempts. The PIN space is 31^8; ten guesses per window makes
+   * online guessing a losing career while a fat-fingered staff PIN never
+   * locks anyone out of a real shift.
+   */
+  doorLogin: { limit: 10, windowSeconds: 10 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

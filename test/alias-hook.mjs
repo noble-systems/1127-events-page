@@ -49,7 +49,11 @@ registerHooks({
     // Next's own entry points resolve inside the bundler but not under bare
     // Node, which wants the .js. Mapped here so tests can import real route
     // handlers instead of copies of them.
-    if (specifier === "next/server" || specifier === "next/navigation") {
+    if (
+      specifier === "next/server" ||
+      specifier === "next/navigation" ||
+      specifier === "next/headers"
+    ) {
       return next(`${specifier}.js`, context);
     }
 
