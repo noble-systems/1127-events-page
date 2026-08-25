@@ -7,13 +7,17 @@ import { Button } from "@/components/ui/Button";
 /**
  * The door, on a phone.
  *
- * Tap Start camera (iOS requires the gesture), point at the QR in the
- * guest's email, and the verdict fills the screen in a color legible from
- * arm's length at midnight: green in, amber already used, red not real.
- * Scanning continues hands-free; the same code is ignored for a few seconds
- * so one steady hand does not double-fire. A typed field covers a cracked
- * camera and a guest whose phone died (read the code off their email on
- * yours).
+ * Tap Start scanning and the camera takes the WHOLE screen, because at a
+ * dark doorway the phone is a scanner, not a webpage: viewfinder edge to
+ * edge, verdict as a banner across the top in a color readable at arm's
+ * length, running tally and the exit at the bottom, everything padded past
+ * the iPhone notch and home bar. Scanning is continuous; the same code is
+ * ignored for a few seconds so a steady hand does not double-fire, and the
+ * phone buzzes differently for in versus stop.
+ *
+ * The camera is acquired in an effect AFTER the overlay renders, because the
+ * video element only exists once the overlay does. A typed field on the idle
+ * screen covers a broken camera and a guest whose phone died.
  */
 
 type Verdict = {
@@ -38,6 +42,27 @@ function phoenixClock(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function VerdictCard({ verdict }: { verdict: Verdict }) {
+  const style = VERDICT_STYLE[verdict.result];
+  return (
+    <div className={`rounded-2xl p-5 text-center shadow-lg ${style.bg}`}>
+      <p className="text-3xl leading-tight font-semibold">{style.label}</p>
+      {verdict.result === "already-used" && verdict.usedAt ? (
+        <p className="mt-0.5 text-lg">at {phoenixClock(verdict.usedAt)}</p>
+      ) : null}
+      {verdict.tierName ? <p className="mt-2 text-xl">{verdict.tierName}</p> : null}
+      {verdict.email ? (
+        <p className="mt-0.5 text-[0.9375rem] opacity-80">{verdict.email}</p>
+      ) : null}
+      {verdict.code ? (
+        <p className="mt-1.5 font-mono text-[0.8125rem] tracking-wider opacity-70">
+          {verdict.code}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 export function DoorScanner({ prefill = "" }: { prefill?: string }) {
@@ -84,125 +109,165 @@ export function DoorScanner({ prefill = "" }: { prefill?: string }) {
     if (prefill) void submit(prefill);
   }, [prefill, submit]);
 
-  const stop = useCallback(() => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    setScanning(false);
-  }, []);
+  /**
+   * The camera lives and dies with the overlay. Acquiring it here rather
+   * than in the tap handler matters: the full-screen video element does not
+   * exist until `scanning` renders it.
+   */
+  useEffect(() => {
+    if (!scanning) return;
+    let cancelled = false;
 
-  useEffect(() => stop, [stop]);
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        streamRef.current = stream;
+        const video = videoRef.current;
+        if (!video) return;
+        video.srcObject = stream;
+        await video.play();
 
-  const start = async () => {
-    setCameraError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: false,
-      });
-      streamRef.current = stream;
-      const video = videoRef.current;
-      if (!video) return;
-      video.srcObject = stream;
-      await video.play();
-      setScanning(true);
-
-      const tick = () => {
-        if (!streamRef.current) return;
-        const canvas = canvasRef.current;
-        if (video.readyState === video.HAVE_ENOUGH_DATA && canvas) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const context = canvas.getContext("2d", { willReadFrequently: true });
-          if (context) {
-            context.drawImage(video, 0, 0);
-            const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-            const found = jsQR(pixels.data, pixels.width, pixels.height);
-            if (found?.data) {
-              const code = found.data.match(/[?&]code=([A-Za-z0-9-]+)/)?.[1] ?? found.data;
-              const now = Date.now();
-              // One guest, one beep: the same code is quiet for 5 seconds.
-              if (code !== lastRef.current.code || now - lastRef.current.at > 5000) {
-                lastRef.current = { code, at: now };
-                void submit(code);
+        const tick = () => {
+          if (!streamRef.current) return;
+          const canvas = canvasRef.current;
+          if (video.readyState === video.HAVE_ENOUGH_DATA && canvas) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext("2d", { willReadFrequently: true });
+            if (context) {
+              context.drawImage(video, 0, 0);
+              const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+              const found = jsQR(pixels.data, pixels.width, pixels.height);
+              if (found?.data) {
+                const code =
+                  found.data.match(/[?&]code=([A-Za-z0-9-]+)/)?.[1] ?? found.data;
+                const now = Date.now();
+                // One guest, one beep: the same code is quiet for 5 seconds.
+                if (
+                  code !== lastRef.current.code ||
+                  now - lastRef.current.at > 5000
+                ) {
+                  lastRef.current = { code, at: now };
+                  void submit(code);
+                }
               }
             }
           }
-        }
+          requestAnimationFrame(tick);
+        };
         requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    } catch {
-      setCameraError(
-        "Camera didn't open. Allow camera access for this site in Settings, or type codes below.",
-      );
-    }
-  };
+      } catch {
+        if (!cancelled) {
+           
+          setScanning(false);
+          setCameraError(
+            "Camera didn't open. Allow camera access for this site in your browser settings, or type codes below.",
+          );
+        }
+      }
+    })();
 
-  const style = verdict ? VERDICT_STYLE[verdict.result] : null;
+    return () => {
+      cancelled = true;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    };
+  }, [scanning, submit]);
 
-  return (
-    <div className="mx-auto max-w-md">
-      {verdict && style ? (
-        <div className={`rounded-2xl p-6 text-center ${style.bg}`}>
-          <p className="text-3xl font-semibold">{style.label}</p>
-          {verdict.result === "already-used" && verdict.usedAt ? (
-            <p className="mt-1 text-lg">at {phoenixClock(verdict.usedAt)}</p>
-          ) : null}
-          {verdict.tierName ? (
-            <p className="mt-3 text-xl">{verdict.tierName}</p>
-          ) : null}
-          {verdict.email ? (
-            <p className="mt-1 text-[0.9375rem] opacity-80">{verdict.email}</p>
-          ) : null}
-          {verdict.code ? (
-            <p className="mt-2 font-mono text-[0.8125rem] tracking-wider opacity-70">
-              {verdict.code}
-            </p>
-          ) : null}
-        </div>
-      ) : (
-        <div className="border-ink/20 text-ink/55 rounded-2xl border border-dashed p-6 text-center text-[0.9375rem]">
-          Verdicts land here: green in, amber already used, red no.
-        </div>
-      )}
-
-      <div className="border-ink/15 mt-5 overflow-hidden rounded-2xl border">
+  /* ---------------------------------------------------------------------- */
+  /* Full-screen scanner                                                    */
+  /* ---------------------------------------------------------------------- */
+  if (scanning) {
+    // z above everything, cookie banner included: nothing floats over the
+    // doorway.
+    return (
+      <div className="bg-ink fixed inset-0 z-[999]">
+        {/* The viewfinder IS the screen. */}
         <video
           ref={videoRef}
           playsInline
           muted
-          className={`w-full ${scanning ? "block" : "hidden"}`}
+          className="absolute inset-0 h-full w-full object-cover"
         />
         <canvas ref={canvasRef} className="hidden" />
-        {!scanning ? (
-          <div className="p-6 text-center">
-            <Button onClick={start} variant="primary" size="lg">
-              Start camera
-            </Button>
-            {cameraError ? (
-              <p className="text-terracotta-deep mt-3 text-[0.875rem]">
-                {cameraError}
-              </p>
-            ) : null}
-          </div>
-        ) : (
-          <div className="flex items-center justify-between px-4 py-2.5">
-            <p className="text-ink/65 text-[0.875rem]">
-              Scanning. {tally} in so far.
+
+        {/* Verdict banner, past the notch. */}
+        <div
+          className="absolute inset-x-0 top-0 p-4"
+          style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}
+        >
+          {verdict ? (
+            <VerdictCard verdict={verdict} />
+          ) : (
+            <p className="bg-ink/70 text-bone mx-auto w-fit rounded-full px-5 py-2.5 text-center text-[0.9375rem] backdrop-blur">
+              Point at a ticket QR
             </p>
-            <button
-              type="button"
-              onClick={stop}
-              className="text-ink/60 hover:text-ink text-[0.8125rem] underline underline-offset-2"
-            >
-              Stop
-            </button>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Tally and the way out, above the home bar. */}
+        <div
+          className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 p-4"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
+          <span className="bg-ink/70 text-bone rounded-full px-4 py-2.5 text-[0.9375rem] backdrop-blur">
+            {tally} in
+          </span>
+          <button
+            type="button"
+            onClick={() => setScanning(false)}
+            className="bg-bone text-ink rounded-full px-6 py-3 text-[1rem] font-medium"
+          >
+            Done
+          </button>
+        </div>
       </div>
+    );
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Idle: start, last verdict, typed fallback                              */
+  /* ---------------------------------------------------------------------- */
+  return (
+    <div className="mx-auto max-w-md">
+      <Button
+        onClick={() => {
+          setCameraError(null);
+          setScanning(true);
+        }}
+        variant="primary"
+        size="lg"
+        className="w-full justify-center py-5 text-lg"
+      >
+        Start scanning
+      </Button>
+      {cameraError ? (
+        <p className="text-terracotta-deep mt-3 text-center text-[0.875rem]">
+          {cameraError}
+        </p>
+      ) : null}
+
+      {verdict ? (
+        <div className="mt-5">
+          <VerdictCard verdict={verdict} />
+        </div>
+      ) : null}
+
+      {tally > 0 ? (
+        <p className="text-ink/65 mt-4 text-center text-[0.9375rem]">
+          {tally} checked in this session.
+        </p>
+      ) : null}
 
       <form
-        className="mt-5 flex gap-2"
+        className="mt-6 flex gap-2"
         onSubmit={(event) => {
           event.preventDefault();
           if (manual.trim()) {
@@ -219,7 +284,7 @@ export function DoorScanner({ prefill = "" }: { prefill?: string }) {
           autoCorrect="off"
           spellCheck={false}
           onChange={(event) => setManual(event.target.value.toUpperCase())}
-          className="border-ink/20 bg-bone-soft min-w-0 flex-1 rounded-lg border px-3 py-2.5 font-mono text-[0.9375rem] tracking-wider uppercase"
+          className="border-ink/20 bg-bone-soft min-w-0 flex-1 rounded-lg border px-3 py-3 font-mono text-[0.9375rem] tracking-wider uppercase"
         />
         <Button type="submit" variant="outline" size="md">
           Check

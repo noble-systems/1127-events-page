@@ -45,8 +45,14 @@ export function AdminNav({ email, mode }: { email: string; mode: string }) {
           className="bg-ink/15 hidden h-5 w-px shrink-0 sm:block"
         />
 
-        <nav aria-label="Admin" className="order-3 w-full sm:order-none sm:w-auto">
-          <ul className="flex items-center gap-1">
+        {/* One row that scrolls sideways on a phone; ten labels never wrap
+            into a heap. The negative margin lets the scroll run edge to
+            edge so the last item isn't clipped mid-letter. */}
+        <nav
+          aria-label="Admin"
+          className="order-3 -mx-5 w-[calc(100%+2.5rem)] overflow-x-auto px-5 [scrollbar-width:none] sm:order-none sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0"
+        >
+          <ul className="flex w-max items-center gap-1 sm:w-auto">
             {LINKS.map((link) => {
               const active = isActive(link.href, link.exact);
               return (
