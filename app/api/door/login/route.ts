@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { DOOR_COOKIE, DOOR_SESSION_HOURS, mintDoorToken } from "@/lib/door-auth";
 import { findDoorPassByPin, patchDoorPass } from "@/lib/door-store";
 import { consume } from "@/lib/rate-limit";
+import { siteUrl } from "@/lib/email";
 import { clientIp } from "@/lib/request-meta";
 
 /**
@@ -42,11 +43,13 @@ export async function GET(request: Request) {
         maxAge: DOOR_SESSION_HOURS * 60 * 60,
       });
       await patchDoorPass(pass.id, { lastUsedAt: new Date().toISOString() });
-      return NextResponse.redirect(new URL("/door", url), 303);
+      // siteUrl(), not request.url: behind the proxy the request host is the
+    // internal localhost, and a redirect there strands the phone.
+    return NextResponse.redirect(new URL("/door", siteUrl()), 303);
     }
   }
 
-  return NextResponse.redirect(new URL("/door?bad=1", url), 303);
+  return NextResponse.redirect(new URL("/door?bad=1", siteUrl()), 303);
 }
 
 export async function POST(request: Request) {
