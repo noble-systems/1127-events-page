@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { listAllEvents } from "@/lib/store";
 import { formatMoney } from "@/lib/tickets";
 import { getOrder, getTicket } from "@/lib/tickets-store";
 
@@ -53,6 +54,32 @@ export default async function TicketWalletPage({
     })),
   );
 
+  /**
+   * When and where, straight from the event record so an edited date or time
+   * shows here without touching sold tickets. The order's eventId may be a
+   * former id after a rename, so both are checked. A deleted event just
+   * means the line is absent; the ticket itself still works.
+   */
+  const eventRecord = await listAllEvents()
+    .then(
+      (events) =>
+        events.find(
+          (event) =>
+            event.id === order.eventId ||
+            (event.formerIds ?? []).includes(order.eventId),
+        ) ?? null,
+    )
+    .catch(() => null);
+  const whenWhere = eventRecord
+    ? [
+        eventRecord.date?.trim(),
+        eventRecord.time?.trim(),
+        eventRecord.venue?.trim() || eventRecord.location?.trim(),
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
+
   return (
     <main className="bg-deep text-bone h-dvh snap-y snap-mandatory overflow-y-auto">
       {tickets.map(({ code, record }, index) => {
@@ -67,6 +94,9 @@ export default async function TicketWalletPage({
               {order.eventName}
             </p>
             <p className="font-display mt-1 text-2xl">{order.tierName}</p>
+            {whenWhere ? (
+              <p className="text-bone/70 mt-2 text-[0.9375rem]">{whenWhere}</p>
+            ) : null}
 
             <div
               className={`mt-6 rounded-2xl bg-white p-4 ${
