@@ -293,6 +293,7 @@ function orderToItem(order: TicketOrder) {
     ...(order.phone ? { phone: { S: order.phone } } : {}),
     ...(order.optIn ? { optIn: { BOOL: true } } : {}),
     ...(order.termsVersion ? { termsVersion: { S: order.termsVersion } } : {}),
+    ...(order.comp ? { comp: { BOOL: true } } : {}),
     ...(order.codes?.length ? { codes: { SS: order.codes } } : {}),
     createdAt: { S: order.createdAt },
     updatedAt: { S: order.updatedAt },
@@ -318,6 +319,7 @@ function itemToOrder(
     phone: item.phone?.S ?? null,
     optIn: item.optIn?.BOOL === true,
     termsVersion: item.termsVersion?.S ?? undefined,
+    comp: item.comp?.BOOL === true || undefined,
     codes: item.codes?.SS ?? undefined,
     createdAt: item.createdAt?.S ?? "",
     updatedAt: item.updatedAt?.S ?? "",
@@ -477,6 +479,44 @@ export async function listAllOrders(): Promise<TicketOrder[]> {
   } while (cursor);
 
   return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** Moves attribution from one ambassador code to another, for code renames. */
+export async function reassignOrdersVia(
+  oldCode: string,
+  newCode: string,
+): Promise<number> {
+  const table = TABLE();
+  let moved = 0;
+
+  if (!table) {
+    const data = await localRead();
+    for (const order of Object.values(data.orders)) {
+      if (order.via === oldCode) {
+        order.via = newCode;
+        moved += 1;
+      }
+    }
+    await localWrite(data);
+    return moved;
+  }
+
+  const rows = await listAllOrders();
+  for (const order of rows) {
+    if (order.via !== oldCode) continue;
+    await db().send(
+      new UpdateItemCommand({
+        TableName: table,
+        Key: { pk: { S: `ord#${order.ref}` } },
+        // #alias, the door-pass lesson: never bet on a word being unreserved.
+        UpdateExpression: "SET #v = :v",
+        ExpressionAttributeNames: { "#v": "via" },
+        ExpressionAttributeValues: { ":v": { S: newCode } },
+      }),
+    );
+    moved += 1;
+  }
+  return moved;
 }
 
 /** Every order for a set of event ids (current id plus formerIds), newest first. */

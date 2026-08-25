@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeAmbassadorCode } from "@/lib/ambassadors";
-import { activeAmbassadorCode } from "@/lib/ambassadors-store";
+import { activeAmbassadorCode, bumpAmbassadorClicks } from "@/lib/ambassadors-store";
 import { siteUrl } from "@/lib/email";
 import { listPublicEvents } from "@/lib/store";
 import { isSelling } from "@/lib/tickets";
@@ -34,6 +34,10 @@ export async function GET(_request: Request, { params }: Params) {
       : featured && featured.rsvpEnabled !== false
         ? `/rsvp/${encodeURIComponent(featured.id)}`
         : "/rsvp";
+
+  // The tap count is the "how many used their link" number on the
+  // dashboard. Best effort; a lost tick must never slow the redirect.
+  if (code) void bumpAmbassadorClicks(code);
 
   const suffix = code ? `?via=${encodeURIComponent(code)}` : "";
   return NextResponse.redirect(`${siteUrl()}${target}${suffix}`, 307);

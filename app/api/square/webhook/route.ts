@@ -182,5 +182,64 @@ export async function POST(request: Request) {
     console.error("[1127] ticket issue failed after settle", ref, error);
   }
 
+  /**
+   * The ambassador reward: every REWARD_EVERY tickets sold through a code
+   * earns one free ticket, sent to the ambassador on file. claimReward is a
+   * conditional counter bump, so two sales settling at once cannot both pay
+   * out the same milestone, and the comp itself is excluded from the sold
+   * count so a reward can never earn a reward.
+   */
+  if (order.via && order.comp !== true) {
+    try {
+      const { REWARD_EVERY_DEFAULT, rewardsEarned, ticketsSoldBy } =
+        await import("@/lib/ambassadors");
+      const { claimReward, getAmbassador, getRewardEvery } = await import(
+        "@/lib/ambassadors-store"
+      );
+      const { listAllOrders } = await import("@/lib/tickets-store");
+      const { issueCompTickets } = await import("@/lib/comp-tickets");
+
+      const ambassador = await getAmbassador(order.via);
+      if (ambassador?.email) {
+        const sold = ticketsSoldBy(order.via, await listAllOrders());
+        const every = await getRewardEvery(REWARD_EVERY_DEFAULT);
+        const earned = rewardsEarned(sold, every);
+        let given = ambassador.rewardsGiven ?? 0;
+
+        while (given < earned) {
+          if (!(await claimReward(order.via, given))) break;
+          const eventRecord = await getEvent(order.eventId).catch(() => null);
+          const tier = eventRecord?.ticketTiers?.find(
+            (row) => row.id === order.tierId,
+          );
+          if (!eventRecord || !tier) break;
+          const issued = await issueCompTickets({
+            event: eventRecord,
+            tier,
+            quantity: 1,
+            email: ambassador.email,
+            via: order.via,
+            note: `Free, for selling ${every}`,
+          });
+          if (!issued.ok) {
+            console.error(
+              "[1127] ambassador reward could not issue",
+              order.via,
+              issued.reason,
+            );
+          }
+          given += 1;
+        }
+      } else if (ambassador) {
+        console.error(
+          "[1127] ambassador earned a reward but has no email on file",
+          order.via,
+        );
+      }
+    } catch (error) {
+      console.error("[1127] ambassador reward check failed", order.via, error);
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

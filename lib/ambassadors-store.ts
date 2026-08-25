@@ -63,7 +63,11 @@ export async function createAmbassador(ambassador: Ambassador): Promise<boolean>
           pk: { S: pk(ambassador.code) },
           code: { S: ambassador.code },
           name: { S: ambassador.name },
+          ...(ambassador.email ? { email: { S: ambassador.email } } : {}),
           active: { BOOL: ambassador.active },
+          ...(ambassador.rewardsGiven
+            ? { rewardsGiven: { N: String(ambassador.rewardsGiven) } }
+            : {}),
           createdAt: { S: ambassador.createdAt },
         },
         ConditionExpression: "attribute_not_exists(pk)",
@@ -92,7 +96,11 @@ export async function getAmbassador(code: string): Promise<Ambassador | null> {
   return {
     code: out.Item.code?.S ?? "",
     name: out.Item.name?.S ?? "",
+    email: out.Item.email?.S ?? undefined,
     active: out.Item.active?.BOOL ?? false,
+    rewardsGiven: out.Item.rewardsGiven?.N
+      ? Number(out.Item.rewardsGiven.N)
+      : undefined,
     createdAt: out.Item.createdAt?.S ?? "",
   };
 }
@@ -131,6 +139,253 @@ export async function setAmbassadorActive(
   );
 }
 
+/**
+ * Updates the fields an admin can change; #aliases because DynamoDB reserves
+ * plenty of ordinary words, the lesson the door passes taught.
+ */
+export async function patchAmbassador(
+  code: string,
+  patch: Partial<Pick<Ambassador, "active" | "email" | "name">>,
+): Promise<void> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    if (!data[code]) return;
+    Object.assign(data[code], patch);
+    await localWrite(data);
+    return;
+  }
+
+  const sets: string[] = [];
+  const names: Record<string, string> = {};
+  const values: Record<string, unknown> = {};
+  if (patch.active !== undefined) {
+    sets.push("#a = :a");
+    names["#a"] = "active";
+    values[":a"] = { BOOL: patch.active };
+  }
+  if (patch.email !== undefined) {
+    sets.push("#e = :e");
+    names["#e"] = "email";
+    values[":e"] = { S: patch.email };
+  }
+  if (patch.name !== undefined) {
+    sets.push("#n = :n");
+    names["#n"] = "name";
+    values[":n"] = { S: patch.name };
+  }
+  if (sets.length === 0) return;
+
+  await db().send(
+    new UpdateItemCommand({
+      TableName: table,
+      Key: { pk: { S: pk(code) } },
+      UpdateExpression: `SET ${sets.join(", ")}`,
+      ConditionExpression: "attribute_exists(pk)",
+      ExpressionAttributeNames: names,
+      ExpressionAttributeValues: values as never,
+    }),
+  );
+}
+
+/**
+ * Claims one more reward, atomically: only succeeds when rewardsGiven still
+ * equals `expected`, so two sales settling at once cannot both issue the
+ * same free ticket.
+ */
+export async function claimReward(
+  code: string,
+  expected: number,
+): Promise<boolean> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    const row = data[code];
+    if (!row || (row.rewardsGiven ?? 0) !== expected) return false;
+    row.rewardsGiven = expected + 1;
+    await localWrite(data);
+    return true;
+  }
+
+  try {
+    await db().send(
+      new UpdateItemCommand({
+        TableName: table,
+        Key: { pk: { S: pk(code) } },
+        UpdateExpression: "SET #r = :next",
+        ConditionExpression:
+          expected === 0
+            ? "attribute_exists(pk) AND (attribute_not_exists(#r) OR #r = :expected)"
+            : "attribute_exists(pk) AND #r = :expected",
+        ExpressionAttributeNames: { "#r": "rewardsGiven" },
+        ExpressionAttributeValues: {
+          ":next": { N: String(expected + 1) },
+          ":expected": { N: String(expected) },
+        },
+      }),
+    );
+    return true;
+  } catch (error) {
+    if ((error as { name?: string }).name === "ConditionalCheckFailedException") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Link taps                                                                  */
+/* ------------------------------------------------------------------------- */
+
+const clickPk = (code: string) => `ambc#${code}`;
+const REWARD_CFG_PK = "cfg#ambassador-reward";
+/** Local-driver stand-in row; filtered out of every listing. */
+const LOCAL_CFG_KEY = "__reward_every__";
+
+/** How many sales earn a free ticket, as set on the dashboard. */
+export async function getRewardEvery(fallback: number): Promise<number> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    const raw = (data as Record<string, unknown>)[LOCAL_CFG_KEY];
+    return typeof raw === "number" && raw > 0 ? raw : fallback;
+  }
+
+  const out = await db().send(
+    new GetItemCommand({ TableName: table, Key: { pk: { S: REWARD_CFG_PK } } }),
+  );
+  const n = Number(out.Item?.n?.N ?? 0);
+  return n > 0 ? n : fallback;
+}
+
+export async function setRewardEvery(every: number): Promise<void> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    (data as Record<string, unknown>)[LOCAL_CFG_KEY] = every;
+    await localWrite(data);
+    return;
+  }
+
+  await db().send(
+    new PutItemCommand({
+      TableName: table,
+      Item: { pk: { S: REWARD_CFG_PK }, n: { N: String(every) } },
+    }),
+  );
+}
+
+export async function deleteAmbassador(code: string): Promise<void> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    delete data[code];
+    await localWrite(data);
+    return;
+  }
+
+  const { DeleteItemCommand } = await import("@aws-sdk/client-dynamodb");
+  await db().send(
+    new DeleteItemCommand({ TableName: table, Key: { pk: { S: pk(code) } } }),
+  );
+}
+
+/** Carries the tap counter through a code rename. */
+export async function moveAmbassadorClicks(
+  oldCode: string,
+  newCode: string,
+): Promise<void> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    const from = data[oldCode] as (Ambassador & { clicks?: number }) | undefined;
+    const to = data[newCode] as (Ambassador & { clicks?: number }) | undefined;
+    if (from?.clicks && to) to.clicks = (to.clicks ?? 0) + from.clicks;
+    await localWrite(data);
+    return;
+  }
+
+  const item = await db().send(
+    new GetItemCommand({ TableName: table, Key: { pk: { S: clickPk(oldCode) } } }),
+  );
+  const n = Number(item.Item?.n?.N ?? 0);
+  if (n > 0) {
+    await db().send(
+      new UpdateItemCommand({
+        TableName: table,
+        Key: { pk: { S: clickPk(newCode) } },
+        UpdateExpression: "ADD n :n",
+        ExpressionAttributeValues: { ":n": { N: String(n) } },
+      }),
+    );
+    const { DeleteItemCommand } = await import("@aws-sdk/client-dynamodb");
+    await db().send(
+      new DeleteItemCommand({
+        TableName: table,
+        Key: { pk: { S: clickPk(oldCode) } },
+      }),
+    );
+  }
+}
+
+/** One more tap on a share link. Fire and forget at the call site. */
+export async function bumpAmbassadorClicks(code: string): Promise<void> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    // Local driver keeps clicks inline on the pass for simplicity.
+    const row = data[code] as (Ambassador & { clicks?: number }) | undefined;
+    if (!row) return;
+    row.clicks = (row.clicks ?? 0) + 1;
+    await localWrite(data);
+    return;
+  }
+
+  await db()
+    .send(
+      new UpdateItemCommand({
+        TableName: table,
+        Key: { pk: { S: clickPk(code) } },
+        UpdateExpression: "ADD n :one",
+        ExpressionAttributeValues: { ":one": { N: "1" } },
+      }),
+    )
+    .catch((error) => console.error("[1127] click bump failed", error));
+}
+
+export async function readAmbassadorClicks(
+  codes: readonly string[],
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    for (const code of codes) {
+      const row = data[code] as (Ambassador & { clicks?: number }) | undefined;
+      out.set(code, row?.clicks ?? 0);
+    }
+    return out;
+  }
+
+  await Promise.all(
+    codes.map(async (code) => {
+      const item = await db().send(
+        new GetItemCommand({ TableName: table, Key: { pk: { S: clickPk(code) } } }),
+      );
+      out.set(code, Number(item.Item?.n?.N ?? 0));
+    }),
+  );
+  return out;
+}
+
 export async function listAmbassadors(): Promise<Ambassador[]> {
   const table = TABLE();
 
@@ -155,7 +410,11 @@ export async function listAmbassadors(): Promise<Ambassador[]> {
       rows.push({
         code: item.code?.S ?? "",
         name: item.name?.S ?? "",
+        email: (item.email as { S?: string } | undefined)?.S ?? undefined,
         active: item.active?.BOOL ?? false,
+        rewardsGiven: (item.rewardsGiven as { N?: string } | undefined)?.N
+          ? Number((item.rewardsGiven as { N: string }).N)
+          : undefined,
         createdAt: item.createdAt?.S ?? "",
       });
     }

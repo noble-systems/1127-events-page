@@ -108,6 +108,8 @@ export type TicketOrder = {
   optIn?: boolean;
   /** Terms version accepted at checkout; the consent paper trail. */
   termsVersion?: string;
+  /** Issued free by an admin or the reward system; never counts as a sale. */
+  comp?: boolean;
   /** Issued codes, present once paid. */
   codes?: string[];
   createdAt: string;

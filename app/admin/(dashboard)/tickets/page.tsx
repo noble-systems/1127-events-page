@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { listAllEvents } from "@/lib/store";
 import { squareConfigured } from "@/lib/square";
 import { formatMoney, remainingFor } from "@/lib/tickets";
+import { MintTickets } from "@/components/admin/MintTickets";
 import { listOrders, listTicketsForEvents, readInventory } from "@/lib/tickets-store";
 import type { TicketRecord } from "@/lib/tickets";
 import type { EventRecord, TicketTier } from "@/lib/types";
@@ -108,6 +109,21 @@ export default async function AdminTicketsPage() {
           &quot;sales aren&apos;t switched on&quot;. Ticket types can still be
           set up on each event.
         </p>
+      ) : null}
+
+      {events.length > 0 ? (
+        <div className="mt-6">
+          <MintTickets
+            events={events.map((event) => ({
+              id: event.id,
+              name: event.name,
+              tiers: (event.ticketTiers ?? []).map((tier) => ({
+                id: tier.id,
+                name: tier.name,
+              })),
+            }))}
+          />
+        </div>
       ) : null}
 
       {sections.length === 0 ? (
@@ -218,7 +234,11 @@ export default async function AdminTicketsPage() {
                         <td className="py-2 pr-4">{order.tierName}</td>
                         <td className="py-2 pr-4 tabular-nums">{order.quantity}</td>
                         <td className="py-2 pr-4 tabular-nums">
-                          {formatMoney(order.amountCents)}
+                          {order.comp ? (
+                            <span className="text-sun-deep">comp</span>
+                          ) : (
+                            formatMoney(order.amountCents)
+                          )}
                         </td>
                         <td className="py-2 pr-4">{order.email ?? ""}</td>
                         <td className="py-2 pr-4 whitespace-nowrap tabular-nums">

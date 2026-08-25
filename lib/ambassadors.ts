@@ -36,8 +36,12 @@ export function suggestAmbassadorCode(name: string): string {
 export type Ambassador = {
   code: string;
   name: string;
+  /** Where their free tickets go. Absent on codes made before rewards. */
+  email?: string;
   /** Inactive codes stop attributing but keep their history. */
   active: boolean;
+  /** How many free tickets have already been issued to them. */
+  rewardsGiven?: number;
   createdAt: string;
 };
 
@@ -46,7 +50,17 @@ export type AmbassadorStats = Ambassador & {
   orders: number;
   tickets: number;
   grossCents: number;
+  /** Times somebody opened their share link. */
+  clicks: number;
 };
+
+/** Default: one free ticket per this many sold. The dashboard can change it. */
+export const REWARD_EVERY_DEFAULT = 3;
+
+/** Free tickets earned by a sold-count, before subtracting ones given. */
+export function rewardsEarned(ticketsSold: number, every: number): number {
+  return every > 0 ? Math.floor(ticketsSold / every) : 0;
+}
 
 /**
  * The payout sheet: every code with what it brought in. Counts paid orders
@@ -56,10 +70,16 @@ export function ambassadorStats(
   ambassadors: readonly Ambassador[],
   orders: readonly TicketOrder[],
   rsvps: readonly SubmissionRecord[],
+  clicksByCode: ReadonlyMap<string, number> = new Map(),
 ): AmbassadorStats[] {
   return ambassadors.map((ambassador) => {
+    // Comp orders are excluded everywhere here: a free ticket the system
+    // issued is not a sale, and must never count toward earning another.
     const paid = orders.filter(
-      (order) => order.status === "paid" && order.via === ambassador.code,
+      (order) =>
+        order.status === "paid" &&
+        order.via === ambassador.code &&
+        order.comp !== true,
     );
     return {
       ...ambassador,
@@ -67,6 +87,20 @@ export function ambassadorStats(
       orders: paid.length,
       tickets: paid.reduce((sum, order) => sum + order.quantity, 0),
       grossCents: paid.reduce((sum, order) => sum + order.amountCents, 0),
+      clicks: clicksByCode.get(ambassador.code) ?? 0,
     };
   });
+}
+
+/** Tickets sold by one code, comp orders excluded. The reward trigger. */
+export function ticketsSoldBy(
+  code: string,
+  orders: readonly TicketOrder[],
+): number {
+  return orders
+    .filter(
+      (order) =>
+        order.status === "paid" && order.via === code && order.comp !== true,
+    )
+    .reduce((sum, order) => sum + order.quantity, 0);
 }

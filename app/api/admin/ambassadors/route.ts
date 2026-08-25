@@ -7,8 +7,11 @@ import {
 import {
   createAmbassador,
   listAmbassadors,
+  patchAmbassador,
   setAmbassadorActive,
+  setRewardEvery,
 } from "@/lib/ambassadors-store";
+import { renameAmbassador } from "@/lib/ambassador-admin";
 
 /**
  * Ambassador codes, admin only.
@@ -34,8 +37,11 @@ export async function POST(request: Request) {
   const body = (await readJson(request)) as {
     name?: unknown;
     code?: unknown;
+    email?: unknown;
   } | null;
   const name = typeof body?.name === "string" ? body.name.trim() : "";
+  const email =
+    typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const code = normalizeAmbassadorCode(
     typeof body?.code === "string" ? body.code : "",
   );
@@ -43,6 +49,13 @@ export async function POST(request: Request) {
   if (!name || name.length > 120) {
     return NextResponse.json(
       { ok: false, message: "Give the ambassador a name." },
+      { status: 400 },
+    );
+  }
+  // Required, because the reward system sends their free tickets here.
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json(
+      { ok: false, message: "Give the ambassador an email for their free tickets." },
       { status: 400 },
     );
   }
@@ -60,6 +73,7 @@ export async function POST(request: Request) {
   const created = await createAmbassador({
     code,
     name,
+    email,
     active: true,
     createdAt: new Date().toISOString(),
   });
@@ -80,13 +94,57 @@ export async function PATCH(request: Request) {
   const body = (await readJson(request)) as {
     code?: unknown;
     active?: unknown;
+    newCode?: unknown;
+    email?: unknown;
+    rewardEvery?: unknown;
   } | null;
   const code = normalizeAmbassadorCode(
     typeof body?.code === "string" ? body.code : "",
   );
+
+  // Reward setting: how many sales earn a free ticket. Site-wide, not
+  // per-code.
+  if (typeof body?.rewardEvery === "number") {
+    const every = Math.floor(body.rewardEvery);
+    if (every < 1 || every > 100) {
+      return NextResponse.json(
+        { ok: false, message: "Free-ticket threshold is 1 to 100 sales." },
+        { status: 400 },
+      );
+    }
+    await setRewardEvery(every);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (typeof body?.newCode === "string") {
+    const renamed = await renameAmbassador(
+      code,
+      normalizeAmbassadorCode(body.newCode),
+    );
+    if (!renamed.ok) {
+      return NextResponse.json(
+        { ok: false, message: renamed.reason },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (typeof body?.email === "string") {
+    const email = body.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json(
+        { ok: false, message: "That email doesn't look right." },
+        { status: 400 },
+      );
+    }
+    await patchAmbassador(code, { email });
+    return NextResponse.json({ ok: true });
+  }
+
   if (!isValidAmbassadorCode(code) || typeof body?.active !== "boolean") {
     return NextResponse.json(
-      { ok: false, message: "Say which code, and on or off." },
+      { ok: false, message: "Say which code, and what to change." },
       { status: 400 },
     );
   }

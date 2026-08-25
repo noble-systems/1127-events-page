@@ -523,3 +523,159 @@ describe("door passes", () => {
     assert.equal((await findDoorPassByPin(pass.pin))?.id, pass.id);
   });
 });
+
+/* -------------------------------------------------------------------------- */
+/* Comps and the ambassador reward                                            */
+/* -------------------------------------------------------------------------- */
+
+const { issueCompTickets } = await import("./comp-tickets.ts");
+const { createAmbassador: mintAmb, getAmbassador: readAmb } = await import(
+  "./ambassadors-store.ts"
+);
+
+describe("comp tickets", () => {
+  beforeEach(reset);
+
+  test("a comp settles paid at zero dollars with real codes and seats", async () => {
+    await seedEvent();
+    const event = (await (await import("./store/index.ts")).getEvent("mirage"))!;
+    const tier = event.ticketTiers![0];
+
+    const out = await issueCompTickets({
+      event,
+      tier,
+      quantity: 2,
+      email: "guest@example.com",
+    });
+    assert.equal(out.ok, true);
+    if (!out.ok) return;
+    assert.equal(out.order.comp, true);
+    assert.equal(out.order.amountCents, 0);
+    assert.equal(out.order.codes?.length, 2);
+
+    const inv = await readInventory("mirage", ["early-bird"]);
+    assert.deepEqual(inv.get("early-bird"), { taken: 2, sold: 2 });
+  });
+
+  test("a full tier refuses the comp instead of overfilling", async () => {
+    await seedEvent();
+    await reserveTickets("mirage", "early-bird", 25, 25);
+    const event = (await (await import("./store/index.ts")).getEvent("mirage"))!;
+    const out = await issueCompTickets({
+      event,
+      tier: event.ticketTiers![0],
+      quantity: 1,
+      email: "guest@example.com",
+    });
+    assert.equal(out.ok, false);
+  });
+});
+
+describe("the ambassador reward", () => {
+  beforeEach(reset);
+
+  test("the third sold ticket sends a free one, exactly once", async () => {
+    await seedEvent();
+    await mintAmb({
+      code: "DANI",
+      name: "Daniela",
+      email: "dani@example.com",
+      active: true,
+      createdAt: new Date().toISOString(),
+    });
+
+    // Three separate one-ticket sales through the code.
+    for (const ref of ["s1", "s2", "s3"]) {
+      await reserveTickets("mirage", "early-bird", 1, 25);
+      await createOrder(order(ref, { quantity: 1, via: "DANI", email: "b@x.co" }));
+      await webhook(signedRequest(completedEvent(`sq-${ref}`)));
+    }
+
+    const amb = await readAmb("DANI");
+    assert.equal(amb?.rewardsGiven, 1, "one reward at three sold");
+
+    const all = await listOrders(["mirage"]);
+    const comps = all.filter((row) => row.comp === true);
+    assert.equal(comps.length, 1, "exactly one free ticket");
+    assert.equal(comps[0].email, "dani@example.com");
+    assert.equal(comps[0].via, "DANI");
+    assert.equal(comps[0].amountCents, 0);
+
+    // The comp itself never counts toward the next reward.
+    const { ticketsSoldBy } = await import("./ambassadors.ts");
+    assert.equal(ticketsSoldBy("DANI", all), 3);
+
+    // Redelivering the third sale's webhook changes nothing.
+    await webhook(signedRequest(completedEvent("sq-s3")));
+    assert.equal((await readAmb("DANI"))?.rewardsGiven, 1);
+    assert.equal(
+      (await listOrders(["mirage"])).filter((row) => row.comp === true).length,
+      1,
+    );
+  });
+
+  test("no email on file means no reward and a loud log, not a crash", async () => {
+    await seedEvent();
+    await mintAmb({
+      code: "MARCO",
+      name: "Marco",
+      active: true,
+      createdAt: new Date().toISOString(),
+    });
+
+    for (const ref of ["m1", "m2", "m3"]) {
+      await reserveTickets("mirage", "early-bird", 1, 25);
+      await createOrder(order(ref, { quantity: 1, via: "MARCO", email: "b@x.co" }));
+      await webhook(signedRequest(completedEvent(`sq-${ref}`)));
+    }
+
+    assert.equal((await readAmb("MARCO"))?.rewardsGiven ?? 0, 0);
+    assert.equal(
+      (await listOrders(["mirage"])).filter((row) => row.comp === true).length,
+      0,
+    );
+  });
+});
+
+describe("renaming an ambassador code", () => {
+  beforeEach(reset);
+
+  test("history, clicks and identity all follow; the old code dies", async () => {
+    const { renameAmbassador } = await import("./ambassador-admin.ts");
+    const { bumpAmbassadorClicks, readAmbassadorClicks } = await import(
+      "./ambassadors-store.ts"
+    );
+
+    await mintAmb({
+      code: "DANI",
+      name: "Daniela",
+      email: "dani@example.com",
+      active: true,
+      createdAt: new Date().toISOString(),
+    });
+    await createOrder(order("rv", { via: "DANI" }));
+    await settleOrder("rv", "paid");
+    await bumpAmbassadorClicks("DANI");
+
+    const out = await renameAmbassador("DANI", "DANIELA");
+    assert.equal(out.ok, true);
+
+    assert.equal(await readAmb("DANI"), null, "old code gone");
+    const renamed = await readAmb("DANIELA");
+    assert.equal(renamed?.email, "dani@example.com");
+
+    const orders = await listOrders(["mirage"]);
+    assert.equal(orders[0]?.via, "DANIELA", "sale history moved");
+
+    const clicks = await readAmbassadorClicks(["DANIELA"]);
+    assert.equal(clicks.get("DANIELA"), 1, "taps moved");
+  });
+
+  test("a taken code refuses", async () => {
+    const { renameAmbassador } = await import("./ambassador-admin.ts");
+    await mintAmb({ code: "AAA", name: "A", active: true, createdAt: new Date().toISOString() });
+    await mintAmb({ code: "BBB", name: "B", active: true, createdAt: new Date().toISOString() });
+    const out = await renameAmbassador("AAA", "BBB");
+    assert.equal(out.ok, false);
+  });
+});
