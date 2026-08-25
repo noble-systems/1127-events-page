@@ -218,6 +218,7 @@ export function EventForm({
         ok?: boolean;
         errors?: FormErrors;
         message?: string;
+        notified?: number;
       } | null;
 
       if (!response.ok || !data?.ok) {
@@ -225,6 +226,14 @@ export function EventForm({
         setMessage(data?.message ?? "Couldn't save that. Please try again.");
         setBusy(false);
         return;
+      }
+
+      // A date or time change already emailed every ticket holder; say so,
+      // because silently notifying people is how double-announcements happen.
+      if (typeof data?.notified === "number" && data.notified > 0) {
+        window.alert(
+          `Schedule change: ${data.notified} ticket ${data.notified === 1 ? "holder was" : "holders were"} emailed the new date and time.`,
+        );
       }
 
       router.push("/admin/events");

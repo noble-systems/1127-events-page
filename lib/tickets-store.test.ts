@@ -572,6 +572,39 @@ describe("comp tickets", () => {
   });
 });
 
+const { scheduleChanged, notifyScheduleChange } = await import(
+  "./schedule-notify.ts"
+);
+
+describe("schedule-change notice", () => {
+  beforeEach(reset);
+
+  test("only a moved date or changed hours count as a schedule change", () => {
+    const before = { date: "Aug 30", time: "12-4 PM" };
+    assert.equal(scheduleChanged(before, { date: "Sep 6", time: "12-4 PM" }), true);
+    assert.equal(scheduleChanged(before, { date: "Aug 30", time: "1-5 PM" }), true);
+    assert.equal(scheduleChanged(before, { date: "Aug 30", time: "12-4 PM" }), false);
+    // Whitespace and a missing field are not a change.
+    assert.equal(scheduleChanged({ date: "Aug 30", time: null }, { date: " Aug 30 ", time: "" }), false);
+  });
+
+  test("every paid order with an email gets one notice", async () => {
+    await seedEvent();
+    for (const ref of ["n1", "n2"]) {
+      await reserveTickets("mirage", "early-bird", 1, 25);
+      await createOrder(order(ref, { quantity: 1, email: "b@x.co" }));
+      await webhook(signedRequest(completedEvent(`sq-${ref}`)));
+    }
+    // A pending order holds no tickets yet, so it gets nothing.
+    await reserveTickets("mirage", "early-bird", 1, 25);
+    await createOrder(order("n3", { quantity: 1, email: "c@x.co" }));
+
+    const event = (await (await import("./store/index.ts")).getEvent("mirage"))!;
+    const sent = await notifyScheduleChange(event);
+    assert.equal(sent, 2, "the two paid orders, not the pending one");
+  });
+});
+
 describe("the ambassador reward", () => {
   beforeEach(reset);
 

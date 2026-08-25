@@ -7,6 +7,7 @@ import {
   toEventInput,
   validateEvent,
 } from "@/lib/event-input";
+import { notifyScheduleChange, scheduleChanged } from "@/lib/schedule-notify";
 import {
   deleteEvent,
   getEvent,
@@ -96,7 +97,26 @@ export async function PUT(request: Request, { params }: Params) {
   if (newId) event = await renameEvent(event, newId);
   revalidatePath("/");
 
-  return NextResponse.json({ ok: true, event });
+  /**
+   * A moved date or changed hours goes out to every ticket holder, right
+   * now, from this save. The emails are best-effort per recipient; the save
+   * itself already succeeded and stays succeeded.
+   */
+  let notified = 0;
+  if (scheduleChanged(existing, event)) {
+    try {
+      notified = await notifyScheduleChange(event);
+      if (notified > 0) {
+        console.log(
+          `[1127] schedule change for ${event.id}: told ${notified} ticket holder(s)`,
+        );
+      }
+    } catch (error) {
+      console.error("[1127] schedule-change notify failed", event.id, error);
+    }
+  }
+
+  return NextResponse.json({ ok: true, event, notified });
 }
 
 export async function DELETE(_request: Request, { params }: Params) {

@@ -1123,6 +1123,66 @@ export function renderTicketEmail(input: {
   return { subject, html, text };
 }
 
+/**
+ * Sent to every ticket holder when an event's date or hours change. The one
+ * email nobody can afford to miss, so it says the new schedule outright and
+ * repeats that the tickets themselves are untouched.
+ */
+export function renderScheduleChangeEmail(input: {
+  eventName: string;
+  date?: string;
+  time?: string;
+  location?: string;
+  walletUrl?: string;
+}) {
+  const subject = `${input.eventName}: schedule update`;
+  const when = [
+    input.date?.trim() ? escapeHtml(input.date.trim()) : null,
+    input.time?.trim() ? escapeHtml(input.time.trim()) : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const where = input.location?.trim() ? escapeHtml(input.location.trim()) : "";
+
+  const html = receiptShell({
+    preheader: `New schedule for ${input.eventName}.`,
+    heading: "Schedule update",
+    body: `
+      <p style="margin:0 0 12px;font:400 15px/1.6 Helvetica,Arial,sans-serif;color:${INK};">The schedule for <strong>${escapeHtml(input.eventName)}</strong> changed. It now runs:</p>
+      <p style="margin:0 0 6px;font:600 20px/1.4 Helvetica,Arial,sans-serif;color:${INK};">${when || "Date to be announced"}</p>
+      ${where ? `<p style="margin:0 0 16px;font:400 14px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">${where}</p>` : ""}
+      <p style="margin:16px 0 0;font:400 14px/1.6 Helvetica,Arial,sans-serif;color:${INK};">Your tickets are unchanged and stay valid exactly as they are. Nothing to rebuy, nothing to reprint.</p>
+      ${
+        input.walletUrl
+          ? `<p style="margin:18px 0 0;"><a href="${input.walletUrl}" style="display:inline-block;background:${DEEP};color:${BONE};font:600 15px/1 Helvetica,Arial,sans-serif;padding:14px 26px;border-radius:999px;text-decoration:none;">See your tickets</a></p>`
+          : ""
+      }`,
+    footer: `You're getting this because you hold tickets for ${escapeHtml(input.eventName)}.`,
+  });
+
+  const text = [
+    `The schedule for ${input.eventName} changed. It now runs:`,
+    [input.date?.trim(), input.time?.trim()].filter(Boolean).join(", ") ||
+      "Date to be announced",
+    input.location?.trim() ?? "",
+    "",
+    "Your tickets are unchanged and stay valid exactly as they are.",
+    input.walletUrl ? `Your tickets: ${input.walletUrl}` : "",
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
+
+  return { subject, html, text };
+}
+
+export async function sendScheduleChangeEmail(
+  to: string,
+  input: Parameters<typeof renderScheduleChangeEmail>[0],
+): Promise<void> {
+  const { subject, html, text } = renderScheduleChangeEmail(input);
+  await sendDirect({ to: [to], subject, html, text });
+}
+
 export async function sendTicketEmail(
   to: string,
   input: Parameters<typeof renderTicketEmail>[0],
