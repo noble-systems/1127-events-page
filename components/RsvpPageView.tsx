@@ -40,9 +40,16 @@ function eventFacts(event?: EventRecord) {
 
 export function RsvpPageView({
   featured,
+  ticketEvent,
   via,
 }: {
   featured?: EventRecord;
+  /**
+   * An event currently selling tickets, for the generic page with no featured
+   * event of its own. The page must never claim nothing is happening while a
+   * sale is live somewhere on the site.
+   */
+  ticketEvent?: EventRecord;
   /** Ambassador code from the share link, passed through to the form. */
   via?: string;
 }) {
@@ -54,16 +61,20 @@ export function RsvpPageView({
    */
   const closed = Boolean(featured && featured.rsvpEnabled === false);
 
+  /** The event whose tickets are on sale right now, if any. */
+  const seller =
+    featured && isSelling(featured)
+      ? featured
+      : ticketEvent && isSelling(ticketEvent)
+        ? ticketEvent
+        : undefined;
+  const ticketsHref = seller
+    ? `/tickets/${encodeURIComponent(seller.id)}`
+    : null;
+
   return (
     <>
-      <SiteHeader
-        overlay={false}
-        ticketsHref={
-          featured && isSelling(featured)
-            ? `/tickets/${encodeURIComponent(featured.id)}`
-            : null
-        }
-      />
+      <SiteHeader overlay={false} ticketsHref={ticketsHref} />
 
       <main id="main" className="bg-bone pt-[4.5rem] lg:pt-20">
         {/* ---------------------------------------------------------------- */}
@@ -102,10 +113,21 @@ export function RsvpPageView({
               </p>
 
               <p className="text-bone/75 mt-6 max-w-lg text-[1.0625rem] leading-relaxed">
-                {closed
-                  ? "The guest list for this one isn't open right now. Dates and signups go up on the homepage first, so keep an eye there."
-                  : "Dates aren't public yet. Leave your details and you'll hear about the next one before anyone else, and get first access when the guest list opens."}
+                {seller
+                  ? `Tickets for ${seller.name} are on sale now. The list below doesn't reserve a spot; it gets you news and first access to future dates.`
+                  : closed
+                    ? "The guest list for this one isn't open right now. Dates and signups go up on the homepage first, so keep an eye there."
+                    : "Leave your details and you'll hear about the next date before anyone else, and get first access when signups open."}
               </p>
+
+              {ticketsHref ? (
+                <div className="mt-8">
+                  <ButtonLink href={ticketsHref} variant="sun" size="lg">
+                    Get tickets
+                    <ArrowIcon />
+                  </ButtonLink>
+                </div>
+              ) : null}
 
               <dl className="border-bone/15 bg-bone/15 mt-10 grid gap-px overflow-hidden rounded-2xl border sm:grid-cols-2">
                 <div className="bg-deep px-5 py-5">
@@ -139,16 +161,35 @@ export function RsvpPageView({
 
             <div className="lg:col-span-6">
               <div className="border-ink/10 bg-bone text-ink rounded-3xl border p-6 shadow-[0_40px_90px_-50px_rgba(4,12,32,0.9)] sm:p-9">
-                {closed ? (
+                {closed && seller ? (
                   <>
                     <h2 className="text-3xl leading-tight sm:text-4xl">
-                      The list isn&apos;t open yet
+                      Tickets are on sale
                     </h2>
                     {/* One template string, not JSX text after the expression:
                         Turbopack drops the space between them, and production
                         typeset "Mirageisn't" until this was one string. */}
                     <p className="text-ink/65 mt-3 text-[0.9375rem] leading-relaxed">
-                      {`${featured?.name ?? "This event"} isn't taking RSVPs right now. When the list opens, it opens on the site first. Hold onto this link; it will work the moment that happens.`}
+                      {`${seller.name} doesn't have a free list; tickets are how you get in, and they're live right now.`}
+                    </p>
+                    <div className="mt-7">
+                      <ButtonLink
+                        href={ticketsHref ?? "/"}
+                        variant="primary"
+                        size="lg"
+                      >
+                        Get tickets
+                        <ArrowIcon />
+                      </ButtonLink>
+                    </div>
+                  </>
+                ) : closed ? (
+                  <>
+                    <h2 className="text-3xl leading-tight sm:text-4xl">
+                      The list isn&apos;t open yet
+                    </h2>
+                    <p className="text-ink/65 mt-3 text-[0.9375rem] leading-relaxed">
+                      {`${featured?.name ?? "This event"} isn't taking signups right now. When the list opens, it opens on the site first. Hold onto this link; it will work the moment that happens.`}
                     </p>
                     <div className="mt-7">
                       <ButtonLink href="/" variant="primary" size="lg">

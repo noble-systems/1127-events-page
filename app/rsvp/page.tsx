@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { RsvpPageView } from "@/components/RsvpPageView";
 import { listPublicEvents } from "@/lib/store";
+import { isSelling } from "@/lib/tickets";
 
 export const revalidate = 60;
 
-const title = "RSVP";
+const title = "Join the list";
 const description =
   "Join the list and hear about the next 1127 Events date in Old Town Scottsdale before it's public.";
 
@@ -66,5 +67,14 @@ export default async function RsvpPage({
   const viaSuffix = params.via ? `?via=${encodeURIComponent(params.via)}` : "";
   if (target) redirect(`/rsvp/${encodeURIComponent(target.id)}${viaSuffix}`);
 
-  return <RsvpPageView via={params.via} />;
+  /**
+   * No open list to forward to, but a sale might still be live (an event can
+   * sell tickets with its signup list off). The generic page must say so
+   * instead of claiming nothing is happening.
+   */
+  const seller =
+    events.find((event) => event.featured && isSelling(event)) ??
+    events.find((event) => isSelling(event));
+
+  return <RsvpPageView via={params.via} ticketEvent={seller} />;
 }

@@ -48,9 +48,9 @@ async function resolve(params: Params["params"]) {
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { event } = await resolve(params);
-  if (!event) return { title: "RSVP" };
+  if (!event) return { title: "Join the list" };
 
-  const title = `RSVP for ${event.name}`;
+  const title = `Join the list for ${event.name}`;
   const description = event.summary || event.tagline;
   const url = `/rsvp/${event.id}`;
 

@@ -190,7 +190,7 @@ export const hero = {
   secondaryCta: { label: "Partner With 1127", href: "/partner" },
   // Was written into the component, so it was the one button label nobody
   // could change.
-  rsvpCta: "RSVP",
+  rsvpCta: "Join the list",
   /** Swap for a real hero still or poster frame: "/media/hero.jpg" */
   image: null as string | null,
   imageAlt: "Poolside at golden hour in Old Town Scottsdale",
@@ -647,7 +647,7 @@ export const finalCta = {
     eyebrow: "For guests",
     title: "Join the next event",
     body: "Get on the list and hear about the date before it's public.",
-    cta: "RSVP for the next date",
+    cta: "Join the list",
   },
   partners: {
     eyebrow: "For venues, brands & artists",
@@ -669,7 +669,7 @@ export const footer = {
       title: "Events",
       links: [
         { label: "Upcoming events", href: "/#events" },
-        { label: "RSVP", href: "/rsvp" },
+        { label: "Join the list", href: "/rsvp" },
       ],
     },
     {
