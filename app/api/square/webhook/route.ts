@@ -184,48 +184,61 @@ export async function POST(request: Request) {
   }
 
   /**
-   * The ambassador reward: every REWARD_EVERY tickets sold through a code
-   * earns one free ticket, sent to the ambassador on file. claimReward is a
-   * conditional counter bump, so two sales settling at once cannot both pay
-   * out the same milestone, and the comp itself is excluded from the sold
-   * count so a reward can never earn a reward.
+   * The ambassador reward: selling REWARD_EVERY tickets for one event earns
+   * one free ticket for that event, once. Not a recurring multiple; selling
+   * the threshold again for the same event pays nothing more. claimEventReward
+   * succeeds exactly once per (code, event), so two sales settling at once
+   * cannot both pay out, and the comp itself is excluded from the sold count
+   * so a reward can never earn a reward.
    */
   if (order.via && order.comp !== true) {
     try {
-      const { REWARD_EVERY_DEFAULT, rewardsEarned, ticketsSoldBy } =
+      const { REWARD_EVERY_DEFAULT, ticketsSoldBy } =
         await import("@/lib/ambassadors");
-      const { claimReward, getAmbassador, getRewardEvery, getRewardTierName } =
-        await import("@/lib/ambassadors-store");
+      const {
+        claimEventReward,
+        getAmbassador,
+        getRewardEvery,
+        getRewardTierName,
+      } = await import("@/lib/ambassadors-store");
       const { listAllOrders } = await import("@/lib/tickets-store");
       const { issueCompTickets } = await import("@/lib/comp-tickets");
 
       const ambassador = await getAmbassador(order.via);
       if (ambassador?.email) {
-        const sold = ticketsSoldBy(order.via, await listAllOrders());
+        const eventRecord = await getEvent(order.eventId).catch(() => null);
+        const eventIds = eventRecord
+          ? [eventRecord.id, ...(eventRecord.formerIds ?? [])]
+          : [order.eventId];
+        const sold = ticketsSoldBy(order.via, await listAllOrders(), eventIds);
         const every = await getRewardEvery(REWARD_EVERY_DEFAULT);
-        const earned = rewardsEarned(sold, every);
-        let given = ambassador.rewardsGiven ?? 0;
+        const alreadyPaid = (ambassador.rewardedEvents ?? []).some((id) =>
+          eventIds.includes(id),
+        );
 
-        while (given < earned) {
-          if (!(await claimReward(order.via, given))) break;
-          const eventRecord = await getEvent(order.eventId).catch(() => null);
+        if (
+          eventRecord &&
+          sold >= every &&
+          !alreadyPaid &&
+          (await claimEventReward(order.via, eventRecord.id))
+        ) {
           // The dashboard picks the reward type by NAME; a name the sold
           // event does not have falls back to the type that triggered it.
           const wantName = await getRewardTierName();
           const tier =
-            eventRecord?.ticketTiers?.find(
+            eventRecord.ticketTiers?.find(
               (row) => wantName && row.name === wantName,
-            ) ??
-            eventRecord?.ticketTiers?.find((row) => row.id === order.tierId);
-          if (!eventRecord || !tier) break;
-          const issued = await issueCompTickets({
-            event: eventRecord,
-            tier,
-            quantity: 1,
-            email: ambassador.email,
-            via: order.via,
-            note: `Free, for selling ${every}`,
-          });
+            ) ?? eventRecord.ticketTiers?.find((row) => row.id === order.tierId);
+          const issued = tier
+            ? await issueCompTickets({
+                event: eventRecord,
+                tier,
+                quantity: 1,
+                email: ambassador.email,
+                via: order.via,
+                note: `Free, for selling ${every}`,
+              })
+            : ({ ok: false, reason: "no tier to issue" } as const);
           if (!issued.ok) {
             console.error(
               "[1127] ambassador reward could not issue",
@@ -233,7 +246,6 @@ export async function POST(request: Request) {
               issued.reason,
             );
           }
-          given += 1;
         }
       } else if (ambassador) {
         console.error(

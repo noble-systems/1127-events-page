@@ -575,7 +575,7 @@ describe("comp tickets", () => {
 describe("the ambassador reward", () => {
   beforeEach(reset);
 
-  test("the third sold ticket sends a free one, exactly once", async () => {
+  test("the third sold ticket sends a free one, once per event ever", async () => {
     await seedEvent();
     await mintAmb({
       code: "DANI",
@@ -593,7 +593,7 @@ describe("the ambassador reward", () => {
     }
 
     const amb = await readAmb("DANI");
-    assert.equal(amb?.rewardsGiven, 1, "one reward at three sold");
+    assert.deepEqual(amb?.rewardedEvents, ["mirage"], "the event paid out");
 
     const all = await listOrders(["mirage"]);
     const comps = all.filter((row) => row.comp === true);
@@ -608,10 +608,21 @@ describe("the ambassador reward", () => {
 
     // Redelivering the third sale's webhook changes nothing.
     await webhook(signedRequest(completedEvent("sq-s3")));
-    assert.equal((await readAmb("DANI"))?.rewardsGiven, 1);
     assert.equal(
       (await listOrders(["mirage"])).filter((row) => row.comp === true).length,
       1,
+    );
+
+    // Three MORE sales for the same event: still one free ticket, forever.
+    for (const ref of ["s4", "s5", "s6"]) {
+      await reserveTickets("mirage", "early-bird", 1, 25);
+      await createOrder(order(ref, { quantity: 1, via: "DANI", email: "b@x.co" }));
+      await webhook(signedRequest(completedEvent(`sq-${ref}`)));
+    }
+    assert.equal(
+      (await listOrders(["mirage"])).filter((row) => row.comp === true).length,
+      1,
+      "six sold for one event still pays exactly one free ticket",
     );
   });
 
@@ -660,7 +671,7 @@ describe("the ambassador reward", () => {
       await webhook(signedRequest(completedEvent(`sq-${ref}`)));
     }
 
-    assert.equal((await readAmb("MARCO"))?.rewardsGiven ?? 0, 0);
+    assert.equal(((await readAmb("MARCO"))?.rewardedEvents ?? []).length, 0);
     assert.equal(
       (await listOrders(["mirage"])).filter((row) => row.comp === true).length,
       0,

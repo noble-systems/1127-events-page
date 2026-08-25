@@ -171,7 +171,7 @@ export function AmbassadorManager({
 
       <div className="border-ink/10 mt-6 flex flex-wrap items-end gap-3 border-t pt-5">
         <label className="text-ink/70 block text-[0.875rem]">
-          Free ticket after every
+          Free ticket after
           <span className="mt-1.5 flex items-center gap-2">
             <input
               type="number"
@@ -182,7 +182,7 @@ export function AmbassadorManager({
               onChange={(e) => setThreshold(e.target.value)}
               className="border-ink/20 bg-bone-soft block w-24 rounded-lg border px-3 py-2 text-[0.9375rem] tabular-nums"
             />
-            <span className="text-ink/65">tickets sold</span>
+            <span className="text-ink/65">tickets sold for an event</span>
           </span>
         </label>
         <label className="text-ink/70 block text-[0.875rem]">
@@ -226,10 +226,10 @@ export function AmbassadorManager({
           Save reward settings
         </Button>
         <p className="text-ink/55 basis-full text-[0.8125rem] leading-relaxed">
-          When an ambassador&apos;s sales cross a multiple of this, a free
-          ticket for the event they just sold lands in their email
-          automatically, as the type picked here when the event has it. Free
-          tickets never count as sales.
+          When an ambassador&apos;s sales for one event reach this number, one
+          free ticket for that event lands in their email automatically, as
+          the type picked here when the event has it. One per event, no matter
+          how many more they sell, and free tickets never count as sales.
         </p>
       </div>
 

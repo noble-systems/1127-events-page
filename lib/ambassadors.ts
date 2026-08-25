@@ -42,6 +42,12 @@ export type Ambassador = {
   active: boolean;
   /** How many free tickets have already been issued to them. */
   rewardsGiven?: number;
+  /**
+   * Events they already got their free ticket for. The reward is one ticket
+   * per event, full stop: selling the threshold again for the same event
+   * earns nothing more.
+   */
+  rewardedEvents?: string[];
   createdAt: string;
 };
 
@@ -54,13 +60,12 @@ export type AmbassadorStats = Ambassador & {
   clicks: number;
 };
 
-/** Default: one free ticket per this many sold. The dashboard can change it. */
+/**
+ * Default: the free ticket unlocks at this many sold for one event. One
+ * ticket per event, not one per multiple; the dashboard can change the
+ * threshold.
+ */
 export const REWARD_EVERY_DEFAULT = 3;
-
-/** Free tickets earned by a sold-count, before subtracting ones given. */
-export function rewardsEarned(ticketsSold: number, every: number): number {
-  return every > 0 ? Math.floor(ticketsSold / every) : 0;
-}
 
 /**
  * The payout sheet: every code with what it brought in. Counts paid orders
@@ -83,6 +88,12 @@ export function ambassadorStats(
     );
     return {
       ...ambassador,
+      // Free given is however many events have paid out, whichever bookkeeping
+      // recorded it (the per-event list, or the counter from before it).
+      rewardsGiven: Math.max(
+        ambassador.rewardsGiven ?? 0,
+        (ambassador.rewardedEvents ?? []).length,
+      ),
       rsvps: rsvps.filter((row) => row.via === ambassador.code).length,
       orders: paid.length,
       tickets: paid.reduce((sum, order) => sum + order.quantity, 0),
@@ -92,15 +103,23 @@ export function ambassadorStats(
   });
 }
 
-/** Tickets sold by one code, comp orders excluded. The reward trigger. */
+/**
+ * Tickets sold by one code, comp orders excluded. The reward trigger.
+ * With eventIds given, counts only sales for those events (an event plus its
+ * former ids), because the reward is earned per event.
+ */
 export function ticketsSoldBy(
   code: string,
   orders: readonly TicketOrder[],
+  eventIds?: readonly string[],
 ): number {
   return orders
     .filter(
       (order) =>
-        order.status === "paid" && order.via === code && order.comp !== true,
+        order.status === "paid" &&
+        order.via === code &&
+        order.comp !== true &&
+        (!eventIds || eventIds.includes(order.eventId)),
     )
     .reduce((sum, order) => sum + order.quantity, 0);
 }

@@ -68,6 +68,9 @@ export async function createAmbassador(ambassador: Ambassador): Promise<boolean>
           ...(ambassador.rewardsGiven
             ? { rewardsGiven: { N: String(ambassador.rewardsGiven) } }
             : {}),
+          ...(ambassador.rewardedEvents?.length
+            ? { rewardedEvents: { SS: ambassador.rewardedEvents } }
+            : {}),
           createdAt: { S: ambassador.createdAt },
         },
         ConditionExpression: "attribute_not_exists(pk)",
@@ -101,6 +104,7 @@ export async function getAmbassador(code: string): Promise<Ambassador | null> {
     rewardsGiven: out.Item.rewardsGiven?.N
       ? Number(out.Item.rewardsGiven.N)
       : undefined,
+    rewardedEvents: out.Item.rewardedEvents?.SS ?? undefined,
     createdAt: out.Item.createdAt?.S ?? "",
   };
 }
@@ -190,21 +194,23 @@ export async function patchAmbassador(
 }
 
 /**
- * Claims one more reward, atomically: only succeeds when rewardsGiven still
- * equals `expected`, so two sales settling at once cannot both issue the
- * same free ticket.
+ * Claims the one free ticket for one event, atomically: succeeds exactly once
+ * per (ambassador, event), so two sales settling at once cannot both issue
+ * it, and a later sale for the same event finds it already claimed.
  */
-export async function claimReward(
+export async function claimEventReward(
   code: string,
-  expected: number,
+  eventId: string,
 ): Promise<boolean> {
   const table = TABLE();
 
   if (!table) {
     const data = await localRead();
     const row = data[code];
-    if (!row || (row.rewardsGiven ?? 0) !== expected) return false;
-    row.rewardsGiven = expected + 1;
+    if (!row) return false;
+    const events = row.rewardedEvents ?? [];
+    if (events.includes(eventId)) return false;
+    row.rewardedEvents = [...events, eventId];
     await localWrite(data);
     return true;
   }
@@ -214,15 +220,13 @@ export async function claimReward(
       new UpdateItemCommand({
         TableName: table,
         Key: { pk: { S: pk(code) } },
-        UpdateExpression: "SET #r = :next",
+        UpdateExpression: "ADD #r :e",
         ConditionExpression:
-          expected === 0
-            ? "attribute_exists(pk) AND (attribute_not_exists(#r) OR #r = :expected)"
-            : "attribute_exists(pk) AND #r = :expected",
-        ExpressionAttributeNames: { "#r": "rewardsGiven" },
+          "attribute_exists(pk) AND (attribute_not_exists(#r) OR NOT contains(#r, :id))",
+        ExpressionAttributeNames: { "#r": "rewardedEvents" },
         ExpressionAttributeValues: {
-          ":next": { N: String(expected + 1) },
-          ":expected": { N: String(expected) },
+          ":e": { SS: [eventId] },
+          ":id": { S: eventId },
         },
       }),
     );
@@ -460,6 +464,9 @@ export async function listAmbassadors(): Promise<Ambassador[]> {
         rewardsGiven: (item.rewardsGiven as { N?: string } | undefined)?.N
           ? Number((item.rewardsGiven as { N: string }).N)
           : undefined,
+        rewardedEvents:
+          (item.rewardedEvents as { SS?: string[] } | undefined)?.SS ??
+          undefined,
         createdAt: item.createdAt?.S ?? "",
       });
     }

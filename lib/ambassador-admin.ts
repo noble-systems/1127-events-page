@@ -40,6 +40,7 @@ export async function renameAmbassador(
     email: existing.email,
     active: existing.active,
     rewardsGiven: existing.rewardsGiven,
+    rewardedEvents: existing.rewardedEvents,
     createdAt: existing.createdAt,
   };
   const created = await createAmbassador(renamed);
