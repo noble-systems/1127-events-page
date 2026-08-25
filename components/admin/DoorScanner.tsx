@@ -33,7 +33,13 @@ const VERDICT_STYLE: Record<
   Verdict["result"],
   { bg: string; flash: string; label: string }
 > = {
-  "checked-in": { bg: "bg-cobalt text-bone", flash: "bg-cobalt", label: "Checked in" },
+  // Real green, not brand cobalt: at a doorway green means go everywhere
+  // on earth.
+  "checked-in": {
+    bg: "bg-[#15803d] text-bone",
+    flash: "bg-[#22c55e]",
+    label: "Checked in",
+  },
   "already-used": { bg: "bg-sun text-ink", flash: "bg-sun", label: "ALREADY USED" },
   revoked: { bg: "bg-terracotta text-bone", flash: "bg-terracotta", label: "REVOKED" },
   unknown: { bg: "bg-ink text-bone", flash: "bg-ink", label: "Not a ticket" },
@@ -92,6 +98,52 @@ export function DoorScanner({ prefill = "" }: { prefill?: string }) {
    * door guy could not tell the scan had landed.
    */
   const [seq, setSeq] = useState(0);
+  /**
+   * Web Audio needs a user gesture on iOS; the Start scanning tap unlocks
+   * it. Created lazily and kept for the whole shift.
+   */
+  const audioRef = useRef<AudioContext | null>(null);
+
+  const unlockAudio = () => {
+    try {
+      type AudioWindow = Window & { webkitAudioContext?: typeof AudioContext };
+      const Ctx = window.AudioContext ?? (window as AudioWindow).webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioRef.current) audioRef.current = new Ctx();
+      void audioRef.current.resume();
+    } catch {
+      /* no sound is a shame, not a failure */
+    }
+  };
+
+  /** A bright two-note ding for green; a low double buzz for everything else. */
+  const play = (good: boolean) => {
+    const ctx = audioRef.current;
+    if (!ctx || ctx.state !== "running") return;
+    try {
+      const note = (freq: number, at: number, length: number, type: OscillatorType) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+        gain.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + length);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(ctx.currentTime + at);
+        osc.stop(ctx.currentTime + at + length + 0.05);
+      };
+      if (good) {
+        note(880, 0, 0.12, "sine");
+        note(1318.5, 0.1, 0.22, "sine");
+      } else {
+        note(220, 0, 0.15, "square");
+        note(196, 0.18, 0.2, "square");
+      }
+    } catch {
+      /* same shame */
+    }
+  };
 
   const submit = useCallback(async (code: string) => {
     if (busyRef.current) return;
@@ -106,6 +158,7 @@ export function DoorScanner({ prefill = "" }: { prefill?: string }) {
       const result = data?.result ?? "unknown";
       setVerdict({ ...data, result });
       setSeq((n) => n + 1);
+      play(result === "checked-in");
       if (result === "checked-in") setTally((n) => n + 1);
       if (navigator.vibrate) {
         navigator.vibrate(result === "checked-in" ? 80 : [80, 60, 80]);
@@ -267,6 +320,7 @@ export function DoorScanner({ prefill = "" }: { prefill?: string }) {
     <div className="mx-auto max-w-md">
       <Button
         onClick={() => {
+          unlockAudio();
           setCameraError(null);
           setScanning(true);
         }}
