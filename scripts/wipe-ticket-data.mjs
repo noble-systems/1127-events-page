@@ -18,14 +18,28 @@ import {
  * DRY RUN by default: prints what it would delete. Nothing dies without
  * --force.
  *
- *   node scripts/wipe-ticket-data.mjs           # count and list only
- *   node scripts/wipe-ticket-data.mjs --force   # actually delete
+ *   node scripts/wipe-ticket-data.mjs            # count and list only
+ *   node scripts/wipe-ticket-data.mjs --force    # actually delete
+ *   node scripts/wipe-ticket-data.mjs --local    # wipe .data/ticketing.json
+ *                                                  (the dev machine's copy)
  */
 
 const TABLE = process.env.RATELIMIT_TABLE ?? "1127-events-ratelimit";
 const REGION = process.env.APP_AWS_REGION ?? "us-west-1";
 const PREFIXES = ["ord#", "tkt#", "sqo#", "inv#"];
 const force = process.argv.includes("--force");
+
+if (process.argv.includes("--local")) {
+  const { rmSync, existsSync } = await import("node:fs");
+  const file = ".data/ticketing.json";
+  if (existsSync(file)) {
+    rmSync(file);
+    console.log(`Deleted ${file}. Local ticket slate is clean.`);
+  } else {
+    console.log(`${file} does not exist; nothing to wipe locally.`);
+  }
+  process.exit(0);
+}
 
 const db = new DynamoDBClient({ region: REGION });
 
