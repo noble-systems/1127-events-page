@@ -93,10 +93,16 @@ export default async function ThanksPage({ params, searchParams }: Props) {
               </>
             )}
 
-            <div className="mt-8">
+            <div className="mt-8 flex flex-wrap gap-3">
+              {paid && ref ? (
+                <ButtonLink href={`/t/${encodeURIComponent(ref)}`} variant="primary" size="md">
+                  Show tickets at the door
+                  <ArrowIcon />
+                </ButtonLink>
+              ) : null}
               <ButtonLink
                 href={paid ? "/" : `/tickets/${encodeURIComponent(eventId)}`}
-                variant={paid ? "primary" : "outline"}
+                variant={paid ? "outline" : "outline"}
                 size="md"
               >
                 {paid ? "Back to the site" : "Back to tickets"}

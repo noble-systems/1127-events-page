@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { buttonClass } from "@/components/ui/Button";
 import {
@@ -44,6 +45,7 @@ export function currentConsent(): ConsentState | null {
  * It renders only after mount so the page can still be statically generated.
  */
 export function CookieConsent() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState(false);
   const [draft, setDraft] = useState<ConsentState>(DENY_ALL);
@@ -77,6 +79,9 @@ export function CookieConsent() {
     setDetail(false);
   };
 
+  // Never over a ticket at the door: the wallet page is held up to a
+  // scanner, and this page sets no optional cookies to consent to anyway.
+  if (pathname.startsWith("/t/")) return null;
   if (!open) return null;
 
   return (

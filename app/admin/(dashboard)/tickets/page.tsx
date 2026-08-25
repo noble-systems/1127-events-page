@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { listAllEvents } from "@/lib/store";
 import { squareConfigured } from "@/lib/square";
 import { formatMoney, remainingFor } from "@/lib/tickets";
-import { listOrders, readInventory } from "@/lib/tickets-store";
+import { listOrders, listTicketsForEvents, readInventory } from "@/lib/tickets-store";
+import type { TicketRecord } from "@/lib/tickets";
 import type { EventRecord, TicketTier } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Tickets" };
@@ -14,6 +15,32 @@ export const dynamic = "force-dynamic";
  * the oversell guard enforces, so what this page says is what the pool
  * actually did.
  */
+
+/**
+ * One code with its door state: plain while unused, struck through with the
+ * walk-in time once scanned, terracotta when revoked. The list IS the
+ * guest-by-guest check-in tracker.
+ */
+function CodeChip({ code, ticket }: { code: string; ticket?: TicketRecord }) {
+  if (ticket?.status === "used") {
+    return (
+      <span className="mr-2 inline-block whitespace-nowrap">
+        <span className="text-ink/40 line-through">{code}</span>
+        <span className="text-cobalt ml-1 font-sans text-[0.7rem]">
+          in {ticket.usedAt ? phoenixTime(ticket.usedAt) : ""}
+        </span>
+      </span>
+    );
+  }
+  if (ticket?.status === "revoked") {
+    return (
+      <span className="text-terracotta-deep mr-2 inline-block whitespace-nowrap line-through">
+        {code}
+      </span>
+    );
+  }
+  return <span className="mr-2 inline-block whitespace-nowrap">{code}</span>;
+}
 
 function phoenixTime(iso: string): string {
   return new Date(iso).toLocaleString("en-US", {
@@ -48,11 +75,19 @@ export default async function AdminTicketsPage() {
   );
 
   const sections = await Promise.all(
-    events.map(async (event) => ({
-      event,
-      rows: await tierRows(event, event.ticketTiers ?? []),
-      orders: await listOrders([event.id, ...(event.formerIds ?? [])]),
-    })),
+    events.map(async (event) => {
+      const ids = [event.id, ...(event.formerIds ?? [])];
+      const tickets = await listTicketsForEvents(ids);
+      return {
+        event,
+        rows: await tierRows(event, event.ticketTiers ?? []),
+        orders: await listOrders(ids),
+        // code -> ticket, so each code in the orders table can wear its
+        // check-in state without a lookup per code.
+        byCode: new Map(tickets.map((ticket) => [ticket.code, ticket])),
+        checkedIn: tickets.filter((ticket) => ticket.status === "used"),
+      };
+    }),
   );
 
   const configured = squareConfigured();
@@ -82,7 +117,7 @@ export default async function AdminTicketsPage() {
         </p>
       ) : null}
 
-      {sections.map(({ event, rows, orders }) => (
+      {sections.map(({ event, rows, orders, byCode, checkedIn }) => (
         <section
           key={event.id}
           className="border-ink/12 bg-bone mt-8 rounded-2xl border p-6"
@@ -110,6 +145,7 @@ export default async function AdminTicketsPage() {
                   <th className="py-2 pr-4 font-medium">Sold</th>
                   <th className="py-2 pr-4 font-medium">On hold</th>
                   <th className="py-2 pr-4 font-medium">Left</th>
+                  <th className="py-2 pr-4 font-medium">In</th>
                   <th className="py-2 font-medium">Gross</th>
                 </tr>
               </thead>
@@ -135,6 +171,14 @@ export default async function AdminTicketsPage() {
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">
                       {remaining === 0 ? "Sold out" : remaining}
+                    </td>
+                    <td className="py-2.5 pr-4 tabular-nums">
+                      {(() => {
+                        const walked = checkedIn.filter(
+                          (ticket) => ticket.tierId === tier.id,
+                        ).length;
+                        return walked > 0 ? `${walked} of ${sold}` : "";
+                      })()}
                     </td>
                     <td className="py-2.5 tabular-nums">
                       {formatMoney(grossCents)}
@@ -201,7 +245,13 @@ export default async function AdminTicketsPage() {
                           </span>
                         </td>
                         <td className="py-2 font-mono text-[0.75rem]">
-                          {(order.codes ?? []).join(" ")}
+                          {(order.codes ?? []).map((code) => (
+                            <CodeChip
+                              key={code}
+                              code={code}
+                              ticket={byCode.get(code)}
+                            />
+                          ))}
                         </td>
                       </tr>
                     ))}

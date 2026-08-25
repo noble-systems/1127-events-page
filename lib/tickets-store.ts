@@ -518,6 +518,53 @@ export async function listOrders(
 /* Issued tickets                                                            */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * Every issued ticket for a set of event ids, one scan, for the admin board:
+ * per-code check-in status without a lookup per code.
+ */
+export async function listTicketsForEvents(
+  eventIds: readonly string[],
+): Promise<TicketRecord[]> {
+  const wanted = new Set(eventIds);
+  const table = TABLE();
+
+  if (!table) {
+    return Object.values((await localRead()).tickets).filter((ticket) =>
+      wanted.has(ticket.eventId),
+    );
+  }
+
+  const rows: TicketRecord[] = [];
+  let cursor: Record<string, unknown> | undefined;
+  do {
+    const page = await db().send(
+      new ScanCommand({
+        TableName: table,
+        FilterExpression: "begins_with(pk, :t)",
+        ExpressionAttributeValues: { ":t": { S: "tkt#" } },
+        ExclusiveStartKey: cursor as never,
+      }),
+    );
+    for (const item of page.Items ?? []) {
+      const raw = item as Record<string, { S?: string }>;
+      if (!wanted.has(raw.eventId?.S ?? "")) continue;
+      rows.push({
+        code: raw.code?.S ?? "",
+        orderId: raw.orderId?.S ?? "",
+        eventId: raw.eventId?.S ?? "",
+        tierId: raw.tierId?.S ?? "",
+        email: raw.email?.S ?? null,
+        status: (raw.status?.S ?? "valid") as TicketRecord["status"],
+        usedAt: raw.usedAt?.S ?? undefined,
+        createdAt: raw.createdAt?.S ?? "",
+      });
+    }
+    cursor = page.LastEvaluatedKey;
+  } while (cursor);
+
+  return rows;
+}
+
 export async function getTicket(code: string): Promise<TicketRecord | null> {
   const table = TABLE();
 

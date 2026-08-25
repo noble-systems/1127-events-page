@@ -1062,6 +1062,8 @@ export function renderTicketEmail(input: {
   codes: string[];
   date?: string;
   location?: string;
+  /** The wallet page showing one QR per screen; the door-night link. */
+  walletUrl?: string;
 }) {
   const subject = `Your ${input.eventName} ${input.quantity === 1 ? "ticket" : "tickets"}`;
   /**
@@ -1092,7 +1094,13 @@ export function renderTicketEmail(input: {
     body: `
       <p style="margin:0 0 6px;font:400 15px/1.6 Helvetica,Arial,sans-serif;color:${INK};">${escapeHtml(`${input.quantity} x ${input.tierName}`)} for <strong>${escapeHtml(input.eventName)}</strong>. ${escapeHtml(input.totalLabel)} paid.</p>
       ${meta ? `<p style="margin:0 0 16px;font:400 13px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">${meta}</p>` : ""}
-      <p style="margin:16px 0 10px;font:400 14px/1.6 Helvetica,Arial,sans-serif;color:${INK};">Your ${input.codes.length === 1 ? "ticket" : "tickets"}, one per person. Show the QR at the door:</p>
+      ${
+        input.walletUrl
+          ? `<p style="margin:18px 0 0;"><a href="${input.walletUrl}" style="display:inline-block;background:${DEEP};color:${BONE};font:600 15px/1 Helvetica,Arial,sans-serif;padding:14px 26px;border-radius:999px;text-decoration:none;">Show tickets at the door</a></p>
+      <p style="margin:8px 0 0;font:400 12px/1.5 Helvetica,Arial,sans-serif;color:${MUTED};">Opens each ticket full screen, one at a time, so the scanner reads the right one.</p>`
+          : ""
+      }
+      <p style="margin:16px 0 10px;font:400 14px/1.6 Helvetica,Arial,sans-serif;color:${INK};">Your ${input.codes.length === 1 ? "ticket" : "tickets"}, one per person, also right here:</p>
       ${codeRows}
       <p style="margin:16px 0 0;font:400 13px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">Keep this email. Nothing to print; the QR on a phone is enough, and the code under it works if the picture doesn't load.</p>`,
     footer: `This is your receipt for ${escapeHtml(input.totalLabel)}, paid by card.`,
