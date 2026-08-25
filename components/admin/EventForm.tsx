@@ -355,6 +355,23 @@ export function EventForm({
           </Field>
 
           <Field
+            id="ev-time"
+            label="Time"
+            optional
+            error={errors.time}
+            hint='Door-to-close hours, e.g. "12-4 PM". Shows next to the date on the event, the tickets page and the ticket email; blank hides it.'
+          >
+            <TextInput
+              id="ev-time"
+              name="time"
+              value={values.time}
+              error={errors.time}
+              disabled={busy}
+              onChange={(e) => set("time", e.target.value)}
+            />
+          </Field>
+
+          <Field
             id="ev-status"
             label="Status badge"
             error={errors.status}

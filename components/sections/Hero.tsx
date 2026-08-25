@@ -31,7 +31,9 @@ export function Hero({
   const title = event?.name?.trim() || content.title;
   const tagline = event?.tagline?.trim() || content.tagline;
   const location = event?.location?.trim() || content.location;
-  const date = event?.date?.trim() || content.date;
+  const date = event?.date?.trim()
+    ? [event.date.trim(), event.time?.trim()].filter(Boolean).join(", ")
+    : content.date;
   /**
    * The homepage backdrop is its OWN image, set in the page editor, so the
    * hero can look like the brand while the event card looks like the event.

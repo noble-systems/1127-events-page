@@ -126,6 +126,11 @@ export type EventRecord = {
   status: string;
   /** Free text so "Dates Announcing Soon" is as valid as a real date. */
   date: string;
+  /**
+   * Door-to-close hours as free text, e.g. "12-4 PM". Optional; shown next to
+   * the date on the event card, the tickets page and the ticket email.
+   */
+  time?: string | null;
   location: string;
   venue: string | null;
   tags: string[];

@@ -28,7 +28,12 @@ import type { EventRecord } from "@/lib/types";
  */
 function eventFacts(event?: EventRecord) {
   return [
-    { title: event?.date?.trim() || "Announcing soon", body: "Date" },
+    {
+      title:
+        [event?.date?.trim(), event?.time?.trim()].filter(Boolean).join(", ") ||
+        "Announcing soon",
+      body: "Date",
+    },
     { title: event?.location?.trim() || "Old Town Scottsdale", body: "Location" },
     { title: event?.venue?.trim() || "Announcing soon", body: "Venue" },
     {
@@ -133,7 +138,11 @@ export function RsvpPageView({
                 <div className="bg-deep px-5 py-5">
                   <dt className="label-xs text-bone/55">Next date</dt>
                   <dd className="font-display mt-2 text-xl">
-                    {featured?.date ?? hero.date}
+                    {featured
+                      ? [featured.date?.trim(), featured.time?.trim()]
+                          .filter(Boolean)
+                          .join(", ") || "Announcing soon"
+                      : hero.date}
                   </dd>
                 </div>
                 <div className="bg-deep px-5 py-5">

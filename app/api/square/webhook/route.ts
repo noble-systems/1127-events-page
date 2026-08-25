@@ -153,6 +153,7 @@ export async function POST(request: Request) {
         totalLabel: formatMoney(order.amountCents),
         codes,
         date: eventRecord?.date,
+        time: eventRecord?.time ?? undefined,
         location: eventRecord?.venue ?? eventRecord?.location,
         walletUrl: `${siteUrl()}/t/${order.ref}`,
       });

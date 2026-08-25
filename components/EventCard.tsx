@@ -130,6 +130,9 @@ export function EventCard({ event }: { event: EventRecord }) {
 
         <dl className="mt-7">
           <MetaRow label="Date" value={event.date} />
+          {event.time?.trim() ? (
+            <MetaRow label="Time" value={event.time} />
+          ) : null}
           <MetaRow label="Location" value={event.location} />
           {event.venue ? (
             <MetaRow label="Venue" value={event.venue} />

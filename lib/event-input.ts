@@ -34,6 +34,7 @@ export type EventFormValues = {
   heroBody: string;
   status: string;
   date: string;
+  time: string;
   location: string;
   venue: string;
   tags: string;
@@ -66,6 +67,7 @@ export const EMPTY_EVENT: EventFormValues = {
   heroBody: "",
   status: "Announcing Soon",
   date: "Dates Announcing Soon",
+  time: "",
   location: "Old Town Scottsdale, Arizona",
   venue: "",
   tags: "",
@@ -111,6 +113,7 @@ const MAX: Partial<Record<keyof EventFormValues, number>> = {
   heroBody: 400,
   status: 40,
   date: 80,
+  time: 80,
   location: 120,
   venue: 120,
   shotNote: 160,
@@ -288,6 +291,7 @@ export function toEventInput(
     heroBody: values.heroBody.trim(),
     status: values.status.trim(),
     date: values.date.trim(),
+    time: values.time.trim() || null,
     location: values.location.trim(),
     venue: values.venue.trim() || null,
     tags: values.tags
@@ -368,6 +372,7 @@ export function readEventBody(
     heroBody: str("heroBody"),
     status: str("status"),
     date: str("date"),
+    time: str("time"),
     location: str("location"),
     venue: str("venue"),
     tags: Array.isArray(raw.tags) ? raw.tags.join(", ") : str("tags"),
@@ -417,6 +422,7 @@ export function eventToFormValues(
     heroBody?: string;
     status: string;
     date: string;
+    time?: string | null;
     location: string;
     venue: string | null;
     tags: string[];
@@ -457,6 +463,7 @@ export function eventToFormValues(
     heroBody: event.heroBody ?? "",
     status: event.status,
     date: event.date,
+    time: event.time ?? "",
     location: event.location,
     venue: event.venue ?? "",
     tags: event.tags.join(", "),

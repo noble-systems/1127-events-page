@@ -1061,6 +1061,7 @@ export function renderTicketEmail(input: {
   totalLabel: string;
   codes: string[];
   date?: string;
+  time?: string;
   location?: string;
   /** The wallet page showing one QR per screen; the door-night link. */
   walletUrl?: string;
@@ -1083,6 +1084,7 @@ export function renderTicketEmail(input: {
 
   const meta = [
     input.date?.trim() ? escapeHtml(input.date.trim()) : null,
+    input.time?.trim() ? escapeHtml(input.time.trim()) : null,
     input.location?.trim() ? escapeHtml(input.location.trim()) : null,
   ]
     .filter(Boolean)
@@ -1108,7 +1110,7 @@ export function renderTicketEmail(input: {
 
   const text = [
     `${input.quantity} x ${input.tierName} for ${input.eventName}. ${input.totalLabel} paid.`,
-    meta ? meta.replace(" &middot; ", ", ") : "",
+    meta ? meta.split(" &middot; ").join(", ") : "",
     "",
     `Your ${input.codes.length === 1 ? "code" : "codes"}, one per person, at the door:`,
     ...input.codes,

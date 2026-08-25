@@ -144,7 +144,9 @@ export default async function TicketsPage({ params, searchParams }: Params) {
                 <div className="bg-deep px-5 py-5">
                   <dt className="label-xs text-bone/55">Date</dt>
                   <dd className="font-display mt-2 text-xl">
-                    {event.date?.trim() || "Announcing soon"}
+                    {[event.date?.trim(), event.time?.trim()]
+                      .filter(Boolean)
+                      .join(", ") || "Announcing soon"}
                   </dd>
                 </div>
                 <div className="bg-deep px-5 py-5">
