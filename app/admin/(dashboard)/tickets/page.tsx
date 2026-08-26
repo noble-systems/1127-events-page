@@ -3,6 +3,7 @@ import { listAllEvents } from "@/lib/store";
 import { squareConfigured } from "@/lib/square";
 import { formatMoney, remainingFor } from "@/lib/tickets";
 import { MintTickets } from "@/components/admin/MintTickets";
+import { sweepStaleHolds } from "@/lib/ticket-sweep";
 import { listOrders, listTicketsForEvents, readInventory } from "@/lib/tickets-store";
 import type { TicketOrder, TicketRecord } from "@/lib/tickets";
 import type { EventRecord, TicketTier } from "@/lib/types";
@@ -95,6 +96,17 @@ export default async function AdminTicketsPage() {
   const sections = await Promise.all(
     events.map(async (event) => {
       const ids = [event.id, ...(event.formerIds ?? [])];
+      /**
+       * Reclaim abandoned checkouts BEFORE reading anything. The sweep
+       * otherwise runs only when somebody starts a checkout, so on a quiet
+       * day a pending order would sit on this page for hours looking like a
+       * stuck sale.
+       */
+      for (const tier of event.ticketTiers ?? []) {
+        await sweepStaleHolds(ids, tier.id, Date.now()).catch((error) =>
+          console.error("[1127] tickets-page sweep failed", event.id, error),
+        );
+      }
       const tickets = await listTicketsForEvents(ids);
       const orders = await listOrders(ids);
       return {
