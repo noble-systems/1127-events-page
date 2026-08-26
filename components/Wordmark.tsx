@@ -1,32 +1,33 @@
+/**
+ * The 1127 logo, inlined from public/1127-basic.svg so it draws in
+ * currentColor: ink on the bone header, bone on the deep footer, without
+ * shipping two files or a CSS filter. The source SVG is black-on-transparent;
+ * every fill and stroke here maps to currentColor and nothing else.
+ */
 export function Wordmark({
   className = "",
-  onDark = false,
   size = "md",
 }: {
   className?: string;
-  onDark?: boolean;
   size?: "md" | "lg";
 }) {
   return (
-    <span className={`flex items-center gap-2.5 ${className}`}>
-      <span
-        className={`font-display leading-none font-semibold tracking-[-0.03em] ${
-          size === "lg" ? "text-[2rem]" : "text-[1.45rem]"
-        }`}
-      >
-        1127
-      </span>
-      <span
-        aria-hidden="true"
-        className={`w-px ${size === "lg" ? "h-5" : "h-3.5"} ${
-          onDark ? "bg-current/40" : "bg-current/25"
-        }`}
+    <svg
+      viewBox="0 0 571.64 645.39"
+      aria-hidden="true"
+      focusable="false"
+      fill="currentColor"
+      className={`${size === "lg" ? "h-12" : "h-9"} w-auto ${className}`}
+    >
+      <path
+        stroke="currentColor"
+        strokeMiterlimit={10}
+        d="M1.21,175.33l39.19-39.19,39.66-39.66L148.57,27.97,175.81.74l.17-.17.06-.06h395.09v394.55l-.32.32-21.74,21.74-152.14,152.14-.08.08-.13.13-.11.11V175.01H72.93l-71.72.32Z"
       />
-      {/* Centred against the numerals, not baseline-aligned. Baseline put a
-          small-caps label at the very bottom of a line owned by much larger
-          digits, which read as EVENTS sitting too low. The hairline nudge keeps
-          optical centre, since caps carry no descenders. */}
-      <span className="label-xs translate-y-[0.5px] opacity-70">Events</span>
-    </span>
+      <path d="M197.92,282.12l-33.09,8.14-8.68-34.17,54.52-16.27h28.48v191.21h-41.23v-148.9Z" />
+      <path d="M298.82,282.12l-33.09,8.14-8.68-34.17,54.52-16.27h28.48v191.21h-41.23v-148.9Z" />
+      <path d="M31.3,610.82l66.03-54.12c24.94-20.4,34.29-31.17,34.29-47.61s-10.77-25.79-26.64-25.79-25.79,8.5-40.52,26.64l-30.6-24.65c19.55-26.35,38.54-41.09,73.96-41.09,40.81,0,68.29,24.09,68.29,61.21v.57c0,33.44-17,49.31-52.14,76.79l-32.3,24.94h86.43v37.69H31.3v-34.57Z" />
+      <path d="M290.86,484.72h-93.23v-37.69h142.82v32.87l-88.98,165.49h-49.31l88.69-160.67Z" />
+    </svg>
   );
 }

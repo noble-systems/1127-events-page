@@ -336,9 +336,7 @@ function receiptShell(options: {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
       <tr>
         <td style="background:${DEEP};padding:18px 22px;border-radius:10px 10px 0 0;">
-          <span style="font:700 19px/1 Georgia,'Times New Roman',serif;color:${BONE};letter-spacing:-0.4px;">1127</span>
-          <span style="display:inline-block;width:1px;height:12px;background:rgba(247,242,233,0.4);margin:0 9px;vertical-align:middle;"></span>
-          <span style="font:500 10px/1 Helvetica,Arial,sans-serif;letter-spacing:0.18em;text-transform:uppercase;color:rgba(247,242,233,0.75);">Events</span>
+          <img src="${siteUrl()}/api/brand-logo?v=1" width="25" height="28" alt="1127 Events" style="display:block;height:28px;width:auto;border:0;" />
         </td>
       </tr>
       <tr>
@@ -388,9 +386,7 @@ function shell(options: {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fbf8f2;border:1px solid rgba(25,23,19,0.10);border-radius:20px;overflow:hidden;">
       <tr>
         <td style="background:${DEEP};padding:26px 32px;">
-          <span style="font:700 22px/1 Georgia,'Times New Roman',serif;color:${BONE};letter-spacing:-0.5px;">1127</span>
-          <span style="display:inline-block;width:1px;height:14px;background:rgba(247,242,233,0.4);margin:0 10px;vertical-align:middle;"></span>
-          <span style="font:500 11px/1 Helvetica,Arial,sans-serif;letter-spacing:0.2em;text-transform:uppercase;color:rgba(247,242,233,0.75);">Events</span>
+          <img src="${siteUrl()}/api/brand-logo?v=1" width="28" height="32" alt="1127 Events" style="display:block;height:32px;width:auto;border:0;" />
         </td>
       </tr>
       <tr>

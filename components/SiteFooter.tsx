@@ -56,7 +56,7 @@ export function SiteFooter() {
               className="inline-block transition-opacity duration-200 hover:opacity-70"
               aria-label="1127 Events home"
             >
-              <Wordmark onDark size="lg" />
+              <Wordmark size="lg" />
             </Link>
 
             <p className="text-bone/60 mt-6 max-w-sm text-[0.9375rem] leading-relaxed">

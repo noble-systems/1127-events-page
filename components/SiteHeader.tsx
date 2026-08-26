@@ -122,7 +122,7 @@ export function SiteHeader({
             className="shrink-0 transition-opacity duration-200 hover:opacity-70"
             aria-label="1127 Events home"
           >
-            <Wordmark onDark={!solid} />
+            <Wordmark />
           </Link>
 
           <nav aria-label="Primary" className="hidden lg:block">
@@ -195,7 +195,7 @@ export function SiteHeader({
       >
         <div className="flex h-full flex-col">
           <div className="shell flex h-[4.5rem] shrink-0 items-center justify-between">
-            <Wordmark onDark />
+            <Wordmark />
             <button
               type="button"
               onClick={closeMenu}
