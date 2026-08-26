@@ -273,7 +273,7 @@ describe("per-event email customisation", () => {
   test("falls back to the standard wording when nothing is customised", () => {
     const { subject, html } = renderGuestEmail(rsvp, baseEvent);
     assert.match(subject, /You're confirmed for Sun Club/);
-    assert.match(html, /Thanks Alex, your RSVP for Sun Club is confirmed/);
+    assert.match(html, /Thanks Alex, your spot on the Sun Club list is confirmed/);
   });
 
   test("uses the custom subject, opening line and body", () => {

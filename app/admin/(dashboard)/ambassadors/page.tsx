@@ -46,7 +46,7 @@ export default async function AdminAmbassadorsPage() {
       <p className="text-ink/65 mt-3 max-w-2xl text-[0.9375rem] leading-relaxed">
         Each ambassador gets one code and one link. The link goes in their
         bios and stories and lands people on whatever is on: tickets when
-        selling, otherwise the RSVP page. The code can also be typed at
+        selling, otherwise the signup page. The code can also be typed at
         ticket checkout. Signups and sales carry the code with them, and this
         page counts them, which is the number their incentives are paid
         against. A code changes who gets credit, never what anybody pays.

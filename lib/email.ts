@@ -447,7 +447,7 @@ export function renderGuestEmail(
   const openingText = event?.emailHeading?.trim()
     ? fill(event.emailHeading.trim())
     : name
-      ? `Thanks ${firstName}, your RSVP for ${name} is confirmed.`
+      ? `Thanks ${firstName}, your spot on the ${name} list is confirmed.`
       : `Thanks ${firstName}, you're on the list.`;
 
   const bodyText = event?.emailBody?.trim()
@@ -499,7 +499,7 @@ export function renderGuestEmail(
       // This is the grey preview line next to the subject in an inbox list.
       // It should read as a receipt, because that is what this is.
       preheader: name
-        ? `Your RSVP for ${name} is confirmed.`
+        ? `Your spot on the ${name} list is confirmed.`
         : "You're on the list.",
       heading: "You're confirmed.",
       body,
@@ -628,7 +628,7 @@ export function renderTeamEmail(record: SubmissionRecord, total: number) {
     </p>`;
 
   const text = [
-    "New RSVP",
+    "New signup",
     "",
     ...facts.map(([label, value]) => `${label}: ${value}`),
     "",
@@ -636,11 +636,11 @@ export function renderTeamEmail(record: SubmissionRecord, total: number) {
   ].join("\n");
 
   return {
-    subject: `New RSVP, ${record.name || record.email}`,
+    subject: `New signup, ${record.name || record.email}`,
     html: shell({
       preheader: `${record.email} joined the list. ${total} total.`,
       eyebrow: "Internal notification",
-      heading: "New RSVP.",
+      heading: "New signup.",
       body,
       footer: `<p style="margin:0;">Sent to the 1127 team because RSVP_NOTIFY_ADDRESS is configured.</p>`,
     }),
@@ -733,7 +733,7 @@ export async function notifyRsvp(
 
   if (status.guest && mayAcknowledge(record)) {
     await trySend(
-      "RSVP confirmation",
+      "signup confirmation",
       [record.email],
       renderGuestEmail(record, event),
       NO_REPLY(),
@@ -741,7 +741,7 @@ export async function notifyRsvp(
   }
 
   await trySend(
-    "RSVP team notification",
+    "signup team notification",
     recipients("rsvp"),
     renderTeamEmail(record, listTotal),
     record.email,

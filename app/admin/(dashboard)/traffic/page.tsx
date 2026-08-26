@@ -139,11 +139,11 @@ export default async function TrafficPage() {
           <p className="font-display mt-3 text-4xl leading-none">{visitors}</p>
         </div>
         <div className="border-ink/12 bg-bone rounded-2xl border p-6">
-          <p className="label-xs text-ink/65">RSVPs, last {DAYS} days</p>
+          <p className="label-xs text-ink/65">Signups, last {DAYS} days</p>
           <p className="font-display mt-3 text-4xl leading-none">{rsvpTotal}</p>
         </div>
         <div className="border-ink/12 bg-bone rounded-2xl border p-6">
-          <p className="label-xs text-ink/65">Views per RSVP</p>
+          <p className="label-xs text-ink/65">Views per signup</p>
           <p className="font-display mt-3 text-4xl leading-none">
             {rsvpTotal > 0 ? Math.round(total / rsvpTotal) : "–"}
           </p>
@@ -159,7 +159,7 @@ export default async function TrafficPage() {
             return (
               <div
                 key={day}
-                title={`${dayLabel(day)}: ${views} views, ${rsvps} RSVPs`}
+                title={`${dayLabel(day)}: ${views} views, ${rsvps} signups`}
                 className="bg-ink/[0.04] group flex h-full flex-1 flex-col justify-end rounded-sm"
               >
                 {/* The count sits on the bar; a bar with no number is
@@ -181,7 +181,7 @@ export default async function TrafficPage() {
         </div>
         <div className="text-ink/50 mt-2 flex justify-between text-[0.75rem]">
           <span>{dayLabel(days[0])}</span>
-          <span className="text-sun-deep">amber = a day with RSVPs</span>
+          <span className="text-sun-deep">amber = a day with signups</span>
           <span>{dayLabel(days[days.length - 1])}</span>
         </div>
       </section>
@@ -278,7 +278,7 @@ function Summary({
       ? "No traffic recorded yet. Counting is live; the first visits will appear here."
       : `${views7} page ${views7 === 1 ? "view" : "views"} from ${visitors7} ${
           visitors7 === 1 ? "visitor" : "visitors"
-        }, ${rsvps7 === 0 ? "no RSVPs yet" : `${rsvps7} ${rsvps7 === 1 ? "RSVP" : "RSVPs"}`}${
+        }, ${rsvps7 === 0 ? "no signups yet" : `${rsvps7} ${rsvps7 === 1 ? "signup" : "signups"}`}${
           topSource ? `, with ${topSource[0]} the biggest outside source` : ""
         }${topPage ? `, and ${topPage[0]} the most-read page` : ""}.`;
 

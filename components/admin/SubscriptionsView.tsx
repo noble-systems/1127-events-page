@@ -104,7 +104,7 @@ export function SubscriptionsView({
         <Stat
           label="On the subscriber list"
           value={rsvps}
-          hint="Everyone who has ever RSVPed. This number does not go down when somebody unsubscribes."
+          hint="Everyone who has ever signed up. This number does not go down when somebody unsubscribes."
         />
         <Stat
           label="Subscribed"

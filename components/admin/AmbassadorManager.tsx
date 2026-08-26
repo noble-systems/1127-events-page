@@ -247,7 +247,7 @@ export function AmbassadorManager({
                 <th className="py-2 pr-4 font-medium">Code</th>
                 <th className="py-2 pr-4 font-medium">Share link</th>
                 <th className="py-2 pr-4 font-medium">Link taps</th>
-                <th className="py-2 pr-4 font-medium">RSVPs</th>
+                <th className="py-2 pr-4 font-medium">Signups</th>
                 <th className="py-2 pr-4 font-medium">Tickets</th>
                 <th className="py-2 pr-4 font-medium">Sales</th>
                 <th className="py-2 pr-4 font-medium">Free given</th>

@@ -648,12 +648,12 @@ export function EventForm({
               label="Opening line"
               optional
               error={errors.emailHeading}
-              hint="Default: Thanks {name}, your RSVP for {event} is confirmed."
+              hint="Default: Thanks {name}, your spot on the {event} list is confirmed."
             >
               <TextInput
                 id="ev-email-heading"
                 name="emailHeading"
-                placeholder="Thanks {name}, your RSVP for {event} is confirmed."
+                placeholder="Thanks {name}, your spot on the {event} list is confirmed."
                 value={values.emailHeading}
                 error={errors.emailHeading}
                 disabled={busy}

@@ -30,7 +30,7 @@ export default async function AudiencePage() {
           ever came for house is how a list gets marked as spam.
         </p>
         <p className="text-ink/70 mt-3 text-[0.9375rem] leading-relaxed">
-          This is RSVPs only. People who applied to work with us, or wrote in about
+          This is the mailing list only. People who applied to work with us, or wrote in about
           a venue, are working contacts rather than an audience, so they live in
           People and never appear in a send.
         </p>

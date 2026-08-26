@@ -98,7 +98,7 @@ export default async function AdminOverviewPage() {
               Setup steps are in <strong className="font-medium">
                 DEPLOY.md
               </strong>{" "}
-              under &ldquo;RSVP email&rdquo;.
+              under &ldquo;Signup email&rdquo;.
             </>
           )}
         </span>
@@ -125,7 +125,7 @@ export default async function AdminOverviewPage() {
         <Stat
           label="Subscriber list"
           value={rsvps.length}
-          hint="People, not signups. One person can RSVP to several events."
+          hint="People, not signups. One person can sign up for several events."
           href="/admin/list"
         />
         <Stat
@@ -186,7 +186,7 @@ export default async function AdminOverviewPage() {
           <p className="text-ink/65 mt-3 text-[0.8125rem] leading-relaxed">
             {noEvent} {noEvent === 1 ? "person is" : "people are"} on the list with
             no event attached, so they fall outside every segment above. Anyone who
-            signed up before events had their own RSVP pages lands here.
+            signed up before events had their own signup pages lands here.
           </p>
         ) : null}
       </section>
@@ -268,7 +268,7 @@ export default async function AdminOverviewPage() {
               className="border-ink/12 bg-bone hover:border-ink/30 block rounded-2xl border px-5 py-4 transition-colors duration-300"
             >
               <span className="block text-[0.9375rem] font-medium">
-                Preview the RSVP email
+                Preview the signup email
               </span>
               <span className="text-ink/65 mt-1 block text-[0.8125rem]">
                 What guests receive, nothing is sent
