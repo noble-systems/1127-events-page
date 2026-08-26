@@ -895,6 +895,24 @@ export function EventForm({
                   onChange={(e) => setTier(index, { capacity: e.target.value })}
                 />
               </Field>
+              <Field
+                id={`ev-ticket-${index}-external`}
+                label="Off-site link"
+                optional
+                error={errors[`ticket-${index}-externalUrl`]}
+                hint="Sales happen on this page instead of our checkout (ResortPass, a partner box office). Price becomes display-only and capacity is theirs; leave blank to sell here."
+                className="sm:col-span-4"
+              >
+                <TextInput
+                  id={`ev-ticket-${index}-external`}
+                  name={`ticket-${index}-externalUrl`}
+                  placeholder="https://www.resortpass.com/experiences/..."
+                  value={tier.externalUrl}
+                  error={errors[`ticket-${index}-externalUrl`]}
+                  disabled={busy}
+                  onChange={(e) => setTier(index, { externalUrl: e.target.value })}
+                />
+              </Field>
               <div className="mt-1 flex gap-4 justify-self-start sm:mt-8">
                 <button
                   type="button"
@@ -957,6 +975,7 @@ export function EventForm({
                     name: "",
                     price: "",
                     capacity: "",
+                    externalUrl: "",
                     hidden: false,
                     soldOut: false,
                   },

@@ -46,6 +46,12 @@ export type TicketTier = {
    */
   hidden?: boolean;
   /**
+   * Sold somewhere else (ResortPass, a partner box office). The public page
+   * lists the tier and sends buyers to this URL instead of our checkout;
+   * price is display-only when set, and capacity is the partner problem.
+   */
+  externalUrl?: string | null;
+  /**
    * Manually sold out. The tier stays VISIBLE, greyed with "Sold out", and
    * refuses checkout regardless of what the counter says. Different job from
    * hidden: hidden pretends the tier never existed; this announces it was

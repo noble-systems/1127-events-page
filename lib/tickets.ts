@@ -43,7 +43,13 @@ export function newTicketCode(): string {
 export function sellableTiers(event: EventRecord): TicketTier[] {
   if (event.ticketsEnabled !== true || !event.published) return [];
   return (event.ticketTiers ?? []).filter(
-    (tier) => tier.capacity > 0 && tier.priceCents > 0 && tier.hidden !== true,
+    (tier) =>
+      tier.hidden !== true &&
+      // An off-platform tier is sellable as long as its link exists; the
+      // capacity and price rules only guard OUR checkout.
+      (tier.externalUrl
+        ? true
+        : tier.capacity > 0 && tier.priceCents > 0),
   );
 }
 

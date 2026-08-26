@@ -23,6 +23,8 @@ export type TicketTierFormValues = {
   name: string;
   price: string;
   capacity: string;
+  /** Blank sells through our checkout; a URL sends buyers off-platform. */
+  externalUrl: string;
   hidden: boolean;
   soldOut: boolean;
 };
@@ -206,6 +208,33 @@ export function validateEvent(values: EventFormValues): FormErrors {
     } else if (tier.name.trim().length > 60) {
       errors[`ticket-${index}-name`] = "Too long (max 60 characters).";
     }
+
+    const external = tier.externalUrl.trim();
+    if (external) {
+      // Off-platform: the partner page owns price and capacity, so both are
+      // optional here; a price given is display only.
+      let ok = external.length <= 300;
+      if (ok) {
+        try {
+          ok = new URL(external).protocol === "https:";
+        } catch {
+          ok = false;
+        }
+      }
+      if (!ok) {
+        errors[`ticket-${index}-externalUrl`] =
+          "Off-site links are full https:// addresses, up to 300 characters.";
+      }
+      if (tier.price.trim()) {
+        const cents = parsePriceCents(tier.price);
+        if (cents === null || cents < 100 || cents > 1_000_000) {
+          errors[`ticket-${index}-price`] =
+            "Price is $1 to $10,000, or blank for off-site types.";
+        }
+      }
+      return;
+    }
+
     const cents = parsePriceCents(tier.price);
     if (cents === null || cents < 100 || cents > 1_000_000) {
       errors[`ticket-${index}-price`] = "Price is $1 to $10,000.";
@@ -262,11 +291,13 @@ export function toTicketTiers(
       for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
       taken.add(id);
     }
+    const external = row.externalUrl.trim();
     return {
       id,
       name: row.name.trim(),
       priceCents: parsePriceCents(row.price) ?? 0,
-      capacity: Number(row.capacity),
+      capacity: external ? Number(row.capacity) || 0 : Number(row.capacity),
+      ...(external ? { externalUrl: external } : {}),
       // Stored only when true, so rows from before these flags stay identical.
       ...(row.hidden === true ? { hidden: true } : {}),
       ...(row.soldOut === true ? { soldOut: true } : {}),
@@ -346,6 +377,7 @@ function readTicketRows(raw: unknown): TicketTierFormValues[] {
           : typeof r.capacity === "number"
             ? String(r.capacity)
             : "",
+      externalUrl: typeof r.externalUrl === "string" ? r.externalUrl : "",
       hidden: r.hidden === true || r.hidden === "true",
       soldOut: r.soldOut === true || r.soldOut === "true",
     };
@@ -431,6 +463,7 @@ export function eventToFormValues(
       name: string;
       priceCents: number;
       capacity: number;
+      externalUrl?: string | null;
       hidden?: boolean;
       soldOut?: boolean;
     }>;
@@ -469,8 +502,9 @@ export function eventToFormValues(
     tickets: (event.ticketTiers ?? []).map((tier) => ({
       id: tier.id,
       name: tier.name,
-      price: priceToForm(tier.priceCents),
-      capacity: String(tier.capacity),
+      price: tier.priceCents > 0 ? priceToForm(tier.priceCents) : "",
+      capacity: tier.capacity > 0 ? String(tier.capacity) : "",
+      externalUrl: tier.externalUrl ?? "",
       hidden: tier.hidden === true,
       soldOut: tier.soldOut === true,
     })),

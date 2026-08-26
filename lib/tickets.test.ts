@@ -83,12 +83,20 @@ describe("what an event sells", () => {
           { id: "a", name: "A", priceCents: 0, capacity: 10 },
           { id: "b", name: "B", priceCents: 1000, capacity: 0 },
           { id: "c", name: "C", priceCents: 1000, capacity: 10 },
+          // Off-platform: sellable with no price and no capacity of ours.
+          {
+            id: "d",
+            name: "Cabana",
+            priceCents: 0,
+            capacity: 0,
+            externalUrl: "https://resortpass.com/x",
+          },
         ],
       }),
     );
     assert.deepEqual(
       tiers.map((tier) => tier.id),
-      ["c"],
+      ["c", "d"],
     );
   });
 

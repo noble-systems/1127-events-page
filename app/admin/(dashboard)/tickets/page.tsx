@@ -211,12 +211,19 @@ export default async function AdminTicketsPage() {
                           hidden
                         </span>
                       ) : null}
+                      {tier.externalUrl ? (
+                        <span className="text-cobalt ml-2 text-[0.75rem] font-normal">
+                          off-site
+                        </span>
+                      ) : null}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">
-                      {formatMoney(tier.priceCents)}
+                      {tier.priceCents > 0 ? formatMoney(tier.priceCents) : ""}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">
-                      {sold} of {tier.capacity}
+                      {tier.externalUrl
+                        ? "on partner site"
+                        : `${sold} of ${tier.capacity}`}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">
                       {comped > 0 ? comped : ""}
@@ -225,7 +232,13 @@ export default async function AdminTicketsPage() {
                       {held > 0 ? held : ""}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">
-                      {remaining === 0 ? "Sold out" : remaining}
+                      {tier.externalUrl
+                        ? tier.soldOut
+                          ? "Sold out"
+                          : ""
+                        : remaining === 0
+                          ? "Sold out"
+                          : remaining}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">
                       {(() => {

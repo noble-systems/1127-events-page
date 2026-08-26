@@ -122,6 +122,15 @@ export async function POST(request: Request) {
     );
   }
 
+  // Off-platform tiers are bought on the partner page; our checkout must
+  // never take money for inventory somebody else is counting.
+  if (tier.externalUrl) {
+    return NextResponse.json(
+      { ok: false, message: "That ticket type is sold on a partner site." },
+      { status: 400 },
+    );
+  }
+
   // Manually flagged sold out beats whatever the counter says; the sweep
   // retry below must not resurrect a tier the admin closed on purpose.
   if (tier.soldOut === true) {

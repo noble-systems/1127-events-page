@@ -459,9 +459,9 @@ describe("ticket prices parse like money", () => {
 describe("tier ids are minted once and never move", () => {
   test("new rows get slugs, colliding names stay distinct", () => {
     const tiers = toTicketTiers([
-      { id: "", name: "Early Bird", price: "15", capacity: "25", hidden: false, soldOut: false },
-      { id: "", name: "GA", price: "20", capacity: "400", hidden: false, soldOut: false },
-      { id: "", name: "GA", price: "30", capacity: "50", hidden: false, soldOut: false },
+      { id: "", name: "Early Bird", price: "15", capacity: "25", externalUrl: "", hidden: false, soldOut: false },
+      { id: "", name: "GA", price: "20", capacity: "400", externalUrl: "", hidden: false, soldOut: false },
+      { id: "", name: "GA", price: "30", capacity: "50", externalUrl: "", hidden: false, soldOut: false },
     ]);
     assert.deepEqual(
       tiers.map((tier) => tier.id),
@@ -473,7 +473,7 @@ describe("tier ids are minted once and never move", () => {
 
   test("a renamed tier keeps the id its sales are counted under", () => {
     const tiers = toTicketTiers([
-      { id: "early-bird", name: "Early Bird II", price: "18", capacity: "30", hidden: false, soldOut: false },
+      { id: "early-bird", name: "Early Bird II", price: "18", capacity: "30", externalUrl: "", hidden: false, soldOut: false },
     ]);
     assert.equal(tiers[0].id, "early-bird");
     assert.equal(tiers[0].name, "Early Bird II");
@@ -535,11 +535,81 @@ describe("ticket tiers survive the full form round-trip", () => {
   });
 });
 
+describe("off-platform tiers", () => {
+  test("a valid https link is stored; price and capacity may be blank", () => {
+    const tiers = toTicketTiers([
+      {
+        id: "",
+        name: "Cabana",
+        price: "",
+        capacity: "",
+        externalUrl: "https://www.resortpass.com/experiences/cabana-3220280?date=2026-09-05",
+        hidden: false,
+        soldOut: false,
+      },
+    ]);
+    assert.equal(
+      tiers[0].externalUrl,
+      "https://www.resortpass.com/experiences/cabana-3220280?date=2026-09-05",
+    );
+    assert.equal(tiers[0].priceCents, 0);
+    assert.equal(tiers[0].capacity, 0);
+  });
+
+  test("validation demands https and skips price/capacity for them", () => {
+    const tier = (externalUrl: string, over: Record<string, string> = {}) => ({
+      ...EMPTY_EVENT,
+      ...valid,
+      tickets: [
+        {
+          id: "",
+          name: "Cabana",
+          price: over.price ?? "",
+          capacity: "",
+          externalUrl,
+          hidden: false,
+          soldOut: false,
+        },
+      ],
+    });
+    assert.equal(
+      validateEvent(tier("https://resortpass.com/x"))["ticket-0-externalUrl"],
+      undefined,
+    );
+    assert.ok(validateEvent(tier("http://resortpass.com/x"))["ticket-0-externalUrl"]);
+    assert.ok(validateEvent(tier("resortpass.com/x"))["ticket-0-externalUrl"]);
+    // A display price, when given, still has to be a real price.
+    assert.ok(
+      validateEvent(tier("https://resortpass.com/x", { price: "cheap" }))[
+        "ticket-0-price"
+      ],
+    );
+  });
+
+  test("the link survives the full form round-trip", () => {
+    const tiers = toTicketTiers([
+      {
+        id: "cab",
+        name: "Cabana",
+        price: "",
+        capacity: "",
+        externalUrl: "https://resortpass.com/x",
+        hidden: false,
+        soldOut: false,
+      },
+    ]);
+    const values = readEventBody({ tickets: tiers }, []);
+    assert.equal(values.tickets[0].externalUrl, "https://resortpass.com/x");
+    const back = toTicketTiers(values.tickets);
+    assert.equal(back[0].externalUrl, "https://resortpass.com/x");
+  });
+});
+
 describe("hidden tiers survive the round-trip too", () => {
   test("hidden true persists; absent stays absent", () => {
     const tiers = toTicketTiers([
-      { id: "eb", name: "Early Bird", price: "15", capacity: "25", hidden: true, soldOut: false },
-      { id: "ga", name: "GA", price: "20", capacity: "400", hidden: false, soldOut: false },
+      { id: "eb", name: "Early Bird", price: "15", capacity: "25", externalUrl: "", hidden: true, soldOut: false },
+      { id: "ga", name: "GA", price: "20", capacity: "400", externalUrl: "", hidden: false, soldOut: false },
     ]);
     assert.equal(tiers[0].hidden, true);
     assert.equal("hidden" in tiers[1], false, "false is not stored");

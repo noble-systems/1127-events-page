@@ -90,6 +90,18 @@ export default async function TicketsPage({ params, searchParams }: Params) {
     : new Map();
 
   const pickerTiers: PickerTier[] = tiers.map((tier) => {
+    // Off-platform tiers have no counter here: the partner page holds the
+    // inventory. Manual sold-out still applies; price shows when set.
+    if (tier.externalUrl) {
+      return {
+        id: tier.id,
+        name: tier.name,
+        priceLabel: tier.priceCents > 0 ? formatMoney(tier.priceCents) : "",
+        max: tier.soldOut === true ? 0 : 1,
+        scarce: null,
+        externalUrl: tier.externalUrl,
+      };
+    }
     const taken = inventory.get(tier.id)?.taken ?? 0;
     const remaining = remainingFor(tier, taken);
     return {

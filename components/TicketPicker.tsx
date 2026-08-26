@@ -24,6 +24,8 @@ export type PickerTier = {
   max: number;
   /** Shown as "Only N left" when the pool is nearly dry. */
   scarce: number | null;
+  /** Sold on a partner page instead of our checkout; max 0 = sold out. */
+  externalUrl?: string;
 };
 
 export function TicketPicker({
@@ -40,7 +42,9 @@ export function TicketPicker({
   src?: string;
 }) {
   const router = useRouter();
-  const firstOpen = tiers.find((tier) => tier.max > 0);
+  const firstOpen = tiers.find((tier) => !tier.externalUrl && tier.max > 0);
+  const internal = tiers.filter((tier) => !tier.externalUrl);
+  const external = tiers.filter((tier) => tier.externalUrl);
   const [tierId, setTierId] = useState(firstOpen?.id ?? "");
   const [quantity, setQuantity] = useState(1);
   const [via, setVia] = useState(viaFromLink ?? "");
@@ -132,7 +136,7 @@ export function TicketPicker({
     <div>
       <fieldset className="space-y-2.5">
         <legend className="sr-only">Ticket type</legend>
-        {tiers.map((tier) => {
+        {internal.map((tier) => {
           const soldOut = tier.max === 0;
           const selected = tier.id === tierId;
           return (
@@ -179,6 +183,48 @@ export function TicketPicker({
           );
         })}
       </fieldset>
+
+      {external.length > 0 ? (
+        <div className={internal.length > 0 ? "mt-4 space-y-2.5" : "space-y-2.5"}>
+          {external.map((tier) => {
+            const soldOut = tier.max === 0;
+            return (
+              <div
+                key={tier.id}
+                className={`flex items-center justify-between gap-4 rounded-xl border px-4 py-3.5 ${
+                  soldOut ? "border-ink/10 opacity-50" : "border-ink/15"
+                }`}
+              >
+                <span>
+                  <span className="block text-[0.9375rem] font-medium">
+                    {tier.name}
+                  </span>
+                  <span className="text-ink/55 block text-[0.8125rem]">
+                    {soldOut ? "Sold out" : "Sold on our partner's site"}
+                  </span>
+                </span>
+                <span className="flex items-center gap-4">
+                  {tier.priceLabel ? (
+                    <span className="font-display text-xl">
+                      {tier.priceLabel}
+                    </span>
+                  ) : null}
+                  {soldOut ? null : (
+                    <a
+                      href={tier.externalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-ink text-bone hover:bg-cobalt rounded-full px-4 py-2 text-[0.875rem] whitespace-nowrap transition-colors duration-200"
+                    >
+                      Get it there
+                    </a>
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       {chosen && max > 0 ? (
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
