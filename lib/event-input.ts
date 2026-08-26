@@ -36,7 +36,6 @@ export type EventFormValues = {
   date: string;
   time: string;
   location: string;
-  venue: string;
   tags: string;
   genres: string[];
   tone: string;
@@ -69,7 +68,6 @@ export const EMPTY_EVENT: EventFormValues = {
   date: "Dates Announcing Soon",
   time: "",
   location: "Old Town Scottsdale, Arizona",
-  venue: "",
   tags: "",
   genres: [],
   tone: "dusk",
@@ -115,7 +113,6 @@ const MAX: Partial<Record<keyof EventFormValues, number>> = {
   date: 80,
   time: 80,
   location: 120,
-  venue: 120,
   shotNote: 160,
   imageAlt: 200,
   ctaLabel: 60,
@@ -293,7 +290,6 @@ export function toEventInput(
     date: values.date.trim(),
     time: values.time.trim() || null,
     location: values.location.trim(),
-    venue: values.venue.trim() || null,
     tags: values.tags
       .split(",")
       .map((tag) => tag.trim())
@@ -374,7 +370,6 @@ export function readEventBody(
     date: str("date"),
     time: str("time"),
     location: str("location"),
-    venue: str("venue"),
     tags: Array.isArray(raw.tags) ? raw.tags.join(", ") : str("tags"),
     genres: normaliseGenres(raw.genres, allowedGenres),
     tone: str("tone") || "dusk",
@@ -424,7 +419,6 @@ export function eventToFormValues(
     date: string;
     time?: string | null;
     location: string;
-    venue: string | null;
     tags: string[];
     genres: string[];
     tone: MediaTone;
@@ -465,7 +459,6 @@ export function eventToFormValues(
     date: event.date,
     time: event.time ?? "",
     location: event.location,
-    venue: event.venue ?? "",
     tags: event.tags.join(", "),
     genres: normaliseGenres(event.genres, allowedGenres),
     tone: event.tone,

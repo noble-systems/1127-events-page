@@ -38,7 +38,7 @@ export async function notifyScheduleChange(event: EventRecord): Promise<number> 
         eventName: event.name,
         date: event.date,
         time: event.time ?? undefined,
-        location: event.venue ?? event.location,
+        location: event.location,
         walletUrl: `${siteUrl()}/t/${encodeURIComponent(order.ref)}`,
       });
       sent += 1;

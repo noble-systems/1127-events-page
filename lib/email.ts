@@ -426,7 +426,6 @@ export function renderGuestEmail(
   const facts: Array<[string, string]> = [
     ["Date", event?.date ?? "Dates announcing soon"],
     ["Location", event?.location ?? brand.region],
-    ["Venue", event?.venue ?? "Announcing soon"],
     // Was hardcoded to "House", which told everyone signing up for a bass or
     // techno night the wrong thing. The event carries its genres; use them.
     ["Music", event?.genres?.length ? event.genres.join(", ") : "Announcing soon"],

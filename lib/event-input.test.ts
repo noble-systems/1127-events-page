@@ -142,13 +142,8 @@ describe("toEventInput", () => {
     assert.ok(!input.tags.includes(""));
   });
 
-  test("turns blank venue and image into null", () => {
-    const input = toEventInput(
-      "x",
-      { ...valid, venue: "  ", image: "" },
-      GENRE_LIST,
-    );
-    assert.equal(input.venue, null);
+  test("turns a blank image into null", () => {
+    const input = toEventInput("x", { ...valid, image: "" }, GENRE_LIST);
     assert.equal(input.image, null);
   });
 
@@ -500,7 +495,6 @@ describe("ticket tiers survive the full form round-trip", () => {
       status: "On sale",
       date: "Aug 30",
       location: "Old Town",
-      venue: null,
       tags: [],
       genres: [],
       tone: "dusk" as const,

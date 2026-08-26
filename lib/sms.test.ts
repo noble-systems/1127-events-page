@@ -124,7 +124,6 @@ describe("message bodies", () => {
     status: "",
     date: "Saturday, May 16",
     location: "Old Town Scottsdale",
-    venue: null,
     tags: [],
     genres: [],
     tone: "dusk",

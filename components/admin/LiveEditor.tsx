@@ -263,7 +263,6 @@ export function LiveEditor({
           body: JSON.stringify({
             ...featured,
             tags: featured.tags.join(", "),
-            venue: featured.venue ?? "",
             image: featured.image ?? "",
             ...logoDraft,
           }),

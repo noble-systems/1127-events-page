@@ -150,11 +150,9 @@ export default async function TicketsPage({ params, searchParams }: Params) {
                   </dd>
                 </div>
                 <div className="bg-deep px-5 py-5">
-                  <dt className="label-xs text-bone/55">Venue</dt>
+                  <dt className="label-xs text-bone/55">Location</dt>
                   <dd className="font-display mt-2 text-xl">
-                    {event.venue?.trim() ||
-                      event.location?.trim() ||
-                      "Announcing soon"}
+                    {event.location?.trim() || "Announcing soon"}
                   </dd>
                 </div>
               </dl>

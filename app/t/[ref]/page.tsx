@@ -74,7 +74,7 @@ export default async function TicketWalletPage({
     ? [
         eventRecord.date?.trim(),
         eventRecord.time?.trim(),
-        eventRecord.venue?.trim() || eventRecord.location?.trim(),
+        eventRecord.location?.trim(),
       ]
         .filter(Boolean)
         .join(" · ")

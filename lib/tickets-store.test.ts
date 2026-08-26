@@ -67,7 +67,6 @@ async function seedEvent() {
     status: "On sale",
     date: "Aug 30",
     location: "Old Town",
-    venue: null,
     tags: [],
     genres: [],
     tone: "dusk",

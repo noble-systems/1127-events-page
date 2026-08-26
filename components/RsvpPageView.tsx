@@ -35,7 +35,6 @@ function eventFacts(event?: EventRecord) {
       body: "Date",
     },
     { title: event?.location?.trim() || "Old Town Scottsdale", body: "Location" },
-    { title: event?.venue?.trim() || "Announcing soon", body: "Venue" },
     {
       title: event?.genres?.length ? event.genres.join(", ") : "Announcing soon",
       body: "Music",
@@ -149,12 +148,6 @@ export function RsvpPageView({
                   <dt className="label-xs text-bone/55">Location</dt>
                   <dd className="font-display mt-2 text-xl">
                     {featured?.location ?? hero.location}
-                  </dd>
-                </div>
-                <div className="bg-deep px-5 py-5">
-                  <dt className="label-xs text-bone/55">Venue</dt>
-                  <dd className="font-display mt-2 text-xl">
-                    {featured?.venue ?? "Announcing soon"}
                   </dd>
                 </div>
                 <div className="bg-deep px-5 py-5">

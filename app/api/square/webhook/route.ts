@@ -154,7 +154,7 @@ export async function POST(request: Request) {
         codes,
         date: eventRecord?.date,
         time: eventRecord?.time ?? undefined,
-        location: eventRecord?.venue ?? eventRecord?.location,
+        location: eventRecord?.location,
         walletUrl: `${siteUrl()}/t/${order.ref}`,
       });
 

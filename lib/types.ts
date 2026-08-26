@@ -132,7 +132,6 @@ export type EventRecord = {
    */
   time?: string | null;
   location: string;
-  venue: string | null;
   tags: string[];
   /**
    * Musical genres from the controlled list in lib/genres.ts.

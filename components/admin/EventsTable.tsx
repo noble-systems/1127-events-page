@@ -52,7 +52,6 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
       body: JSON.stringify({
         ...event,
         tags: event.tags.join(", "),
-        venue: event.venue ?? "",
         image: event.image ?? "",
         ticketsEnabled: event.ticketsEnabled !== true,
       }),
@@ -86,7 +85,6 @@ export function EventsTable({ events }: { events: EventRecord[] }) {
       body: JSON.stringify({
         ...event,
         tags: event.tags.join(", "),
-        venue: event.venue ?? "",
         image: event.image ?? "",
         published: !event.published,
       }),

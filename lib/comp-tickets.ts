@@ -98,7 +98,7 @@ export async function issueCompTickets(input: {
     codes,
     date: event.date,
     time: event.time ?? undefined,
-    location: event.venue ?? event.location,
+    location: event.location,
     walletUrl: `${siteUrl()}/t/${ref}`,
   }).catch((error) => console.error("[1127] comp email failed", ref, error));
 

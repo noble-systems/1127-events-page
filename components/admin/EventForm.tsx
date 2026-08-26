@@ -408,23 +408,6 @@ export function EventForm({
           </Field>
 
           <Field
-            id="ev-venue"
-            label="Venue"
-            optional
-            error={errors.venue}
-            hint='Leave blank to show "Announcing soon".'
-          >
-            <TextInput
-              id="ev-venue"
-              name="venue"
-              value={values.venue}
-              error={errors.venue}
-              disabled={busy}
-              onChange={(e) => set("venue", e.target.value)}
-            />
-          </Field>
-
-          <Field
             id="ev-tags"
             label="Tags"
             error={errors.tags}
