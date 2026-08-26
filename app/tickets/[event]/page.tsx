@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic";
 
 type Params = {
   params: Promise<{ event: string }>;
-  searchParams: Promise<{ via?: string }>;
+  searchParams: Promise<{ via?: string; src?: string }>;
 };
 
 async function resolve(params: Params["params"]) {
@@ -65,7 +65,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function TicketsPage({ params, searchParams }: Params) {
-  const [{ event, moved }, { via }] = await Promise.all([
+  const [{ event, moved }, { via, src }] = await Promise.all([
     resolve(params),
     searchParams,
   ]);
@@ -170,6 +170,7 @@ export default async function TicketsPage({ params, searchParams }: Params) {
                         eventId={event.id}
                         tiers={pickerTiers}
                         via={via}
+                        src={src}
                       />
                     </div>
                   </>

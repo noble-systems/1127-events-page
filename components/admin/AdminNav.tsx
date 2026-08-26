@@ -14,6 +14,7 @@ const LINKS = [
   { href: "/admin/tickets", label: "Tickets" },
   { href: "/admin/door", label: "Door" },
   { href: "/admin/ambassadors", label: "Ambassadors" },
+  { href: "/admin/links", label: "Links" },
   { href: "/admin/traffic", label: "Traffic" },
   { href: "/admin/preview", label: "Page content" },
 ];

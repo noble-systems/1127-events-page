@@ -7,6 +7,7 @@ import { LEGAL_VERSION } from "@/content/site";
 import { listPublicEvents } from "@/lib/store";
 import { normalizeAmbassadorCode } from "@/lib/ambassadors";
 import { activeAmbassadorCode } from "@/lib/ambassadors-store";
+import { getTrackLink } from "@/lib/track-links";
 import { readQuantity, sellableTiers, type TicketOrder } from "@/lib/tickets";
 import { createOrder, releaseTickets, reserveTickets } from "@/lib/tickets-store";
 import { sweepStaleHolds } from "@/lib/ticket-sweep";
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
     tierId?: unknown;
     quantity?: unknown;
     via?: unknown;
+    src?: unknown;
     email?: unknown;
     phone?: unknown;
     optIn?: unknown;
@@ -92,6 +94,16 @@ export async function POST(request: Request) {
   const via =
     typeof body?.via === "string" && body.via.trim()
       ? await activeAmbassadorCode(normalizeAmbassadorCode(body.via))
+      : null;
+
+  /**
+   * The tracking-link id, carried invisibly from /l/<id>. Verified against
+   * the stored links the same way the ambassador code is: a fabricated id
+   * is dropped, never stored.
+   */
+  const src =
+    typeof body?.src === "string" && body.src.trim()
+      ? (await getTrackLink(body.src.trim().toLowerCase()))?.id ?? null
       : null;
 
   // Resolved against the published list, never trusted from the client: a
@@ -170,6 +182,7 @@ export async function POST(request: Request) {
       squareOrderId,
       linkId,
       ...(via ? { via } : {}),
+      ...(src ? { src } : {}),
       email,
       ...(phone ? { phone } : {}),
       ...(optIn ? { optIn: true } : {}),

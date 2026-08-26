@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { recallVia, rememberVia } from "@/components/viaSession";
+import {
+  recallSrc,
+  recallVia,
+  rememberSrc,
+  rememberVia,
+} from "@/components/viaSession";
 
 /**
  * The tier chooser: radios for the type, a count, one button. Payment itself
@@ -25,17 +30,21 @@ export function TicketPicker({
   eventId,
   tiers,
   via: viaFromLink,
+  src: srcFromLink,
 }: {
   eventId: string;
   tiers: PickerTier[];
   /** Ambassador code carried by the share link that landed here, if any. */
   via?: string;
+  /** Tracking-link id carried by ?src=, crediting the post, not a person. */
+  src?: string;
 }) {
   const router = useRouter();
   const firstOpen = tiers.find((tier) => tier.max > 0);
   const [tierId, setTierId] = useState(firstOpen?.id ?? "");
   const [quantity, setQuantity] = useState(1);
   const [via, setVia] = useState(viaFromLink ?? "");
+  const [src, setSrc] = useState(srcFromLink ?? "");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [agreed, setAgreed] = useState(false);
@@ -60,6 +69,16 @@ export function TicketPicker({
     }
   }, [viaFromLink]);
 
+  /** The tracking-link id rides the same way, invisibly; nothing to type. */
+  useEffect(() => {
+    if (srcFromLink) rememberSrc(srcFromLink);
+    else {
+      const stored = recallSrc();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (stored) setSrc((current) => current || stored);
+    }
+  }, [srcFromLink]);
+
   const chosen = tiers.find((tier) => tier.id === tierId) ?? null;
   const max = chosen?.max ?? 0;
   const emailOk = /^[^@]+@[^@]+[.][^@]+$/.test(email.trim());
@@ -82,6 +101,7 @@ export function TicketPicker({
           optIn: true,
           agreeTerms: true,
           ...(via.trim() ? { via: via.trim() } : {}),
+          ...(src.trim() ? { src: src.trim() } : {}),
         }),
       });
       const data = (await response.json().catch(() => null)) as {

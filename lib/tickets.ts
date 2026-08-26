@@ -97,6 +97,8 @@ export type TicketOrder = {
   linkId?: string;
   /** The ambassador code this sale is credited to, validated at checkout. */
   via?: string;
+  /** The tracking-link id (which post drove this sale), validated at checkout. */
+  src?: string;
   /**
    * Collected on OUR page before Square ever loads: the ticket email must
    * not depend on what a payment processor happens to hand back. Phone is

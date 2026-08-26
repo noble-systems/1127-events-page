@@ -29,3 +29,27 @@ export function recallVia(): string {
     return "";
   }
 }
+
+/**
+ * Same bridge for tracking-link ids (?src=), which credit the post a visitor
+ * came from rather than a person. Kept under its own key: one visitor can
+ * arrive through an ambassador's story AND a house link, and neither credit
+ * should overwrite the other.
+ */
+const SRC_KEY = "1127_src";
+
+export function rememberSrc(id: string | null | undefined): void {
+  try {
+    if (id) sessionStorage.setItem(SRC_KEY, id);
+  } catch {
+    /* storage unavailable; the URL param already did its job */
+  }
+}
+
+export function recallSrc(): string {
+  try {
+    return sessionStorage.getItem(SRC_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
