@@ -113,6 +113,8 @@ export async function PATCH(request: Request) {
     onboardTicket?: unknown;
     sendWelcome?: unknown;
     sendTicket?: unknown;
+    markTicketSent?: unknown;
+    ticketCode?: unknown;
   } | null;
   const code = normalizeAmbassadorCode(
     typeof body?.code === "string" ? body.code : "",
@@ -122,9 +124,12 @@ export async function PATCH(request: Request) {
   // per-code.
   if (typeof body?.rewardEvery === "number") {
     const every = Math.floor(body.rewardEvery);
-    if (every < 1 || every > 100) {
+    if (every < 0 || every > 100) {
       return NextResponse.json(
-        { ok: false, message: "Free-ticket threshold is 1 to 100 sales." },
+        {
+          ok: false,
+          message: "Free-ticket threshold is 1 to 100 sales, or 0 to turn it off.",
+        },
         { status: 400 },
       );
     }
@@ -219,6 +224,46 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  /**
+   * "They already have a ticket": records an EXISTING ticket code against
+   * the row instead of minting anything. The code must name a real ticket,
+   * so a stray click cannot mark anyone sent; the roster then says it was
+   * marked by hand and shows which ticket.
+   */
+  if (body?.markTicketSent === true) {
+    const ambassador = await getAmbassador(code);
+    if (!ambassador) {
+      return NextResponse.json(
+        { ok: false, message: "That ambassador does not exist." },
+        { status: 404 },
+      );
+    }
+    const { extractTicketCode } = await import("@/lib/tickets");
+    const ticketCode = extractTicketCode(
+      typeof body?.ticketCode === "string" ? body.ticketCode : "",
+    );
+    if (!ticketCode) {
+      return NextResponse.json(
+        { ok: false, message: "That doesn't look like a ticket code (ABC-DEF-GHJ)." },
+        { status: 400 },
+      );
+    }
+    const { getTicket } = await import("@/lib/tickets-store");
+    const ticket = await getTicket(ticketCode);
+    if (!ticket) {
+      return NextResponse.json(
+        { ok: false, message: "No ticket with that code exists." },
+        { status: 404 },
+      );
+    }
+    await patchAmbassador(code, {
+      welcomeTicketAt: new Date().toISOString(),
+      welcomeTicketCode: ticketCode,
+      welcomeTicketManual: true,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   // One click: their welcome comp for the event picked in the setting.
   if (body?.sendTicket === true) {
     const ambassador = await getAmbassador(code);
@@ -237,23 +282,36 @@ export async function PATCH(request: Request) {
     const setting = await getOnboardTicket();
 
     /**
-     * A comp they already hold is RESENT, never minted twice: the same
-     * codes, the same wallet link, a fresh email. Only an ambassador with
-     * no comp at all gets a new one minted from the setting.
+     * A ticket they already hold is RESENT, never minted twice: the same
+     * codes, the same wallet link, a fresh email. The recorded code (set by
+     * a previous send, or marked by hand) is checked first, then any comp
+     * attributed to them; only an ambassador with nothing gets a mint.
      */
-    const { listAllOrders } = await import("@/lib/tickets-store");
-    const comps = (await listAllOrders())
-      .filter(
-        (order) =>
-          order.comp === true &&
-          order.status === "paid" &&
-          order.via === ambassador.code &&
-          (order.codes?.length ?? 0) > 0,
-      )
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const existing =
-      comps.find((order) => setting.eventId && order.eventId === setting.eventId) ??
-      comps[0];
+    const { getTicket, listAllOrders, getOrder } = await import(
+      "@/lib/tickets-store"
+    );
+
+    let existing = null;
+    if (ambassador.welcomeTicketCode) {
+      const ticket = await getTicket(ambassador.welcomeTicketCode);
+      const order = ticket ? await getOrder(ticket.orderId) : null;
+      if (order?.codes?.length) existing = order;
+    }
+    if (!existing) {
+      const comps = (await listAllOrders())
+        .filter(
+          (order) =>
+            order.comp === true &&
+            order.status === "paid" &&
+            order.via === ambassador.code &&
+            (order.codes?.length ?? 0) > 0,
+        )
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      existing =
+        comps.find(
+          (order) => setting.eventId && order.eventId === setting.eventId,
+        ) ?? comps[0] ?? null;
+    }
 
     if (existing) {
       const { sendTicketEmail } = await import("@/lib/email");
@@ -277,7 +335,11 @@ export async function PATCH(request: Request) {
           { status: 502 },
         );
       }
-      await patchAmbassador(code, { welcomeTicketAt: new Date().toISOString() });
+      await patchAmbassador(code, {
+        welcomeTicketAt: new Date().toISOString(),
+        welcomeTicketCode: existing.codes?.[0] ?? "",
+        welcomeTicketManual: false,
+      });
       return NextResponse.json({ ok: true, resent: true });
     }
 
@@ -309,7 +371,11 @@ export async function PATCH(request: Request) {
         { status: 409 },
       );
     }
-    await patchAmbassador(code, { welcomeTicketAt: new Date().toISOString() });
+    await patchAmbassador(code, {
+      welcomeTicketAt: new Date().toISOString(),
+      welcomeTicketCode: issued.order.codes?.[0] ?? "",
+      welcomeTicketManual: false,
+    });
     return NextResponse.json({ ok: true });
   }
 

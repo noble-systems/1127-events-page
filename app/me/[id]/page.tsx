@@ -6,7 +6,6 @@ import {
   readAmbassadorClicks,
 } from "@/lib/ambassadors-store";
 import { siteUrl } from "@/lib/email";
-import { listSubmissions } from "@/lib/store";
 import { listAllOrders } from "@/lib/tickets-store";
 
 /**
@@ -31,27 +30,19 @@ export default async function AmbassadorStatsPage({
   const ambassador = await getAmbassadorByStatsId((id ?? "").toLowerCase());
   if (!ambassador) notFound();
 
-  const [clicks, orders, rsvps] = await Promise.all([
+  const [clicks, orders] = await Promise.all([
     readAmbassadorClicks([ambassador.code]),
     listAllOrders(),
-    listSubmissions("rsvp"),
   ]);
 
   const taps = clicks.get(ambassador.code) ?? 0;
   const sold = ticketsSoldBy(ambassador.code, orders);
-  const signups = rsvps.filter((row) => row.via === ambassador.code).length;
-  const free = Math.max(
-    ambassador.rewardsGiven ?? 0,
-    (ambassador.rewardedEvents ?? []).length,
-  );
   const link = `${siteUrl()}/a/${ambassador.code}`;
   const firstName = ambassador.name.trim().split(/\s+/)[0] || "there";
 
   const numbers: Array<[string, number, string]> = [
     ["Link taps", taps, "times somebody opened your link"],
-    ["Signups", signups, "people on the list because of you"],
     ["Tickets sold", sold, "paid tickets credited to your code"],
-    ["Free tickets", free, "earned through your sales"],
   ];
 
   return (

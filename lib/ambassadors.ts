@@ -58,6 +58,10 @@ export type Ambassador = {
   welcomeEmailAt?: string;
   /** When their welcome comp ticket went out. Absent = not yet. */
   welcomeTicketAt?: string;
+  /** The ticket code behind that stamp; what a resend re-emails. */
+  welcomeTicketCode?: string;
+  /** True when an admin marked it sent by hand instead of the button. */
+  welcomeTicketManual?: boolean;
   createdAt: string;
 };
 

@@ -751,6 +751,31 @@ describe("the ambassador reward", () => {
     assert.equal(inv.get("ga")?.sold, 1, "the free seat came from the GA pool");
   });
 
+  test("a zero threshold switches the reward off entirely", async () => {
+    await seedEvent();
+    const { setRewardEvery } = await import("./ambassadors-store.ts");
+    await setRewardEvery(0);
+    await mintAmb({
+      code: "NORA",
+      name: "Nora",
+      email: "nora@example.com",
+      active: true,
+      createdAt: new Date().toISOString(),
+    });
+
+    for (const ref of ["z1", "z2", "z3"]) {
+      await reserveTickets("mirage", "early-bird", 1, 25);
+      await createOrder(order(ref, { quantity: 1, via: "NORA", email: "b@x.co" }));
+      await webhook(signedRequest(completedEvent(`sq-${ref}`)));
+    }
+
+    assert.equal(
+      (await listOrders(["mirage"])).filter((row) => row.comp === true).length,
+      0,
+      "no free ticket while the program is off",
+    );
+  });
+
   test("no email on file means no reward and a loud log, not a crash", async () => {
     await seedEvent();
     await mintAmb({

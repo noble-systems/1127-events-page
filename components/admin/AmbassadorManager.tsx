@@ -205,7 +205,7 @@ export function AmbassadorManager({
           <span className="mt-1.5 flex items-center gap-2">
             <input
               type="number"
-              min={1}
+              min={0}
               max={100}
               value={threshold}
               disabled={busy}
@@ -260,6 +260,13 @@ export function AmbassadorManager({
           free ticket for that event lands in their email automatically, as
           the type picked here when the event has it. One per event, no matter
           how many more they sell, and free tickets never count as sales.
+          Setting it to 0 turns the free ticket off entirely.
+          {Number(threshold) === 0 ? (
+            <strong className="text-terracotta-deep font-medium">
+              {" "}
+              Rewards are currently off.
+            </strong>
+          ) : null}
         </p>
       </div>
 
@@ -468,7 +475,15 @@ export function AmbassadorManager({
                         <div>
                           {row.welcomeTicketAt ? (
                             <span className="text-ink/60">
-                              Ticket {sentDay(row.welcomeTicketAt)}{" "}
+                              {`Ticket ${sentDay(row.welcomeTicketAt)}${
+                                row.welcomeTicketManual
+                                  ? ", marked by hand"
+                                  : ""
+                              }${
+                                row.welcomeTicketCode
+                                  ? ` (${row.welcomeTicketCode})`
+                                  : ""
+                              } `}
                             </span>
                           ) : null}
                           <button
@@ -487,6 +502,30 @@ export function AmbassadorManager({
                           >
                             {row.welcomeTicketAt ? "Resend ticket" : "Send ticket"}
                           </button>
+                          {!row.welcomeTicketAt ? (
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => {
+                                const typed = window.prompt(
+                                  `${row.name} already has a ticket? Type its code (ABC-DEF-GHJ) to record it without minting another.`,
+                                );
+                                if (typed && typed.trim()) {
+                                  void call({
+                                    method: "PATCH",
+                                    body: JSON.stringify({
+                                      code: row.code,
+                                      markTicketSent: true,
+                                      ticketCode: typed.trim(),
+                                    }),
+                                  });
+                                }
+                              }}
+                              className="text-ink/55 hover:text-ink ml-3 underline underline-offset-2"
+                            >
+                              Mark sent
+                            </button>
+                          ) : null}
                         </div>
                       </div>
                     </td>

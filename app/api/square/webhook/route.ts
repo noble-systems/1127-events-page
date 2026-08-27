@@ -218,6 +218,8 @@ export async function POST(request: Request) {
 
         if (
           eventRecord &&
+          // Zero threshold = the reward program is switched off entirely.
+          every > 0 &&
           sold >= every &&
           !alreadyPaid &&
           (await claimEventReward(order.via, eventRecord.id))

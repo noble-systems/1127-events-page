@@ -44,6 +44,8 @@ export async function renameAmbassador(
     statsId: existing.statsId,
     welcomeEmailAt: existing.welcomeEmailAt,
     welcomeTicketAt: existing.welcomeTicketAt,
+    welcomeTicketCode: existing.welcomeTicketCode,
+    welcomeTicketManual: existing.welcomeTicketManual,
     createdAt: existing.createdAt,
   };
   const created = await createAmbassador(renamed);

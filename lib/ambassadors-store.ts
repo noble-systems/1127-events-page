@@ -103,6 +103,12 @@ export async function createAmbassador(ambassador: Ambassador): Promise<boolean>
           ...(ambassador.welcomeTicketAt
             ? { welcomeTicketAt: { S: ambassador.welcomeTicketAt } }
             : {}),
+          ...(ambassador.welcomeTicketCode
+            ? { welcomeTicketCode: { S: ambassador.welcomeTicketCode } }
+            : {}),
+          ...(ambassador.welcomeTicketManual === true
+            ? { welcomeTicketManual: { BOOL: true } }
+            : {}),
           createdAt: { S: ambassador.createdAt },
         },
         ConditionExpression: "attribute_not_exists(pk)",
@@ -140,6 +146,8 @@ export async function getAmbassador(code: string): Promise<Ambassador | null> {
     statsId: out.Item.statsId?.S ?? undefined,
     welcomeEmailAt: out.Item.welcomeEmailAt?.S ?? undefined,
     welcomeTicketAt: out.Item.welcomeTicketAt?.S ?? undefined,
+    welcomeTicketCode: out.Item.welcomeTicketCode?.S ?? undefined,
+    welcomeTicketManual: out.Item.welcomeTicketManual?.BOOL === true || undefined,
     createdAt: out.Item.createdAt?.S ?? "",
   };
 }
@@ -193,6 +201,8 @@ export async function patchAmbassador(
       | "statsId"
       | "welcomeEmailAt"
       | "welcomeTicketAt"
+      | "welcomeTicketCode"
+      | "welcomeTicketManual"
     >
   >,
 ): Promise<void> {
@@ -238,6 +248,16 @@ export async function patchAmbassador(
     sets.push("#wt = :wt");
     names["#wt"] = "welcomeTicketAt";
     values[":wt"] = { S: patch.welcomeTicketAt };
+  }
+  if (patch.welcomeTicketCode !== undefined) {
+    sets.push("#wc = :wc");
+    names["#wc"] = "welcomeTicketCode";
+    values[":wc"] = { S: patch.welcomeTicketCode };
+  }
+  if (patch.welcomeTicketManual !== undefined) {
+    sets.push("#wm = :wm");
+    names["#wm"] = "welcomeTicketManual";
+    values[":wm"] = { BOOL: patch.welcomeTicketManual };
   }
   if (sets.length === 0) return;
 
@@ -309,20 +329,25 @@ const REWARD_CFG_PK = "cfg#ambassador-reward";
 const LOCAL_CFG_KEY = "__reward_every__";
 
 /** How many sales earn a free ticket, as set on the dashboard. */
+/**
+ * How many sales earn the free ticket. Zero means the reward is switched
+ * OFF; the fallback only covers a site that has never set the value at all.
+ */
 export async function getRewardEvery(fallback: number): Promise<number> {
   const table = TABLE();
 
   if (!table) {
     const data = await localRead();
     const raw = (data as Record<string, unknown>)[LOCAL_CFG_KEY];
-    return typeof raw === "number" && raw > 0 ? raw : fallback;
+    return typeof raw === "number" && raw >= 0 ? raw : fallback;
   }
 
   const out = await db().send(
     new GetItemCommand({ TableName: table, Key: { pk: { S: REWARD_CFG_PK } } }),
   );
-  const n = Number(out.Item?.n?.N ?? 0);
-  return n > 0 ? n : fallback;
+  if (out.Item?.n?.N === undefined) return fallback;
+  const n = Number(out.Item.n.N);
+  return n >= 0 ? n : fallback;
 }
 
 export async function setRewardEvery(every: number): Promise<void> {
@@ -644,6 +669,11 @@ export async function listAmbassadors(): Promise<Ambassador[]> {
           (item.welcomeEmailAt as { S?: string } | undefined)?.S ?? undefined,
         welcomeTicketAt:
           (item.welcomeTicketAt as { S?: string } | undefined)?.S ?? undefined,
+        welcomeTicketCode:
+          (item.welcomeTicketCode as { S?: string } | undefined)?.S ?? undefined,
+        welcomeTicketManual:
+          (item.welcomeTicketManual as { BOOL?: boolean } | undefined)?.BOOL ===
+            true || undefined,
         createdAt: item.createdAt?.S ?? "",
       });
     }
