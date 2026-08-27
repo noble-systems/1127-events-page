@@ -109,7 +109,10 @@ export default async function TicketsPage({ params, searchParams }: Params) {
       name: tier.name,
       priceLabel: formatMoney(tier.priceCents),
       max: Math.min(remaining, MAX_TICKETS_PER_ORDER),
-      scarce: remaining > 0 && remaining < 10 ? remaining : null,
+      scarce:
+        event.showScarcity === true && remaining > 0 && remaining < 10
+          ? remaining
+          : null,
     };
   });
 

@@ -843,6 +843,15 @@ export function EventForm({
             onChange={(value) => set("ticketsEnabled", value)}
           />
 
+          <Toggle
+            id="ev-show-scarcity"
+            label="Show &quot;Only N left&quot;"
+            hint="When a type has fewer than 10 seats left, the tickets page says so. Off hides the count; sold out still shows either way."
+            checked={values.showScarcity}
+            disabled={busy}
+            onChange={(value) => set("showScarcity", value)}
+          />
+
           {values.tickets.map((tier, index) => (
             <div
               key={tier.id || `new-${index}`}

@@ -105,6 +105,12 @@ export type EventRecord = {
   /** The purchasable ticket types, in display order. */
   ticketTiers?: TicketTier[];
   /**
+   * Show the "Only N left" scarcity note on the public tickets page when a
+   * tier runs low. Off by default: the live count is a sales tactic some
+   * events want and some don't.
+   */
+  showScarcity?: boolean;
+  /**
    * A wordmark shown in the hero in place of the typed name while this event
    * is featured. The name itself stays in the markup for screen readers and
    * search; the logo is presentation. Optional, because most events will not
