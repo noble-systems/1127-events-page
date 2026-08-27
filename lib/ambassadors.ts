@@ -48,6 +48,10 @@ export type Ambassador = {
    * earns nothing more.
    */
   rewardedEvents?: string[];
+  /** When the welcome email with their link went out. Absent = not yet. */
+  welcomeEmailAt?: string;
+  /** When their welcome comp ticket went out. Absent = not yet. */
+  welcomeTicketAt?: string;
   createdAt: string;
 };
 

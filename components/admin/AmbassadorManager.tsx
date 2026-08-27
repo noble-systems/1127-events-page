@@ -11,6 +11,15 @@ import { Button } from "@/components/ui/Button";
  * math, it only displays it and edits the roster.
  */
 
+/** "Aug 26", so a row can say when without eating the table. */
+function sentDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    timeZone: "America/Phoenix",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -38,6 +47,11 @@ export function AmbassadorManager({
   rewardEvery,
   rewardTierName,
   tierNames,
+  welcomeSubject,
+  welcomeBody,
+  onboardEventId,
+  onboardTierId,
+  events,
 }: {
   stats: AmbassadorStats[];
   siteUrl: string;
@@ -47,6 +61,18 @@ export function AmbassadorManager({
   rewardTierName: string;
   /** Every tier name across events, for the picker. */
   tierNames: string[];
+  /** The editable welcome email; blank means the standard wording. */
+  welcomeSubject: string;
+  welcomeBody: string;
+  /** Which event and type the one-click welcome ticket mints. */
+  onboardEventId: string;
+  onboardTierId: string;
+  /** Events with mintable tiers, for the welcome-ticket picker. */
+  events: Array<{
+    id: string;
+    name: string;
+    tiers: Array<{ id: string; name: string }>;
+  }>;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -55,6 +81,10 @@ export function AmbassadorManager({
   const [codeTouched, setCodeTouched] = useState(false);
   const [threshold, setThreshold] = useState(String(rewardEvery));
   const [rewardTier, setRewardTier] = useState(rewardTierName);
+  const [onboardEvent, setOnboardEvent] = useState(onboardEventId);
+  const [onboardTier, setOnboardTier] = useState(onboardTierId);
+  const [subject, setSubject] = useState(welcomeSubject);
+  const [emailBody, setEmailBody] = useState(welcomeBody);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -233,6 +263,124 @@ export function AmbassadorManager({
         </p>
       </div>
 
+      <div className="border-ink/10 mt-6 flex flex-wrap items-end gap-3 border-t pt-5">
+        <label className="text-ink/70 block text-[0.875rem]">
+          Welcome ticket event
+          <select
+            value={onboardEvent}
+            disabled={busy}
+            onChange={(e) => {
+              setOnboardEvent(e.target.value);
+              setOnboardTier("");
+            }}
+            className="border-ink/20 bg-bone-soft mt-1.5 block rounded-lg border px-3 py-2 text-[0.9375rem]"
+          >
+            <option value="">Not set</option>
+            {events.map((event) => (
+              <option key={event.id} value={event.id}>
+                {event.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-ink/70 block text-[0.875rem]">
+          Ticket type
+          <select
+            value={onboardTier}
+            disabled={busy || !onboardEvent}
+            onChange={(e) => setOnboardTier(e.target.value)}
+            className="border-ink/20 bg-bone-soft mt-1.5 block rounded-lg border px-3 py-2 text-[0.9375rem]"
+          >
+            <option value="">Pick a type</option>
+            {(events.find((event) => event.id === onboardEvent)?.tiers ?? []).map(
+              (tier) => (
+                <option key={tier.id} value={tier.id}>
+                  {tier.name}
+                </option>
+              ),
+            )}
+          </select>
+        </label>
+        <Button
+          variant="outline"
+          size="md"
+          disabled={
+            busy ||
+            (onboardEvent === onboardEventId && onboardTier === onboardTierId) ||
+            (Boolean(onboardEvent) && !onboardTier)
+          }
+          onClick={() =>
+            call({
+              method: "PATCH",
+              body: JSON.stringify({
+                onboardTicket: { eventId: onboardEvent, tierId: onboardTier },
+              }),
+            })
+          }
+        >
+          Save welcome ticket
+        </Button>
+        <p className="text-ink/55 basis-full text-[0.8125rem] leading-relaxed">
+          The Send ticket button on each row mints one free ticket of this
+          type and emails it to them. Someone who already has a comp gets
+          THAT ticket resent, never a second one.
+        </p>
+      </div>
+
+      <div className="border-ink/10 mt-6 border-t pt-5">
+        <h3 className="font-display text-lg">Welcome email</h3>
+        <p className="text-ink/55 mt-1 text-[0.8125rem] leading-relaxed">
+          Sent by the Send email button on each row.{" "}
+          {"{name}"}, {"{code}"} and {"{link}"} fill in automatically. Blank
+          lines split paragraphs; leave both empty for the standard wording.
+        </p>
+        <div className="mt-4 grid max-w-2xl gap-4">
+          <label className="text-ink/70 block text-[0.875rem]">
+            Subject
+            <input
+              type="text"
+              value={subject}
+              disabled={busy}
+              placeholder="Your 1127 ambassador link"
+              onChange={(e) => setSubject(e.target.value)}
+              className="border-ink/20 bg-bone-soft mt-1.5 block w-full rounded-lg border px-3 py-2 text-[0.9375rem]"
+            />
+          </label>
+          <label className="text-ink/70 block text-[0.875rem]">
+            Body
+            <textarea
+              value={emailBody}
+              disabled={busy}
+              rows={7}
+              placeholder={
+                "Hey {name},\n\nYour personal link is below...\n\n{link}\n\nYour code is {code}."
+              }
+              onChange={(e) => setEmailBody(e.target.value)}
+              className="border-ink/20 bg-bone-soft mt-1.5 block w-full rounded-lg border px-3 py-2 text-[0.9375rem] leading-relaxed"
+            />
+          </label>
+          <div>
+            <Button
+              variant="outline"
+              size="md"
+              disabled={
+                busy || (subject === welcomeSubject && emailBody === welcomeBody)
+              }
+              onClick={() =>
+                call({
+                  method: "PATCH",
+                  body: JSON.stringify({
+                    welcomeTemplate: { subject, body: emailBody },
+                  }),
+                })
+              }
+            >
+              Save welcome email
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {stats.length === 0 ? (
         <p className="border-ink/25 bg-bone/60 text-ink/65 mt-6 rounded-2xl border border-dashed px-6 py-10 text-center text-[0.9375rem]">
           No ambassador codes yet. Create one above; the share link appears
@@ -249,8 +397,9 @@ export function AmbassadorManager({
                 <th className="py-2 pr-4 font-medium">Link taps</th>
                 <th className="py-2 pr-4 font-medium">Signups</th>
                 <th className="py-2 pr-4 font-medium">Tickets</th>
-                <th className="py-2 pr-4 font-medium">Sales</th>
+                <th className="py-2 pr-4 font-medium">Sales ($)</th>
                 <th className="py-2 pr-4 font-medium">Free given</th>
+                <th className="py-2 pr-4 font-medium">Welcome</th>
                 <th className="py-2 font-medium"></th>
               </tr>
             </thead>
@@ -279,6 +428,56 @@ export function AmbassadorManager({
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">
                       {row.rewardsGiven ?? 0}
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      <div className="space-y-1 whitespace-nowrap text-[0.8125rem]">
+                        <div>
+                          {row.welcomeEmailAt ? (
+                            <span className="text-ink/60">
+                              Email {sentDay(row.welcomeEmailAt)}{" "}
+                            </span>
+                          ) : null}
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              void call({
+                                method: "PATCH",
+                                body: JSON.stringify({
+                                  code: row.code,
+                                  sendWelcome: true,
+                                }),
+                              })
+                            }
+                            className="text-cobalt underline underline-offset-2"
+                          >
+                            {row.welcomeEmailAt ? "Resend email" : "Send email"}
+                          </button>
+                        </div>
+                        <div>
+                          {row.welcomeTicketAt ? (
+                            <span className="text-ink/60">
+                              Ticket {sentDay(row.welcomeTicketAt)}{" "}
+                            </span>
+                          ) : null}
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              void call({
+                                method: "PATCH",
+                                body: JSON.stringify({
+                                  code: row.code,
+                                  sendTicket: true,
+                                }),
+                              })
+                            }
+                            className="text-cobalt underline underline-offset-2"
+                          >
+                            {row.welcomeTicketAt ? "Resend ticket" : "Send ticket"}
+                          </button>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-2.5">
                       <div className="flex gap-3 whitespace-nowrap">

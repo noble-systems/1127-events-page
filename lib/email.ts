@@ -1170,6 +1170,65 @@ export function renderScheduleChangeEmail(input: {
   return { subject, html, text };
 }
 
+/**
+ * The ambassador welcome: their link, their code, sent by one click from the
+ * roster. Wording is editable on the dashboard; these are the defaults, and
+ * {name}, {code} and {link} fill in wherever they appear.
+ */
+export const WELCOME_SUBJECT_DEFAULT = "Your 1127 ambassador link";
+export const WELCOME_BODY_DEFAULT = [
+  "Hey {name},",
+  "You're officially a 1127 ambassador. Your personal link is below; put it in your bio and your stories, and everyone who signs up or buys tickets through it counts as yours.",
+  "{link}",
+  "Your code is {code}. People can also type it at checkout, so it works on flyers and screenshots too.",
+  "Thanks for repping us.",
+].join("\n\n");
+
+export function renderAmbassadorWelcomeEmail(input: {
+  name: string;
+  code: string;
+  link: string;
+  /** Blank falls back to the standard wording. */
+  subject?: string;
+  body?: string;
+}) {
+  const fill = (value: string) =>
+    value
+      .replace(/\{name\}/g, input.name.trim().split(/\s+/)[0] || "there")
+      .replace(/\{code\}/g, input.code)
+      .replace(/\{link\}/g, input.link);
+
+  const subject = fill(input.subject?.trim() || WELCOME_SUBJECT_DEFAULT);
+  const bodyText = fill(input.body?.trim() || WELCOME_BODY_DEFAULT);
+
+  const html = receiptShell({
+    preheader: `Your link: ${input.link}`,
+    heading: "Welcome aboard.",
+    body: `
+      ${bodyText
+        .split(/\n{2,}/)
+        .map(
+          (para) =>
+            `<p style="margin:0 0 14px;font:400 15px/1.65 Helvetica,Arial,sans-serif;color:${INK};">${escapeHtml(para.trim())}</p>`,
+        )
+        .join("")}
+      <p style="margin:18px 0 0;"><a href="${input.link}" style="display:inline-block;background:${DEEP};color:${BONE};font:600 15px/1 Helvetica,Arial,sans-serif;padding:14px 26px;border-radius:999px;text-decoration:none;">Open your link</a></p>`,
+    footer: `You're getting this because you're a 1127 ambassador. Your code is ${escapeHtml(input.code)}.`,
+  });
+
+  const text = [bodyText, "", `Your link: ${input.link}`].join("\n");
+
+  return { subject, html, text };
+}
+
+export async function sendAmbassadorWelcomeEmail(
+  to: string,
+  input: Parameters<typeof renderAmbassadorWelcomeEmail>[0],
+): Promise<void> {
+  const { subject, html, text } = renderAmbassadorWelcomeEmail(input);
+  await sendDirect({ to: [to], subject, html, text });
+}
+
 export async function sendScheduleChangeEmail(
   to: string,
   input: Parameters<typeof renderScheduleChangeEmail>[0],

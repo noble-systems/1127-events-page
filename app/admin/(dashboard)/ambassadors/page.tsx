@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { AmbassadorManager } from "@/components/admin/AmbassadorManager";
 import { REWARD_EVERY_DEFAULT, ambassadorStats } from "@/lib/ambassadors";
 import {
+  getOnboardTicket,
   getRewardEvery,
   getRewardTierName,
+  getWelcomeTemplate,
   listAmbassadors,
   readAmbassadorClicks,
 } from "@/lib/ambassadors-store";
@@ -20,15 +22,35 @@ export const dynamic = "force-dynamic";
  * load, never from counters that could drift from it.
  */
 export default async function AdminAmbassadorsPage() {
-  const [ambassadors, orders, rsvps, rewardEvery, rewardTierName, events] =
-    await Promise.all([
-      listAmbassadors(),
-      listAllOrders(),
-      listSubmissions("rsvp"),
-      getRewardEvery(REWARD_EVERY_DEFAULT),
-      getRewardTierName(),
-      listAllEvents(),
-    ]);
+  const [
+    ambassadors,
+    orders,
+    rsvps,
+    rewardEvery,
+    rewardTierName,
+    events,
+    welcomeTemplate,
+    onboardTicket,
+  ] = await Promise.all([
+    listAmbassadors(),
+    listAllOrders(),
+    listSubmissions("rsvp"),
+    getRewardEvery(REWARD_EVERY_DEFAULT),
+    getRewardTierName(),
+    listAllEvents(),
+    getWelcomeTemplate(),
+    getOnboardTicket(),
+  ]);
+  // Off-site tiers cannot be minted, so the welcome-ticket picker skips them.
+  const mintable = events
+    .map((event) => ({
+      id: event.id,
+      name: event.name,
+      tiers: (event.ticketTiers ?? [])
+        .filter((tier) => !tier.externalUrl)
+        .map((tier) => ({ id: tier.id, name: tier.name })),
+    }))
+    .filter((event) => event.tiers.length > 0);
   const tierNames = [
     ...new Set(
       events.flatMap((event) =>
@@ -59,6 +81,11 @@ export default async function AdminAmbassadorsPage() {
           rewardEvery={rewardEvery}
           rewardTierName={rewardTierName}
           tierNames={tierNames}
+          welcomeSubject={welcomeTemplate.subject}
+          welcomeBody={welcomeTemplate.body}
+          onboardEventId={onboardTicket.eventId}
+          onboardTierId={onboardTicket.tierId}
+          events={mintable}
         />
       </div>
     </div>

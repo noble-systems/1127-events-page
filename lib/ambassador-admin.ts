@@ -41,6 +41,8 @@ export async function renameAmbassador(
     active: existing.active,
     rewardsGiven: existing.rewardsGiven,
     rewardedEvents: existing.rewardedEvents,
+    welcomeEmailAt: existing.welcomeEmailAt,
+    welcomeTicketAt: existing.welcomeTicketAt,
     createdAt: existing.createdAt,
   };
   const created = await createAmbassador(renamed);

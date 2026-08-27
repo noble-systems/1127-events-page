@@ -604,6 +604,48 @@ describe("schedule-change notice", () => {
   });
 });
 
+describe("ambassador onboarding", () => {
+  beforeEach(reset);
+
+  test("welcome template and onboard ticket settings round trip", async () => {
+    const {
+      getOnboardTicket,
+      getWelcomeTemplate,
+      setOnboardTicket,
+      setWelcomeTemplate,
+      listAmbassadors,
+    } = await import("./ambassadors-store.ts");
+
+    assert.deepEqual(await getWelcomeTemplate(), { subject: "", body: "" });
+    await setWelcomeTemplate({ subject: "Welcome", body: "Hi {name}, {link}" });
+    assert.equal((await getWelcomeTemplate()).body, "Hi {name}, {link}");
+
+    await setOnboardTicket({ eventId: "mirage", tierId: "ga" });
+    assert.deepEqual(await getOnboardTicket(), {
+      eventId: "mirage",
+      tierId: "ga",
+    });
+
+    // The cfg stand-in rows never leak into the roster listing.
+    assert.equal((await listAmbassadors()).length, 0);
+  });
+
+  test("the welcome email fills placeholders and escapes nothing dangerous in", async () => {
+    const { renderAmbassadorWelcomeEmail } = await import("./email.ts");
+    const { subject, html, text } = renderAmbassadorWelcomeEmail({
+      name: "Dani Q",
+      code: "DANI",
+      link: "https://1127.events/a/DANI",
+      subject: "",
+      body: "Hey {name}, your code is {code}: {link} <script>x</script>",
+    });
+    assert.equal(subject, "Your 1127 ambassador link");
+    assert.ok(text.includes("Hey Dani, your code is DANI"));
+    assert.ok(html.includes("https://1127.events/a/DANI"));
+    assert.ok(!html.includes("<script>x</script>"), "markup escaped");
+  });
+});
+
 describe("the ambassador reward", () => {
   beforeEach(reset);
 

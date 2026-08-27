@@ -71,6 +71,12 @@ export async function createAmbassador(ambassador: Ambassador): Promise<boolean>
           ...(ambassador.rewardedEvents?.length
             ? { rewardedEvents: { SS: ambassador.rewardedEvents } }
             : {}),
+          ...(ambassador.welcomeEmailAt
+            ? { welcomeEmailAt: { S: ambassador.welcomeEmailAt } }
+            : {}),
+          ...(ambassador.welcomeTicketAt
+            ? { welcomeTicketAt: { S: ambassador.welcomeTicketAt } }
+            : {}),
           createdAt: { S: ambassador.createdAt },
         },
         ConditionExpression: "attribute_not_exists(pk)",
@@ -105,6 +111,8 @@ export async function getAmbassador(code: string): Promise<Ambassador | null> {
       ? Number(out.Item.rewardsGiven.N)
       : undefined,
     rewardedEvents: out.Item.rewardedEvents?.SS ?? undefined,
+    welcomeEmailAt: out.Item.welcomeEmailAt?.S ?? undefined,
+    welcomeTicketAt: out.Item.welcomeTicketAt?.S ?? undefined,
     createdAt: out.Item.createdAt?.S ?? "",
   };
 }
@@ -149,7 +157,12 @@ export async function setAmbassadorActive(
  */
 export async function patchAmbassador(
   code: string,
-  patch: Partial<Pick<Ambassador, "active" | "email" | "name">>,
+  patch: Partial<
+    Pick<
+      Ambassador,
+      "active" | "email" | "name" | "welcomeEmailAt" | "welcomeTicketAt"
+    >
+  >,
 ): Promise<void> {
   const table = TABLE();
 
@@ -178,6 +191,16 @@ export async function patchAmbassador(
     sets.push("#n = :n");
     names["#n"] = "name";
     values[":n"] = { S: patch.name };
+  }
+  if (patch.welcomeEmailAt !== undefined) {
+    sets.push("#we = :we");
+    names["#we"] = "welcomeEmailAt";
+    values[":we"] = { S: patch.welcomeEmailAt };
+  }
+  if (patch.welcomeTicketAt !== undefined) {
+    sets.push("#wt = :wt");
+    names["#wt"] = "welcomeTicketAt";
+    values[":wt"] = { S: patch.welcomeTicketAt };
   }
   if (sets.length === 0) return;
 
@@ -328,6 +351,113 @@ export async function setRewardTierName(tierName: string): Promise<void> {
   );
 }
 
+const WELCOME_CFG_PK = "cfg#ambassador-welcome";
+const LOCAL_WELCOME_KEY = "__welcome__";
+
+export type WelcomeTemplate = { subject: string; body: string };
+
+/**
+ * The editable welcome email. Empty strings mean "use the standard wording";
+ * the defaults live with the renderer in lib/email.ts.
+ */
+export async function getWelcomeTemplate(): Promise<WelcomeTemplate> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    const raw = (data as Record<string, unknown>)[LOCAL_WELCOME_KEY] as
+      | Partial<WelcomeTemplate>
+      | undefined;
+    return {
+      subject: typeof raw?.subject === "string" ? raw.subject : "",
+      body: typeof raw?.body === "string" ? raw.body : "",
+    };
+  }
+
+  const out = await db().send(
+    new GetItemCommand({ TableName: table, Key: { pk: { S: WELCOME_CFG_PK } } }),
+  );
+  return {
+    subject: out.Item?.subject?.S ?? "",
+    body: out.Item?.body?.S ?? "",
+  };
+}
+
+export async function setWelcomeTemplate(
+  template: WelcomeTemplate,
+): Promise<void> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    (data as Record<string, unknown>)[LOCAL_WELCOME_KEY] = template;
+    await localWrite(data);
+    return;
+  }
+
+  await db().send(
+    new PutItemCommand({
+      TableName: table,
+      Item: {
+        pk: { S: WELCOME_CFG_PK },
+        subject: { S: template.subject },
+        body: { S: template.body },
+      },
+    }),
+  );
+}
+
+const ONBOARD_CFG_PK = "cfg#ambassador-onboard";
+const LOCAL_ONBOARD_KEY = "__onboard__";
+
+export type OnboardTicket = { eventId: string; tierId: string };
+
+/** Which event and type the one-click welcome ticket mints. Empty = unset. */
+export async function getOnboardTicket(): Promise<OnboardTicket> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    const raw = (data as Record<string, unknown>)[LOCAL_ONBOARD_KEY] as
+      | Partial<OnboardTicket>
+      | undefined;
+    return {
+      eventId: typeof raw?.eventId === "string" ? raw.eventId : "",
+      tierId: typeof raw?.tierId === "string" ? raw.tierId : "",
+    };
+  }
+
+  const out = await db().send(
+    new GetItemCommand({ TableName: table, Key: { pk: { S: ONBOARD_CFG_PK } } }),
+  );
+  return {
+    eventId: out.Item?.eventId?.S ?? "",
+    tierId: out.Item?.tierId?.S ?? "",
+  };
+}
+
+export async function setOnboardTicket(setting: OnboardTicket): Promise<void> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    (data as Record<string, unknown>)[LOCAL_ONBOARD_KEY] = setting;
+    await localWrite(data);
+    return;
+  }
+
+  await db().send(
+    new PutItemCommand({
+      TableName: table,
+      Item: {
+        pk: { S: ONBOARD_CFG_PK },
+        eventId: { S: setting.eventId },
+        tierId: { S: setting.tierId },
+      },
+    }),
+  );
+}
+
 export async function deleteAmbassador(code: string): Promise<void> {
   const table = TABLE();
 
@@ -439,9 +569,14 @@ export async function listAmbassadors(): Promise<Ambassador[]> {
   const table = TABLE();
 
   if (!table) {
-    return Object.values(await localRead()).sort((a, b) =>
-      a.code.localeCompare(b.code),
-    );
+    // The local file also holds the cfg stand-in rows (reward settings, the
+    // welcome template); only real ambassador rows have a code.
+    return Object.values(await localRead())
+      .filter(
+        (row): row is Ambassador =>
+          typeof row === "object" && row !== null && typeof row.code === "string",
+      )
+      .sort((a, b) => a.code.localeCompare(b.code));
   }
 
   const rows: Ambassador[] = [];
@@ -467,6 +602,10 @@ export async function listAmbassadors(): Promise<Ambassador[]> {
         rewardedEvents:
           (item.rewardedEvents as { SS?: string[] } | undefined)?.SS ??
           undefined,
+        welcomeEmailAt:
+          (item.welcomeEmailAt as { S?: string } | undefined)?.S ?? undefined,
+        welcomeTicketAt:
+          (item.welcomeTicketAt as { S?: string } | undefined)?.S ?? undefined,
         createdAt: item.createdAt?.S ?? "",
       });
     }
