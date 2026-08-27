@@ -158,6 +158,25 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // The marketing-material list: replaces the whole set, order included.
+  if (Array.isArray((body as { kitImages?: unknown })?.kitImages)) {
+    const { isValidS3Key, s3Key, isS3Ref } = await import("@/lib/images");
+    const refs = ((body as { kitImages: unknown[] }).kitImages ?? [])
+      .filter((ref): ref is string => typeof ref === "string")
+      .slice(0, 12);
+    for (const ref of refs) {
+      if (!isS3Ref(ref) || !isValidS3Key(s3Key(ref)) || !s3Key(ref).startsWith("kit/")) {
+        return NextResponse.json(
+          { ok: false, message: "That image reference isn't from the kit uploads." },
+          { status: 400 },
+        );
+      }
+    }
+    const { setKitImages } = await import("@/lib/ambassadors-store");
+    await setKitImages(refs);
+    return NextResponse.json({ ok: true });
+  }
+
   // Which event and type the one-click welcome ticket mints.
   if (body?.onboardTicket && typeof body.onboardTicket === "object") {
     const raw = body.onboardTicket as { eventId?: unknown; tierId?: unknown };
@@ -204,12 +223,23 @@ export async function PATCH(request: Request) {
       await patchAmbassador(code, { statsId: ambassador.statsId });
     }
     const template = await getWelcomeTemplate();
+    const { getKitImages } = await import("@/lib/ambassadors-store");
+    const { resolveImageSrc } = await import("@/lib/images");
+    const { listPublicEvents } = await import("@/lib/store");
+    const kitImages = (await getKitImages())
+      .map((ref) => resolveImageSrc(ref))
+      .filter((url): url is string => Boolean(url));
+    const featured = (await listPublicEvents().catch(() => [])).find(
+      (event) => event.featured,
+    );
     try {
       await sendAmbassadorWelcomeEmail(ambassador.email, {
         name: ambassador.name,
         code: ambassador.code,
         link: `${siteUrl()}/a/${ambassador.code}`,
         statsLink: `${siteUrl()}/me/${ambassador.statsId}`,
+        eventName: featured?.name,
+        kitImages,
         subject: template.subject,
         body: template.body,
       });

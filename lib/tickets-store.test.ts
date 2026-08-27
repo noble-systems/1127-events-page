@@ -695,6 +695,33 @@ describe("ambassador onboarding", () => {
     assert.ok(!html.includes("<script>x</script>"), "markup escaped");
   });
 
+  test("the {event} placeholder and the material images render in", async () => {
+    const { renderAmbassadorWelcomeEmail } = await import("./email.ts");
+    const { html, text } = renderAmbassadorWelcomeEmail({
+      name: "Dani",
+      code: "DANI",
+      link: "https://1127.events/a/DANI",
+      eventName: "Mirage at Solaya",
+      kitImages: ["https://img.example/kit/material-1.jpg"],
+      subject: "",
+      body: "Post about {event} this week.",
+    });
+    assert.ok(html.includes("Post about Mirage at Solaya this week."));
+    assert.ok(html.includes("https://img.example/kit/material-1.jpg"));
+    assert.ok(html.includes("Material to post"));
+    assert.ok(text.includes("https://img.example/kit/material-1.jpg"));
+  });
+
+  test("kit image refs round trip and reject junk order-preserving", async () => {
+    const { getKitImages, setKitImages } = await import("./ambassadors-store.ts");
+    assert.deepEqual(await getKitImages(), []);
+    await setKitImages(["s3:kit/material-a.jpg", "s3:kit/material-b.png"]);
+    assert.deepEqual(await getKitImages(), [
+      "s3:kit/material-a.jpg",
+      "s3:kit/material-b.png",
+    ]);
+  });
+
   test("a stats id finds its ambassador and nothing else does", async () => {
     const { getAmbassadorByStatsId, newStatsId } = await import(
       "./ambassadors-store.ts"

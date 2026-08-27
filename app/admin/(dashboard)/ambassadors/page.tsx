@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AmbassadorManager } from "@/components/admin/AmbassadorManager";
 import { REWARD_EVERY_DEFAULT, ambassadorStats } from "@/lib/ambassadors";
 import {
+  getKitImages,
   getOnboardTicket,
   getRewardEvery,
   getRewardTierName,
@@ -45,6 +46,7 @@ export default async function AdminAmbassadorsPage() {
     getWelcomeTemplate(),
     getOnboardTicket(),
   ]);
+  const kitImages = await getKitImages();
   // Off-site tiers cannot be minted, so the welcome-ticket picker skips them.
   const mintable = events
     .map((event) => ({
@@ -100,6 +102,7 @@ export default async function AdminAmbassadorsPage() {
           tierNames={tierNames}
           welcomeSubject={welcomeTemplate.subject || WELCOME_SUBJECT_DEFAULT}
           welcomeBody={welcomeTemplate.body || WELCOME_BODY_DEFAULT}
+          kitImages={kitImages}
           onboardEventId={onboardTicket.eventId}
           onboardTierId={onboardTicket.tierId}
           events={mintable}

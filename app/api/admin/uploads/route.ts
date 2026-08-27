@@ -2,7 +2,7 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { NextResponse } from "next/server";
 import { readJson, requireAdmin } from "@/lib/admin-api";
-import { S3_PREFIX, eventImageKey, isValidS3Key, siteImageKey } from "@/lib/images";
+import { S3_PREFIX, eventImageKey, isValidS3Key, kitImageKey, siteImageKey } from "@/lib/images";
 import { isEditableKey } from "@/lib/content-schema";
 
 /**
@@ -67,7 +67,11 @@ export async function POST(request: Request) {
   // you end up writing "../index.html" or serving something unexpected from your
   // own domain. The extension comes from the content type allow-list instead.
 
-  if (!eventId.trim() && !contentKey.trim()) {
+  // Ambassador marketing material has no event and no content field; it is
+  // its own little pile, keyed under kit/.
+  const forKit = body?.kit === true;
+
+  if (!forKit && !eventId.trim() && !contentKey.trim()) {
     return NextResponse.json(
       { ok: false, message: "Save the event first, then add a photo." },
       { status: 400 },
@@ -104,9 +108,11 @@ const CACHE_FOREVER = "public, max-age=31536000, immutable";
   // The key is derived from the event id and the content type, never from the
   // uploaded filename. A filename is attacker-controlled; deriving the key from
   // it is how you end up serving something unexpected from your own domain.
-  const key = contentKey
-    ? siteImageKey(contentKey, `x.${extension}`, version)
-    : eventImageKey(eventId, `x.${extension}`, version, kind);
+  const key = forKit
+    ? kitImageKey(`x.${extension}`, version)
+    : contentKey
+      ? siteImageKey(contentKey, `x.${extension}`, version)
+      : eventImageKey(eventId, `x.${extension}`, version, kind);
 
   if (!isValidS3Key(key)) {
     // Should be unreachable, since eventImageKey sanitises. Belt and braces:

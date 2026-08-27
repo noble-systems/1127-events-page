@@ -1191,6 +1191,10 @@ export function renderAmbassadorWelcomeEmail(input: {
   link: string;
   /** Their private stats page, for the {stats} placeholder. */
   statsLink?: string;
+  /** The featured event's name, for the {event} placeholder. */
+  eventName?: string;
+  /** Absolute URLs of the marketing material, appended under the body. */
+  kitImages?: string[];
   /** Blank falls back to the standard wording. */
   subject?: string;
   body?: string;
@@ -1200,7 +1204,8 @@ export function renderAmbassadorWelcomeEmail(input: {
       .replace(/\{name\}/g, input.name.trim().split(/\s+/)[0] || "there")
       .replace(/\{code\}/g, input.code)
       .replace(/\{link\}/g, input.link)
-      .replace(/\{stats\}/g, input.statsLink ?? "");
+      .replace(/\{stats\}/g, input.statsLink ?? "")
+      .replace(/\{event\}/g, input.eventName ?? "the next event");
 
   const subject = fill(input.subject?.trim() || WELCOME_SUBJECT_DEFAULT);
   const bodyText = fill(input.body?.trim() || WELCOME_BODY_DEFAULT);
@@ -1216,11 +1221,30 @@ export function renderAmbassadorWelcomeEmail(input: {
             `<p style="margin:0 0 14px;font:400 15px/1.65 Helvetica,Arial,sans-serif;color:${INK};">${escapeHtml(para.trim())}</p>`,
         )
         .join("")}
-      <p style="margin:18px 0 0;"><a href="${input.link}" style="display:inline-block;background:${DEEP};color:${BONE};font:600 15px/1 Helvetica,Arial,sans-serif;padding:14px 26px;border-radius:999px;text-decoration:none;">Open your link</a></p>`,
+      <p style="margin:18px 0 0;"><a href="${input.link}" style="display:inline-block;background:${DEEP};color:${BONE};font:600 15px/1 Helvetica,Arial,sans-serif;padding:14px 26px;border-radius:999px;text-decoration:none;">Open your link</a></p>
+      ${
+        input.kitImages?.length
+          ? `<p style="margin:26px 0 6px;font:600 15px/1.4 Helvetica,Arial,sans-serif;color:${INK};">Material to post</p>
+      <p style="margin:0 0 12px;font:400 13px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">Tap and hold an image to save it.</p>
+      ${input.kitImages
+        .map(
+          (url) =>
+            `<img src="${url}" alt="Post material" width="100%" style="display:block;max-width:100%;border-radius:10px;margin:0 0 12px;" />`,
+        )
+        .join("")}`
+          : ""
+      }`,
     footer: `You're getting this because you're a 1127 ambassador. Your code is ${escapeHtml(input.code)}.`,
   });
 
-  const text = [bodyText, "", `Your link: ${input.link}`].join("\n");
+  const text = [
+    bodyText,
+    "",
+    `Your link: ${input.link}`,
+    ...(input.kitImages?.length
+      ? ["", "Material to post:", ...input.kitImages]
+      : []),
+  ].join("\n");
 
   return { subject, html, text };
 }

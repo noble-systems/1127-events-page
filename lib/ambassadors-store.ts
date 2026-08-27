@@ -469,6 +469,54 @@ export async function setWelcomeTemplate(
   );
 }
 
+const KIT_CFG_PK = "cfg#ambassador-kit";
+const LOCAL_KIT_KEY = "__kit__";
+
+/**
+ * The marketing material handed to ambassadors: image refs ("s3:kit/...")
+ * shown in the welcome email and on their stats page. One small JSON list;
+ * order is display order.
+ */
+export async function getKitImages(): Promise<string[]> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    const raw = (data as Record<string, unknown>)[LOCAL_KIT_KEY];
+    return Array.isArray(raw) ? raw.filter((r) => typeof r === "string") : [];
+  }
+
+  const out = await db().send(
+    new GetItemCommand({ TableName: table, Key: { pk: { S: KIT_CFG_PK } } }),
+  );
+  try {
+    const parsed = JSON.parse(out.Item?.items?.S ?? "[]");
+    return Array.isArray(parsed)
+      ? parsed.filter((r) => typeof r === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function setKitImages(refs: string[]): Promise<void> {
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localRead();
+    (data as Record<string, unknown>)[LOCAL_KIT_KEY] = refs;
+    await localWrite(data);
+    return;
+  }
+
+  await db().send(
+    new PutItemCommand({
+      TableName: table,
+      Item: { pk: { S: KIT_CFG_PK }, items: { S: JSON.stringify(refs) } },
+    }),
+  );
+}
+
 const ONBOARD_CFG_PK = "cfg#ambassador-onboard";
 const LOCAL_ONBOARD_KEY = "__onboard__";
 

@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { ticketsSoldBy } from "@/lib/ambassadors";
 import {
   getAmbassadorByStatsId,
+  getKitImages,
   readAmbassadorClicks,
 } from "@/lib/ambassadors-store";
+import { resolveImageSrc } from "@/lib/images";
 import { siteUrl } from "@/lib/email";
 import { listAllOrders } from "@/lib/tickets-store";
 
@@ -30,10 +32,14 @@ export default async function AmbassadorStatsPage({
   const ambassador = await getAmbassadorByStatsId((id ?? "").toLowerCase());
   if (!ambassador) notFound();
 
-  const [clicks, orders] = await Promise.all([
+  const [clicks, orders, kitRefs] = await Promise.all([
     readAmbassadorClicks([ambassador.code]),
     listAllOrders(),
+    getKitImages(),
   ]);
+  const kit = kitRefs
+    .map((ref) => resolveImageSrc(ref))
+    .filter((src): src is string => Boolean(src));
 
   const taps = clicks.get(ambassador.code) ?? 0;
   const sold = ticketsSoldBy(ambassador.code, orders);
@@ -82,6 +88,26 @@ export default async function AmbassadorStatsPage({
             it counts as yours, and typing your code at checkout works too.
           </p>
         </div>
+
+        {kit.length > 0 ? (
+          <div className="border-bone/15 bg-bone/10 mt-4 rounded-2xl border px-6 py-5">
+            <p className="label-xs text-bone/55">Material to post</p>
+            <p className="text-bone/50 mt-2 text-[0.8125rem] leading-relaxed">
+              Tap and hold an image to save it, then post it with your link.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {kit.map((src) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={src}
+                  src={src}
+                  alt="Post material"
+                  className="block w-full rounded-lg"
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </main>
   );

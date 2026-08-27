@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { suggestAmbassadorCode, type AmbassadorStats } from "@/lib/ambassadors";
+import { resolveImageSrc } from "@/lib/images";
 import { Button } from "@/components/ui/Button";
 
 /**
@@ -49,6 +50,7 @@ export function AmbassadorManager({
   tierNames,
   welcomeSubject,
   welcomeBody,
+  kitImages,
   onboardEventId,
   onboardTierId,
   events,
@@ -64,6 +66,8 @@ export function AmbassadorManager({
   /** The editable welcome email; blank means the standard wording. */
   welcomeSubject: string;
   welcomeBody: string;
+  /** Marketing-material refs ("s3:kit/...") shown in the welcome email. */
+  kitImages: string[];
   /** Which event and type the one-click welcome ticket mints. */
   onboardEventId: string;
   onboardTierId: string;
@@ -85,6 +89,60 @@ export function AmbassadorManager({
   const [onboardTier, setOnboardTier] = useState(onboardTierId);
   const [subject, setSubject] = useState(welcomeSubject);
   const [emailBody, setEmailBody] = useState(welcomeBody);
+  const [kit, setKit] = useState(kitImages);
+  const [uploading, setUploading] = useState(false);
+
+  /** Straight-to-S3 like the event photos, then the ref list is saved. */
+  const uploadKit = async (file: File) => {
+    setUploading(true);
+    setMessage(null);
+    try {
+      const { shrinkImage } = await import("@/lib/shrink-image");
+      const shrunk = await shrinkImage(file, "hero");
+      const signed = await fetch("/api/admin/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kit: true,
+          filename: shrunk.name,
+          contentType: shrunk.type,
+        }),
+      });
+      const data = (await signed.json().catch(() => null)) as {
+        ok?: boolean;
+        url?: string;
+        ref?: string;
+        cacheControl?: string;
+        message?: string;
+      } | null;
+      if (!signed.ok || !data?.ok || !data.url || !data.ref) {
+        setMessage(data?.message ?? "Could not start that upload.");
+        return;
+      }
+      const put = await fetch(data.url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": shrunk.type,
+          ...(data.cacheControl ? { "Cache-Control": data.cacheControl } : {}),
+        },
+        body: shrunk,
+      });
+      if (!put.ok) {
+        setMessage(`S3 rejected the upload (${put.status}).`);
+        return;
+      }
+      const next = [...kit, data.ref];
+      setKit(next);
+      await call({
+        method: "PATCH",
+        body: JSON.stringify({ kitImages: next }),
+      });
+    } catch {
+      setMessage("Upload failed. Check your connection and try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -338,9 +396,10 @@ export function AmbassadorManager({
         <h3 className="font-display text-lg">Welcome email</h3>
         <p className="text-ink/55 mt-1 text-[0.8125rem] leading-relaxed">
           Sent by the Send email button on each row.{" "}
-          {"{name}"}, {"{code}"}, {"{link}"} and {"{stats}"} (their private
-          numbers page) fill in automatically. Blank lines split paragraphs.
-          Edit freely and save; what you see here is exactly what goes out.
+          {"{name}"}, {"{code}"}, {"{link}"}, {"{stats}"} (their private
+          numbers page) and {"{event}"} (the featured event&apos;s name) fill
+          in automatically. Blank lines split paragraphs. Edit freely and
+          save; what you see here is exactly what goes out.
         </p>
         <div className="mt-4 grid max-w-2xl gap-4">
           <label className="text-ink/70 block text-[0.875rem]">
@@ -385,6 +444,67 @@ export function AmbassadorManager({
             >
               Save welcome email
             </Button>
+          </div>
+
+          <div className="border-ink/10 border-t pt-4">
+            <p className="text-ink/70 text-[0.875rem] font-medium">
+              Material to post
+            </p>
+            <p className="text-ink/55 mt-1 text-[0.8125rem] leading-relaxed">
+              Images attached under the welcome email, and shown on each
+              ambassador&apos;s numbers page, so they always have something to
+              post. Up to 12.
+            </p>
+            {kit.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-3">
+                {kit.map((ref) => {
+                  const src = resolveImageSrc(ref);
+                  return (
+                    <div key={ref} className="w-28">
+                      {src ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={src}
+                          alt="Post material"
+                          className="border-ink/15 block aspect-square w-28 rounded-lg border object-cover"
+                        />
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={busy || uploading}
+                        onClick={() => {
+                          const next = kit.filter((row) => row !== ref);
+                          setKit(next);
+                          void call({
+                            method: "PATCH",
+                            body: JSON.stringify({ kitImages: next }),
+                          });
+                        }}
+                        className="text-terracotta-deep mt-1 text-[0.75rem] underline underline-offset-2"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+            <label className="mt-3 inline-block">
+              <span className="border-ink/20 hover:border-ink/45 inline-block cursor-pointer rounded-full border px-4 py-2 text-[0.875rem]">
+                {uploading ? "Uploading..." : "Add an image"}
+              </span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                disabled={busy || uploading || kit.length >= 12}
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void uploadKit(file);
+                }}
+              />
+            </label>
           </div>
         </div>
       </div>

@@ -135,6 +135,15 @@ export function siteImageKey(
   return `site/${safe || "image"}-${v}.${extension}`;
 }
 
+/** Ambassador marketing material: what they save and post. */
+export function kitImageKey(filename: string, version: string): string {
+  const extension = (filename.match(/\.(jpe?g|png|webp|avif)$/i)?.[1] ?? "jpg")
+    .toLowerCase()
+    .replace("jpeg", "jpg");
+  const v = version.replace(/[^a-z0-9]/gi, "").slice(0, 16) || "0";
+  return `kit/material-${v}.${extension}`;
+}
+
 export function eventImageKey(
   eventId: string,
   filename: string,
