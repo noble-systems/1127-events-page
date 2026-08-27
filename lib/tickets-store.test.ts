@@ -604,6 +604,54 @@ describe("schedule-change notice", () => {
   });
 });
 
+describe("voiding a comp ticket", () => {
+  beforeEach(reset);
+
+  test("valid flips to revoked, the door refuses it, restore flips back", async () => {
+    const { setTicketRevoked, checkInTicket } = await import(
+      "./tickets-store.ts"
+    );
+    const code = newTicketCode();
+    await createTicket({
+      code,
+      orderId: "comp-1",
+      eventId: "mirage",
+      tierId: "ga",
+      email: null,
+      status: "valid",
+      createdAt: new Date().toISOString(),
+    });
+
+    assert.equal((await setTicketRevoked(code, true)).ok, true);
+    assert.equal((await checkInTicket(code)).ok, false, "the door says no");
+    // Replayed void is a no-op, not a crash.
+    assert.equal((await setTicketRevoked(code, true)).ok, false);
+
+    assert.equal((await setTicketRevoked(code, false)).ok, true);
+    assert.equal((await checkInTicket(code)).ok, true, "valid again scans");
+  });
+
+  test("a scanned ticket cannot be voided", async () => {
+    const { setTicketRevoked, checkInTicket } = await import(
+      "./tickets-store.ts"
+    );
+    const code = newTicketCode();
+    await createTicket({
+      code,
+      orderId: "comp-2",
+      eventId: "mirage",
+      tierId: "ga",
+      email: null,
+      status: "valid",
+      createdAt: new Date().toISOString(),
+    });
+    await checkInTicket(code);
+    const out = await setTicketRevoked(code, true);
+    assert.equal(out.ok, false);
+    assert.equal(out.ticket?.status, "used");
+  });
+});
+
 describe("ambassador onboarding", () => {
   beforeEach(reset);
 

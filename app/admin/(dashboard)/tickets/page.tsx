@@ -3,6 +3,7 @@ import { listAllEvents } from "@/lib/store";
 import { squareConfigured } from "@/lib/square";
 import { formatMoney, remainingFor } from "@/lib/tickets";
 import { MintTickets } from "@/components/admin/MintTickets";
+import { RevokeCompCode } from "@/components/admin/RevokeCompCode";
 import { sweepStaleHolds } from "@/lib/ticket-sweep";
 import { listOrders, listTicketsForEvents, readInventory } from "@/lib/tickets-store";
 import type { TicketOrder, TicketRecord } from "@/lib/tickets";
@@ -318,11 +319,20 @@ export default async function AdminTicketsPage() {
                         </td>
                         <td className="py-2 font-mono text-[0.75rem]">
                           {(order.codes ?? []).map((code) => (
-                            <CodeChip
-                              key={code}
-                              code={code}
-                              ticket={byCode.get(code)}
-                            />
+                            <span key={code} className="mr-1 inline-block">
+                              <CodeChip code={code} ticket={byCode.get(code)} />
+                              {/* Comps can be voided right here; paid tickets
+                                  are money and get refunded in Square. */}
+                              {order.comp === true &&
+                              byCode.get(code)?.status !== "used" ? (
+                                <RevokeCompCode
+                                  code={code}
+                                  revoked={
+                                    byCode.get(code)?.status === "revoked"
+                                  }
+                                />
+                              ) : null}
+                            </span>
                           ))}
                         </td>
                       </tr>

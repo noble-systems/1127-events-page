@@ -678,6 +678,54 @@ export async function checkInTicket(
 }
 
 /**
+ * Flips one ticket between valid and revoked, exactly like the door flips
+ * valid to used: a conditional write from the expected state, so a replayed
+ * click cannot double-anything and a used ticket cannot be voided into an
+ * argument at the door. Returns false when the ticket was not in the state
+ * the action expects.
+ */
+export async function setTicketRevoked(
+  code: string,
+  revoked: boolean,
+): Promise<{ ok: boolean; ticket: TicketRecord | null }> {
+  const table = TABLE();
+  const from = revoked ? "valid" : "revoked";
+  const to = revoked ? "revoked" : "valid";
+
+  if (!table) {
+    const data = await localRead();
+    const ticket = data.tickets[code];
+    if (!ticket) return { ok: false, ticket: null };
+    if (ticket.status !== from) return { ok: false, ticket };
+    ticket.status = to;
+    await localWrite(data);
+    return { ok: true, ticket };
+  }
+
+  try {
+    await db().send(
+      new UpdateItemCommand({
+        TableName: table,
+        Key: { pk: { S: `tkt#${code}` } },
+        UpdateExpression: "SET #s = :to",
+        ConditionExpression: "#s = :from",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: {
+          ":to": { S: to },
+          ":from": { S: from },
+        },
+      }),
+    );
+    return { ok: true, ticket: await getTicket(code) };
+  } catch (error) {
+    if ((error as { name?: string }).name === "ConditionalCheckFailedException") {
+      return { ok: false, ticket: await getTicket(code) };
+    }
+    throw error;
+  }
+}
+
+/**
  * Writes one ticket, refusing a code that already exists. The caller retries
  * with a fresh code; at ~10^13 possible codes the loop runs once.
  */
