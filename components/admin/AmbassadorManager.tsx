@@ -339,8 +339,8 @@ export function AmbassadorManager({
         <p className="text-ink/55 mt-1 text-[0.8125rem] leading-relaxed">
           Sent by the Send email button on each row.{" "}
           {"{name}"}, {"{code}"}, {"{link}"} and {"{stats}"} (their private
-          numbers page) fill in automatically. Blank lines split paragraphs;
-          leave both empty for the standard wording.
+          numbers page) fill in automatically. Blank lines split paragraphs.
+          Edit freely and save; what you see here is exactly what goes out.
         </p>
         <div className="mt-4 grid max-w-2xl gap-4">
           <label className="text-ink/70 block text-[0.875rem]">

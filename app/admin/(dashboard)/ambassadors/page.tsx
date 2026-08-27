@@ -9,7 +9,11 @@ import {
   listAmbassadors,
   readAmbassadorClicks,
 } from "@/lib/ambassadors-store";
-import { siteUrl } from "@/lib/email";
+import {
+  siteUrl,
+  WELCOME_BODY_DEFAULT,
+  WELCOME_SUBJECT_DEFAULT,
+} from "@/lib/email";
 import { listAllEvents, listSubmissions } from "@/lib/store";
 import { listAllOrders } from "@/lib/tickets-store";
 
@@ -94,8 +98,8 @@ export default async function AdminAmbassadorsPage() {
           rewardEvery={rewardEvery}
           rewardTierName={rewardTierName}
           tierNames={tierNames}
-          welcomeSubject={welcomeTemplate.subject}
-          welcomeBody={welcomeTemplate.body}
+          welcomeSubject={welcomeTemplate.subject || WELCOME_SUBJECT_DEFAULT}
+          welcomeBody={welcomeTemplate.body || WELCOME_BODY_DEFAULT}
           onboardEventId={onboardTicket.eventId}
           onboardTierId={onboardTicket.tierId}
           events={mintable}
