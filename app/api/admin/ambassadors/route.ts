@@ -10,6 +10,7 @@ import {
   getOnboardTicket,
   getWelcomeTemplate,
   listAmbassadors,
+  newStatsId,
   patchAmbassador,
   setAmbassadorActive,
   setOnboardTicket,
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
     name,
     email,
     active: true,
+    statsId: newStatsId(),
     createdAt: new Date().toISOString(),
   });
   if (!created) {
@@ -191,12 +193,18 @@ export async function PATCH(request: Request) {
         { status: 400 },
       );
     }
+    // Their stats page exists before the email that might mention it.
+    if (!ambassador.statsId) {
+      ambassador.statsId = newStatsId();
+      await patchAmbassador(code, { statsId: ambassador.statsId });
+    }
     const template = await getWelcomeTemplate();
     try {
       await sendAmbassadorWelcomeEmail(ambassador.email, {
         name: ambassador.name,
         code: ambassador.code,
         link: `${siteUrl()}/a/${ambassador.code}`,
+        statsLink: `${siteUrl()}/me/${ambassador.statsId}`,
         subject: template.subject,
         body: template.body,
       });

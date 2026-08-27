@@ -636,13 +636,34 @@ describe("ambassador onboarding", () => {
       name: "Dani Q",
       code: "DANI",
       link: "https://1127.events/a/DANI",
+      statsLink: "https://1127.events/me/abcdefgh2345",
       subject: "",
-      body: "Hey {name}, your code is {code}: {link} <script>x</script>",
+      body: "Hey {name}, your code is {code}: {link} {stats} <script>x</script>",
     });
     assert.equal(subject, "Your 1127 ambassador link");
     assert.ok(text.includes("Hey Dani, your code is DANI"));
     assert.ok(html.includes("https://1127.events/a/DANI"));
+    assert.ok(html.includes("/me/abcdefgh2345"));
     assert.ok(!html.includes("<script>x</script>"), "markup escaped");
+  });
+
+  test("a stats id finds its ambassador and nothing else does", async () => {
+    const { getAmbassadorByStatsId, newStatsId } = await import(
+      "./ambassadors-store.ts"
+    );
+    const statsId = newStatsId();
+    assert.match(statsId, /^[23456789abcdefghjkmnpqrstuvwxyz]{12}$/);
+    await mintAmb({
+      code: "LILA",
+      name: "Lila",
+      email: "lila@example.com",
+      active: true,
+      statsId,
+      createdAt: new Date().toISOString(),
+    });
+    assert.equal((await getAmbassadorByStatsId(statsId))?.code, "LILA");
+    assert.equal(await getAmbassadorByStatsId("zzzzzzzzzzzz"), null);
+    assert.equal(await getAmbassadorByStatsId("LILA"), null, "codes are not ids");
   });
 });
 

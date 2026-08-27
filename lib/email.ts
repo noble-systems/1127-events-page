@@ -1181,6 +1181,7 @@ export const WELCOME_BODY_DEFAULT = [
   "You're officially a 1127 ambassador. Your personal link is below; put it in your bio and your stories, and everyone who signs up or buys tickets through it counts as yours.",
   "{link}",
   "Your code is {code}. People can also type it at checkout, so it works on flyers and screenshots too.",
+  "Watch your own numbers any time, live: {stats}",
   "Thanks for repping us.",
 ].join("\n\n");
 
@@ -1188,6 +1189,8 @@ export function renderAmbassadorWelcomeEmail(input: {
   name: string;
   code: string;
   link: string;
+  /** Their private stats page, for the {stats} placeholder. */
+  statsLink?: string;
   /** Blank falls back to the standard wording. */
   subject?: string;
   body?: string;
@@ -1196,7 +1199,8 @@ export function renderAmbassadorWelcomeEmail(input: {
     value
       .replace(/\{name\}/g, input.name.trim().split(/\s+/)[0] || "there")
       .replace(/\{code\}/g, input.code)
-      .replace(/\{link\}/g, input.link);
+      .replace(/\{link\}/g, input.link)
+      .replace(/\{stats\}/g, input.statsLink ?? "");
 
   const subject = fill(input.subject?.trim() || WELCOME_SUBJECT_DEFAULT);
   const bodyText = fill(input.body?.trim() || WELCOME_BODY_DEFAULT);

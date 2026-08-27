@@ -41,6 +41,7 @@ export async function renameAmbassador(
     active: existing.active,
     rewardsGiven: existing.rewardsGiven,
     rewardedEvents: existing.rewardedEvents,
+    statsId: existing.statsId,
     welcomeEmailAt: existing.welcomeEmailAt,
     welcomeTicketAt: existing.welcomeTicketAt,
     createdAt: existing.createdAt,

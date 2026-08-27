@@ -5,6 +5,7 @@ import {
   ScanCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
+import { randomBytes } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import type { Ambassador } from "./ambassadors.ts";
@@ -43,6 +44,30 @@ async function localWrite(data: Record<string, Ambassador>): Promise<void> {
 
 const pk = (code: string) => `amb#${code}`;
 
+/**
+ * The obscure id of an ambassador's personal stats page: 12 characters, no
+ * lookalikes, ~59 bits. Lives here rather than in the pure layer because the
+ * pure layer is bundled into client components, where node:crypto is not.
+ */
+export function newStatsId(): string {
+  const alphabet = "23456789abcdefghjkmnpqrstuvwxyz";
+  const bytes = randomBytes(12);
+  let id = "";
+  for (let i = 0; i < 12; i += 1) {
+    id += alphabet[bytes[i] % alphabet.length];
+  }
+  return id;
+}
+
+/** The roster row a stats id belongs to; the /me page's only door. */
+export async function getAmbassadorByStatsId(
+  statsId: string,
+): Promise<Ambassador | null> {
+  if (!/^[23456789abcdefghjkmnpqrstuvwxyz]{12}$/.test(statsId)) return null;
+  const all = await listAmbassadors();
+  return all.find((row) => row.statsId === statsId) ?? null;
+}
+
 /** False when the code is already taken; codes are identities, not rows. */
 export async function createAmbassador(ambassador: Ambassador): Promise<boolean> {
   const table = TABLE();
@@ -71,6 +96,7 @@ export async function createAmbassador(ambassador: Ambassador): Promise<boolean>
           ...(ambassador.rewardedEvents?.length
             ? { rewardedEvents: { SS: ambassador.rewardedEvents } }
             : {}),
+          ...(ambassador.statsId ? { statsId: { S: ambassador.statsId } } : {}),
           ...(ambassador.welcomeEmailAt
             ? { welcomeEmailAt: { S: ambassador.welcomeEmailAt } }
             : {}),
@@ -111,6 +137,7 @@ export async function getAmbassador(code: string): Promise<Ambassador | null> {
       ? Number(out.Item.rewardsGiven.N)
       : undefined,
     rewardedEvents: out.Item.rewardedEvents?.SS ?? undefined,
+    statsId: out.Item.statsId?.S ?? undefined,
     welcomeEmailAt: out.Item.welcomeEmailAt?.S ?? undefined,
     welcomeTicketAt: out.Item.welcomeTicketAt?.S ?? undefined,
     createdAt: out.Item.createdAt?.S ?? "",
@@ -160,7 +187,12 @@ export async function patchAmbassador(
   patch: Partial<
     Pick<
       Ambassador,
-      "active" | "email" | "name" | "welcomeEmailAt" | "welcomeTicketAt"
+      | "active"
+      | "email"
+      | "name"
+      | "statsId"
+      | "welcomeEmailAt"
+      | "welcomeTicketAt"
     >
   >,
 ): Promise<void> {
@@ -191,6 +223,11 @@ export async function patchAmbassador(
     sets.push("#n = :n");
     names["#n"] = "name";
     values[":n"] = { S: patch.name };
+  }
+  if (patch.statsId !== undefined) {
+    sets.push("#si = :si");
+    names["#si"] = "statsId";
+    values[":si"] = { S: patch.statsId };
   }
   if (patch.welcomeEmailAt !== undefined) {
     sets.push("#we = :we");
@@ -602,6 +639,7 @@ export async function listAmbassadors(): Promise<Ambassador[]> {
         rewardedEvents:
           (item.rewardedEvents as { SS?: string[] } | undefined)?.SS ??
           undefined,
+        statsId: (item.statsId as { S?: string } | undefined)?.S ?? undefined,
         welcomeEmailAt:
           (item.welcomeEmailAt as { S?: string } | undefined)?.S ?? undefined,
         welcomeTicketAt:

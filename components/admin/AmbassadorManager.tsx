@@ -331,8 +331,9 @@ export function AmbassadorManager({
         <h3 className="font-display text-lg">Welcome email</h3>
         <p className="text-ink/55 mt-1 text-[0.8125rem] leading-relaxed">
           Sent by the Send email button on each row.{" "}
-          {"{name}"}, {"{code}"} and {"{link}"} fill in automatically. Blank
-          lines split paragraphs; leave both empty for the standard wording.
+          {"{name}"}, {"{code}"}, {"{link}"} and {"{stats}"} (their private
+          numbers page) fill in automatically. Blank lines split paragraphs;
+          leave both empty for the standard wording.
         </p>
         <div className="mt-4 grid max-w-2xl gap-4">
           <label className="text-ink/70 block text-[0.875rem]">
@@ -414,8 +415,18 @@ export function AmbassadorManager({
                     <td className="py-2.5 pr-4 font-medium">{row.name}</td>
                     <td className="py-2.5 pr-4 font-mono">{row.code}</td>
                     <td className="py-2.5 pr-4">
-                      <span className="mr-2 select-all">{link}</span>
-                      <CopyButton text={link} />
+                      <div className="whitespace-nowrap">
+                        <span className="mr-2 select-all">{link}</span>
+                        <CopyButton text={link} />
+                      </div>
+                      {row.statsId ? (
+                        <div className="mt-1 whitespace-nowrap text-[0.8125rem]">
+                          <span className="text-ink/55 mr-2">
+                            {`Their stats: ${siteUrl}/me/${row.statsId}`}
+                          </span>
+                          <CopyButton text={`${siteUrl}/me/${row.statsId}`} />
+                        </div>
+                      ) : null}
                     </td>
                     <td className="py-2.5 pr-4 tabular-nums">{row.clicks}</td>
                     <td className="py-2.5 pr-4 tabular-nums">{row.rsvps}</td>

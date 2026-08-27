@@ -58,6 +58,19 @@ export default async function AdminAmbassadorsPage() {
       ),
     ),
   ];
+  /**
+   * Rows from before stats pages existed get their id minted here, on the
+   * first roster load that sees them, so every ambassador has a page to be
+   * handed without anyone thinking about migrations.
+   */
+  const { newStatsId, patchAmbassador } = await import("@/lib/ambassadors-store");
+  for (const ambassador of ambassadors) {
+    if (!ambassador.statsId) {
+      ambassador.statsId = newStatsId();
+      await patchAmbassador(ambassador.code, { statsId: ambassador.statsId });
+    }
+  }
+
   const clicks = await readAmbassadorClicks(ambassadors.map((a) => a.code));
 
   const stats = ambassadorStats(ambassadors, orders, rsvps, clicks);

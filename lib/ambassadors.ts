@@ -48,6 +48,12 @@ export type Ambassador = {
    * earns nothing more.
    */
   rewardedEvents?: string[];
+  /**
+   * The obscure id of their personal stats page (/me/<statsId>): shareable
+   * with that one person without opening the roster to anyone who can guess
+   * a code.
+   */
+  statsId?: string;
   /** When the welcome email with their link went out. Absent = not yet. */
   welcomeEmailAt?: string;
   /** When their welcome comp ticket went out. Absent = not yet. */
