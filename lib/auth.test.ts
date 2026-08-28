@@ -80,7 +80,6 @@ describe("maskEmail", () => {
   test("never returns the full address", () => {
     for (const address of [
       "daniel@1127.events",
-      "taylor@1127.events",
       "ethan@1127.events",
       "someone.long.here@example.com",
     ]) {

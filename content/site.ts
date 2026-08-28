@@ -126,7 +126,6 @@ export const smsProgram = {
  */
 const TEAM = [
   "daniel@1127.events",
-  "taylor@1127.events",
   "ethan@1127.events",
 ] as const;
 

@@ -177,9 +177,8 @@ so a change at Cognito's end cannot silently truncate and lock everybody out. Ac
 
 - daniel@1127.events
 - ethan@1127.events
-- taylor@1127.events
 
-All three are CONFIRMED with verified email addresses.
+Both are CONFIRMED with verified email addresses. (taylor@1127.events was removed when that mailbox was retired.)
 
 Codes send through SES from `hello@1127.events`. This works today despite the
 SES sandbox, because every admin address is at the verified domain.
