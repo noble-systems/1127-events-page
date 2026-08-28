@@ -38,9 +38,21 @@ export type MetricKind =
   | "dwellN"
   | "ev";
 
-/** UTC day, because counters need one unambiguous bucket boundary. */
+/**
+ * Phoenix day, because "today" on this dashboard means today in Arizona.
+ * Bucketed by UTC until Aug 2026, which put the day flip at 5pm Phoenix;
+ * counters written before the change keep their old bucket, a one-time
+ * seam nobody will notice in a 30-day window. en-CA formats as YYYY-MM-DD.
+ */
+const PHOENIX_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Phoenix",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 export function dayKey(now: Date = new Date()): string {
-  return now.toISOString().slice(0, 10);
+  return PHOENIX_DAY.format(now);
 }
 
 /**
@@ -140,7 +152,7 @@ export function countryKey(header: string | null | undefined): string | null {
   return value && /^[A-Z]{2}$/.test(value) ? value : null;
 }
 
-/** The last N UTC days, oldest first, for the dashboard's range. */
+/** The last N Phoenix days, oldest first, for the dashboard's range. */
 export function lastDays(count: number, now: Date = new Date()): string[] {
   const days: string[] = [];
   for (let i = count - 1; i >= 0; i--) {

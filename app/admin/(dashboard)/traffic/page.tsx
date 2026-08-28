@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { lastDays, type VisitLogEntry } from "@/lib/analytics";
+import { dayKey, lastDays, type VisitLogEntry } from "@/lib/analytics";
 import {
   readMetrics,
   readVisitLog,
@@ -106,10 +106,20 @@ export default async function TrafficPage() {
   const rsvpPerDay = new Map<string, number>();
   for (const s of submissions) {
     if (s.type !== "rsvp") continue;
-    const day = s.createdAt.slice(0, 10);
+    const day = dayKey(new Date(s.createdAt));
     if (days.includes(day)) rsvpPerDay.set(day, (rsvpPerDay.get(day) ?? 0) + 1);
   }
   const rsvpTotal = [...rsvpPerDay.values()].reduce((a, b) => a + b, 0);
+
+  // Paid tickets per Phoenix day; the amber days on the chart are money days.
+  const salesPerDay = new Map<string, number>();
+  for (const order of orders) {
+    if (order.status !== "paid" || order.comp === true) continue;
+    const day = dayKey(new Date(order.createdAt));
+    if (days.includes(day)) {
+      salesPerDay.set(day, (salesPerDay.get(day) ?? 0) + order.quantity);
+    }
+  }
 
   /**
    * Time on page: dwellS is the sum of visible seconds, dwellN how many
@@ -198,11 +208,11 @@ export default async function TrafficPage() {
         <div className="mt-5 flex h-36 items-end gap-[3px]">
           {days.map((day) => {
             const views = perDay.get(day) ?? 0;
-            const rsvps = rsvpPerDay.get(day) ?? 0;
+            const sales = salesPerDay.get(day) ?? 0;
             return (
               <div
                 key={day}
-                title={`${dayLabel(day)}: ${views} views, ${rsvps} signups`}
+                title={`${dayLabel(day)}: ${views} views, ${sales} tickets sold`}
                 className="bg-ink/[0.04] group flex h-full flex-1 flex-col justify-end rounded-sm"
               >
                 {/* The count sits on the bar; a bar with no number is
@@ -213,7 +223,7 @@ export default async function TrafficPage() {
                       {views}
                     </span>
                     <div
-                      className={`w-full rounded-t-sm ${rsvps > 0 ? "bg-sun-deep/80" : "bg-cobalt/55"} group-hover:bg-cobalt`}
+                      className={`w-full rounded-t-sm ${sales > 0 ? "bg-sun-deep/80" : "bg-cobalt/55"} group-hover:bg-cobalt`}
                       style={{ height: `${Math.max(6, (82 * views) / maxDay)}%` }}
                     />
                   </>
@@ -224,7 +234,7 @@ export default async function TrafficPage() {
         </div>
         <div className="text-ink/50 mt-2 flex justify-between text-[0.75rem]">
           <span>{dayLabel(days[0])}</span>
-          <span className="text-sun-deep">amber = a day with signups</span>
+          <span className="text-sun-deep">amber = a day with ticket sales</span>
           <span>{dayLabel(days[days.length - 1])}</span>
         </div>
       </section>
