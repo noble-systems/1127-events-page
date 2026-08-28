@@ -6,6 +6,7 @@ import {
   type MetricRow,
 } from "@/lib/analytics-store";
 import { listSubmissions } from "@/lib/store";
+import { listAllOrders } from "@/lib/tickets-store";
 
 export const metadata: Metadata = { title: "Traffic" };
 export const dynamic = "force-dynamic";
@@ -79,10 +80,11 @@ function Top({
 
 export default async function TrafficPage() {
   const days = lastDays(DAYS);
-  const [rows, submissions, visits] = await Promise.all([
+  const [rows, submissions, visits, orders] = await Promise.all([
     readMetrics(days),
     listSubmissions(),
     readVisitLog(40),
+    listAllOrders(),
   ]);
 
   // Uniques are rows, not sums: each visitor-day hash is one row however many
@@ -108,6 +110,47 @@ export default async function TrafficPage() {
     if (days.includes(day)) rsvpPerDay.set(day, (rsvpPerDay.get(day) ?? 0) + 1);
   }
   const rsvpTotal = [...rsvpPerDay.values()].reduce((a, b) => a + b, 0);
+
+  /**
+   * Time on page: dwellS is the sum of visible seconds, dwellN how many
+   * page-leaves reported one. The average is the honest division of the two,
+   * shown only for pages with enough samples to mean anything.
+   */
+  const dwellSeconds = sumBy(rows, "dwellS");
+  const dwellSamples = sumBy(rows, "dwellN");
+  const dwell = [...dwellSamples.entries()]
+    .filter(([, n]) => n >= 3)
+    .map(([path, n]) => ({
+      path,
+      samples: n,
+      avg: Math.round((dwellSeconds.get(path) ?? 0) / n),
+    }))
+    .sort((a, b) => b.samples - a.samples)
+    .slice(0, 20);
+
+  /**
+   * The ticket funnel: from a tickets page view down to money. Views and the
+   * two click events come from the counters; checkouts and paid orders come
+   * from the order paper trail, comps excluded because nobody bought those.
+   */
+  const events = sumBy(rows, "ev");
+  const ticketViews = [...sumBy(rows, "path").entries()]
+    .filter(([path]) => path.startsWith("/tickets"))
+    .reduce((sum, [, n]) => sum + n, 0);
+  const windowStart = days[0];
+  const windowOrders = orders.filter(
+    (order) => order.comp !== true && order.createdAt.slice(0, 10) >= windowStart,
+  );
+  const funnel: Array<[string, number]> = [
+    ["Tickets page views", ticketViews],
+    ["Picked a ticket type", events.get("tier_pick") ?? 0],
+    ["Hit the buy button", events.get("buy_click") ?? 0],
+    ["Reached the payment page", windowOrders.length],
+    [
+      "Paid",
+      windowOrders.filter((order) => order.status === "paid").length,
+    ],
+  ];
 
   return (
     <div>
@@ -184,6 +227,82 @@ export default async function TrafficPage() {
           <span className="text-sun-deep">amber = a day with signups</span>
           <span>{dayLabel(days[days.length - 1])}</span>
         </div>
+      </section>
+
+      <section className="border-ink/12 bg-bone mt-6 rounded-2xl border p-6">
+        <h2 className="font-display text-xl">Ticket funnel, last {DAYS} days</h2>
+        <p className="text-ink/55 mt-1 text-[0.8125rem] leading-relaxed">
+          Where buyers fall out between seeing the tickets page and paying.
+          The two click steps count from this deploy forward.
+        </p>
+        <div className="mt-4 space-y-2">
+          {funnel.map(([label, value], index) => {
+            const first = funnel[0][1];
+            const prev = index > 0 ? funnel[index - 1][1] : value;
+            const widthPct = first > 0 ? Math.max(2, (value / first) * 100) : 2;
+            return (
+              <div key={label} className="flex items-center gap-3">
+                <span className="text-ink/65 w-48 shrink-0 text-[0.8125rem]">
+                  {label}
+                </span>
+                <div className="h-6 flex-1">
+                  <div
+                    className="bg-cobalt/70 flex h-6 min-w-8 items-center rounded-r-md px-2"
+                    style={{ width: `${widthPct}%` }}
+                  >
+                    <span className="text-bone text-[0.75rem] tabular-nums">
+                      {value}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-ink/45 w-14 shrink-0 text-right text-[0.75rem] tabular-nums">
+                  {index > 0 && prev > 0
+                    ? `${Math.round((value / prev) * 100)}%`
+                    : ""}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="border-ink/12 bg-bone mt-6 rounded-2xl border p-6">
+        <h2 className="font-display text-xl">Time on page</h2>
+        <p className="text-ink/55 mt-1 text-[0.8125rem] leading-relaxed">
+          Average visible seconds before leaving, counted from this deploy
+          forward. Pages with fewer than 3 reports are hidden; a tab left
+          open in the background does not count as reading.
+        </p>
+        {dwell.length === 0 ? (
+          <p className="text-ink/55 mt-4 text-[0.875rem]">
+            Nothing recorded yet. Numbers start with the next visits.
+          </p>
+        ) : (
+          <table className="mt-4 w-full text-left text-[0.875rem]">
+            <thead>
+              <tr className="text-ink/55 border-ink/10 border-b">
+                <th className="py-2 pr-4 font-medium">Page</th>
+                <th className="py-2 pr-4 font-medium">Average stay</th>
+                <th className="py-2 font-medium">Visits reporting</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dwell.map((row) => (
+                <tr key={row.path} className="border-ink/5 border-b">
+                  <td className="py-2 pr-4 font-mono text-[0.8125rem]">
+                    {row.path}
+                  </td>
+                  <td className="py-2 pr-4 tabular-nums">
+                    {row.avg >= 60
+                      ? `${Math.floor(row.avg / 60)}m ${row.avg % 60}s`
+                      : `${row.avg}s`}
+                  </td>
+                  <td className="py-2 tabular-nums">{row.samples}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">

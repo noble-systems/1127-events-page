@@ -48,11 +48,35 @@ export async function POST(request: Request) {
     path?: unknown;
     ref?: unknown;
     query?: unknown;
+    dwell?: unknown;
+    event?: unknown;
   } | null;
+
+  // A named funnel tick: counted and done. The allow-list is the schema.
+  if (typeof body?.event === "string") {
+    if (body.event === "tier_pick" || body.event === "buy_click") {
+      await recordView([{ kind: "ev", key: body.event }], dayKey());
+    }
+    return done;
+  }
 
   const rawPath = typeof body?.path === "string" ? body.path : "";
   const path = normalisePath(rawPath);
   if (!path) return done;
+
+  // A dwell report: seconds on one page, clamped so a laptop left open all
+  // night cannot skew the average into fiction.
+  if (typeof body?.dwell === "number") {
+    const seconds = Math.min(1800, Math.max(1, Math.round(body.dwell)));
+    await recordView(
+      [
+        { kind: "dwellS", key: path, amount: seconds },
+        { kind: "dwellN", key: path },
+      ],
+      dayKey(),
+    );
+    return done;
+  }
 
   const entries: Array<Parameters<typeof recordView>[0][number]> = [
     { kind: "day", key: "-" },

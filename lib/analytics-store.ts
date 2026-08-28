@@ -68,16 +68,16 @@ const TTL_SECONDS = 400 * 24 * 60 * 60;
  * fail.
  */
 export async function recordView(
-  entries: Array<{ kind: MetricKind; key: string }>,
+  entries: Array<{ kind: MetricKind; key: string; amount?: number }>,
   day: string,
 ): Promise<void> {
   const table = TABLE();
 
   if (!table) {
     const data = await localRead();
-    for (const { kind, key } of entries) {
+    for (const { kind, key, amount } of entries) {
       const pk = metricPk(kind, day, key);
-      data[pk] = (data[pk] ?? 0) + 1;
+      data[pk] = (data[pk] ?? 0) + (amount ?? 1);
     }
     await localWrite(data);
     return;
@@ -85,7 +85,7 @@ export async function recordView(
 
   const expiresAt = String(Math.ceil(Date.now() / 1000) + TTL_SECONDS);
   await Promise.all(
-    entries.map(({ kind, key }) =>
+    entries.map(({ kind, key, amount }) =>
       db()
         .send(
           new UpdateItemCommand({
@@ -95,7 +95,7 @@ export async function recordView(
             // counts the way read-modify-write does.
             UpdateExpression: "ADD n :one SET expiresAt = if_not_exists(expiresAt, :ttl)",
             ExpressionAttributeValues: {
-              ":one": { N: "1" },
+              ":one": { N: String(amount ?? 1) },
               ":ttl": { N: expiresAt },
             },
           }),

@@ -31,7 +31,12 @@ export type MetricKind =
   | "hour"
   | "dev"
   | "browser"
-  | "uniq";
+  | "uniq"
+  // Engagement: dwell seconds (sum + sample count, so avg = S/N) and named
+  // funnel events like tier_pick and buy_click.
+  | "dwellS"
+  | "dwellN"
+  | "ev";
 
 /** UTC day, because counters need one unambiguous bucket boundary. */
 export function dayKey(now: Date = new Date()): string {
@@ -51,7 +56,7 @@ export function parseMetricPk(
   pk: string,
 ): { kind: MetricKind; day: string; key: string } | null {
   const match = pk.match(
-    /^m#(day|path|ref|utm|geo|hour|dev|browser|uniq)#(\d{4}-\d{2}-\d{2})#(.*)$/,
+    /^m#(day|path|ref|utm|geo|hour|dev|browser|uniq|dwellS|dwellN|ev)#(\d{4}-\d{2}-\d{2})#(.*)$/,
   );
   if (!match) return null;
   return { kind: match[1] as MetricKind, day: match[2], key: match[3] };

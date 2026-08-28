@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { trackEvent } from "@/components/Beacon";
 import {
   recallSrc,
   recallVia,
@@ -49,6 +50,8 @@ export function TicketPicker({
   const [quantity, setQuantity] = useState(1);
   const [via, setVia] = useState(viaFromLink ?? "");
   const [src, setSrc] = useState(srcFromLink ?? "");
+  // One funnel tick per visit, not one per radio wiggle.
+  const pickTracked = useRef(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [agreed, setAgreed] = useState(false);
@@ -89,6 +92,7 @@ export function TicketPicker({
 
   const buy = async () => {
     if (!chosen || busy || !emailOk || !agreed) return;
+    trackEvent("buy_click");
     setBusy(true);
     setMessage(null);
 
@@ -160,6 +164,10 @@ export function TicketPicker({
                   onChange={() => {
                     setTierId(tier.id);
                     setQuantity((q) => Math.min(q, tier.max));
+                    if (!pickTracked.current) {
+                      pickTracked.current = true;
+                      trackEvent("tier_pick");
+                    }
                   }}
                   className="accent-ink h-4 w-4"
                 />

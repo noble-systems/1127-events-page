@@ -97,6 +97,13 @@ describe("keys and ranges", () => {
     assert.deepEqual(parseMetricPk(pk), { kind: "path", day: "2026-08-04", key: "/rsvp" });
     assert.equal(parseMetricPk("form#1.2.3.4"), null, "rate-limit rows must not parse");
     assert.equal(parseMetricPk("m#bogus#2026-08-04#x"), null);
+    // The engagement kinds parse like any other counter.
+    assert.deepEqual(parseMetricPk(metricPk("dwellS", "2026-08-27", "/tickets/x")), {
+      kind: "dwellS",
+      day: "2026-08-27",
+      key: "/tickets/x",
+    });
+    assert.equal(parseMetricPk(metricPk("ev", "2026-08-27", "buy_click"))?.kind, "ev");
   });
 
   test("countryKey accepts ISO pairs only", () => {
