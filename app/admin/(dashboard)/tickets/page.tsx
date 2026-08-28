@@ -147,6 +147,39 @@ export default async function AdminTicketsPage() {
         </p>
       ) : null}
 
+      {sections.length > 0 ? (
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          <div className="border-ink/12 bg-bone rounded-2xl border p-6">
+            <p className="label-xs text-ink/65">Tickets sold</p>
+            <p className="font-display mt-3 text-4xl leading-none">
+              {sections.reduce(
+                (sum, s) => sum + s.rows.reduce((a, r) => a + r.sold, 0),
+                0,
+              )}
+            </p>
+          </div>
+          <div className="border-ink/12 bg-bone rounded-2xl border p-6">
+            <p className="label-xs text-ink/65">Comped</p>
+            <p className="font-display mt-3 text-4xl leading-none">
+              {sections.reduce(
+                (sum, s) => sum + s.rows.reduce((a, r) => a + r.comped, 0),
+                0,
+              )}
+            </p>
+          </div>
+          <div className="border-ink/12 bg-bone rounded-2xl border p-6">
+            <p className="label-xs text-ink/65">Total out there</p>
+            <p className="font-display mt-3 text-4xl leading-none">
+              {sections.reduce(
+                (sum, s) =>
+                  sum + s.rows.reduce((a, r) => a + r.sold + r.comped, 0),
+                0,
+              )}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       {events.length > 0 ? (
         <div className="mt-6">
           <MintTickets
@@ -185,6 +218,16 @@ export default async function AdminTicketsPage() {
                 {formatMoney(rows.reduce((a, r) => a + r.grossCents, 0))}
               </span>{" "}
               taken
+              {" · "}
+              <span className="tabular-nums">
+                {`${rows.reduce((a, r) => a + r.sold, 0)} sold, ${rows.reduce(
+                  (a, r) => a + r.comped,
+                  0,
+                )} comped, ${rows.reduce(
+                  (a, r) => a + r.sold + r.comped,
+                  0,
+                )} total`}
+              </span>
             </p>
           </div>
 
