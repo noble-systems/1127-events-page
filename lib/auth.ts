@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { hasRealSecret } from "./tokens.ts";
 import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
@@ -35,7 +36,14 @@ export type { AuthMode };
  */
 
 export const SESSION_COOKIE = "1127_admin";
-const SESSION_MAX_AGE = 60 * 60 * 8; // 8 hours
+/**
+ * 30 days. The cookie used to hold the raw Cognito ID token, which Cognito
+ * expires after ONE HOUR regardless of the cookie's own 8-hour age, so every
+ * admin re-typed a code every hour of a working day. The Cognito token is now
+ * verified once at sign-in and swapped for our own signed session, so this
+ * number is the real session length.
+ */
+const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 
 const USER_POOL_ID = () => process.env.COGNITO_USER_POOL_ID;
 const CLIENT_ID = () => process.env.COGNITO_CLIENT_ID;
@@ -364,9 +372,81 @@ export async function verifyLoginCode(
   }
 }
 
+/**
+ * Our own session token, minted after Cognito (or the dev flow) has proven
+ * who this is. Signed with APP_SECRET in production, never the development
+ * fallback: a session signed with a publicly-known key could be forged by
+ * anyone who read the source.
+ */
+function sessionSecret(): string {
+  if (authMode() === "cognito") {
+    if (!hasRealSecret()) {
+      throw new Error(
+        "APP_SECRET is missing or too short; refusing to sign admin sessions with the development key.",
+      );
+    }
+    return process.env.APP_SECRET as string;
+  }
+  return devSecret();
+}
+
+function sessionSign(payload: string): string {
+  return createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
+}
+
+function issueSessionToken(email: string): string {
+  const payload = Buffer.from(
+    JSON.stringify({ email, exp: Date.now() + SESSION_MAX_AGE * 1000 }),
+  ).toString("base64url");
+  return `${payload}.${sessionSign(payload)}`;
+}
+
+function verifySessionToken(token: string): string | null {
+  const split = token.lastIndexOf(".");
+  if (split <= 0) return null;
+
+  const payload = token.slice(0, split);
+  const signature = token.slice(split + 1);
+
+  let expected: string;
+  try {
+    expected = sessionSign(payload);
+  } catch {
+    return null;
+  }
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+
+  try {
+    const claims = JSON.parse(
+      Buffer.from(payload, "base64url").toString("utf8"),
+    ) as { email?: unknown; exp?: unknown };
+    if (typeof claims.exp !== "number" || claims.exp < Date.now()) return null;
+    return typeof claims.email === "string" ? claims.email : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function startSession(token: string): Promise<void> {
+  /**
+   * The Cognito ID token is verified HERE, once, and exchanged for our own
+   * session; storing it raw made the real session an hour long no matter
+   * what the cookie said.
+   */
+  let value = token;
+  if (authMode() === "cognito") {
+    const payload = await jwtVerifier().verify(token);
+    const email = (payload as { email?: string }).email;
+    if (!email || !email.includes("@")) {
+      throw new Error("the ID token carries no email claim");
+    }
+    value = issueSessionToken(email);
+  }
+
   const jar = await cookies();
-  jar.set(SESSION_COOKIE, token, {
+  jar.set(SESSION_COOKIE, value, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -395,6 +475,13 @@ export async function currentAdmin(): Promise<AdminUser | null> {
 
   if (mode !== "cognito") return null;
 
+  // Our own session token, the format every sign-in issues now.
+  const sessionEmail = verifySessionToken(token);
+  if (sessionEmail) return { email: sessionEmail, via: "cognito" };
+
+  // A cookie from before the exchange existed still holds a raw Cognito ID
+  // token; honour it until its hour runs out rather than forcing a sign-in
+  // at the exact deploy minute.
   try {
     const payload = await jwtVerifier().verify(token);
     /**
