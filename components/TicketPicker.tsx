@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { trackEvent } from "@/components/Beacon";
+import { pixelTrack } from "@/components/MetaPixel";
 import {
   recallSrc,
   recallVia,
@@ -97,6 +98,7 @@ export function TicketPicker({
   const buy = async () => {
     if (!chosen || busy || !emailOk || !agreed || (age21 && !ofAge)) return;
     trackEvent("buy_click");
+    pixelTrack("InitiateCheckout");
     setBusy(true);
     setMessage(null);
 

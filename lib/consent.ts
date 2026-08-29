@@ -24,7 +24,9 @@ export const CONSENT_COOKIE = "1127_consent";
  * Bump when the categories change meaning. An older version decodes to null,
  * which re-asks rather than silently assuming the old answer still applies.
  */
-export const CONSENT_VERSION = 1;
+// v2: marketing stopped meaning "nothing yet" and started meaning the Meta
+// Pixel actually loads. Everyone gets asked again under the honest wording.
+export const CONSENT_VERSION = 2;
 
 /** Six months, the longest most guidance considers reasonable to remember a choice. */
 export const CONSENT_MAX_AGE = 60 * 60 * 24 * 182;
@@ -93,11 +95,11 @@ export const CATEGORIES: ReadonlyArray<{
   {
     id: "analytics",
     label: "Analytics",
-    body: "Would tell us which pages and links actually lead to RSVPs, in aggregate. None are in use today.",
+    body: "Would tell us which pages and links actually lead to signups, in aggregate. None are in use today; our own counters are cookieless.",
   },
   {
     id: "marketing",
     label: "Marketing",
-    body: "Would let us measure and retarget our paid social advertising. None are in use today.",
+    body: "Lets the Meta (Facebook/Instagram) Pixel measure whether our ads led to a visit or a ticket, and improve who sees them. Off means it never loads.",
   },
 ];

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PurchasePixel } from "@/components/PurchasePixel";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
@@ -38,6 +39,10 @@ export default async function ThanksPage({ params, searchParams }: Props) {
           <div className="border-ink/10 bg-bone-soft mx-auto max-w-xl rounded-3xl border p-8 sm:p-10">
             {paid ? (
               <>
+                <PurchasePixel
+                  orderRef={order.ref}
+                  valueCents={order.amountCents}
+                />
                 <p className="label-xs text-ink/65">Payment received</p>
                 <h1 className="mt-4 text-4xl leading-tight sm:text-5xl">
                   You&apos;re in.

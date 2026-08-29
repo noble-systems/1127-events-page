@@ -15,8 +15,8 @@ const sections: readonly LegalSection[] = [
   {
     heading: "The short version",
     body: [
-      "Two cookies, both first-party. One remembers the choice you made about cookies. The other only exists if you are a member of the 1127 team signed in to the dashboard.",
-      "There are no advertising cookies, no analytics cookies, and no third-party scripts on this site. Nothing here follows you to other websites. We count page views in aggregate on our own servers, and that counting sets no cookies either.",
+      "Two cookies exist by default, both first-party. One remembers the choice you made about cookies. The other only exists if you are a member of the 1127 team signed in to the dashboard.",
+      "One optional third party: with your consent under Marketing, the Meta (Facebook/Instagram) Pixel loads and sets its own cookies so we can tell whether our ads led to a visit or a ticket. Say no, or say nothing, and it never loads; nothing else here follows you to other websites. We count page views in aggregate on our own servers, and that counting sets no cookies at all.",
     ],
   },
   {
@@ -31,7 +31,7 @@ const sections: readonly LegalSection[] = [
     heading: "Categories",
     body: [
       "Strictly necessary cookies keep the site working and cannot be switched off. Cookies of this kind are generally treated as exempt from consent requirements because the service cannot be provided without them, which is why the banner does not pretend to offer a choice it is not really offering.",
-      "Analytics and marketing are listed because they are the categories we would use if we added measurement or retargeting for paid social campaigns. Both are switched off, and nothing is loaded unless you turn them on.",
+      "Marketing covers the Meta Pixel, which measures our paid social advertising and can be used for retargeting; it loads only after you turn the category on, and turning it off again tells it to stop. Analytics is listed for the future; today our measurement is cookieless and the category loads nothing.",
     ],
   },
   {

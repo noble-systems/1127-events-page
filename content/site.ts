@@ -106,6 +106,13 @@ export const contact = {
  *      LEGAL_VERSION gets bumped. Widening what you send under old wording is
  *      the thing that causes trouble.
  */
+/**
+ * Meta Pixel id for ad measurement. Not a secret (it is visible in every
+ * page that loads it); the pixel itself only loads after the visitor turns
+ * the marketing toggle on in the cookie banner.
+ */
+export const metaPixelId = "2700677626995900";
+
 export const smsProgram = {
   disclosure:
     "Adding your number opts you in to text messages from 1127 Events about new and upcoming dates. Message frequency varies. Message and data rates may apply. Reply STOP to cancel or HELP for help. Texts are not a condition of entry, so leave this blank if you would rather not get them.",

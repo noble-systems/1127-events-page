@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Beacon } from "@/components/Beacon";
+import { MetaPixel } from "@/components/MetaPixel";
 import { Fraunces, Inter_Tight } from "next/font/google";
 import { CookieConsent } from "@/components/CookieConsent";
 import { brand } from "@/content/site";
@@ -78,6 +79,7 @@ export default function RootLayout({
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
       <body className="antialiased">
         <Beacon />
+        <MetaPixel />
         <a
           href="#main"
           className="bg-ink text-bone sr-only rounded-full px-5 py-3 focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100]"
