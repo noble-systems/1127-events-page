@@ -116,6 +116,8 @@ export type TicketOrder = {
   optIn?: boolean;
   /** Terms version accepted at checkout; the consent paper trail. */
   termsVersion?: string;
+  /** Ticked the "I'm 21 or older" box on a 21+ event. */
+  ageConfirmed?: boolean;
   /** Issued free by an admin or the reward system; never counts as a sale. */
   comp?: boolean;
   /** Issued codes, present once paid. */

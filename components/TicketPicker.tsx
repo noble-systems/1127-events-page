@@ -34,6 +34,7 @@ export function TicketPicker({
   tiers,
   via: viaFromLink,
   src: srcFromLink,
+  age21,
 }: {
   eventId: string;
   tiers: PickerTier[];
@@ -41,6 +42,8 @@ export function TicketPicker({
   via?: string;
   /** Tracking-link id carried by ?src=, crediting the post, not a person. */
   src?: string;
+  /** The event is 21-and-up; buyers confirm before the button unlocks. */
+  age21?: boolean;
 }) {
   const router = useRouter();
   const firstOpen = tiers.find((tier) => !tier.externalUrl && tier.max > 0);
@@ -55,6 +58,7 @@ export function TicketPicker({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [ofAge, setOfAge] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -91,7 +95,7 @@ export function TicketPicker({
   const emailOk = /^[^@]+@[^@]+[.][^@]+$/.test(email.trim());
 
   const buy = async () => {
-    if (!chosen || busy || !emailOk || !agreed) return;
+    if (!chosen || busy || !emailOk || !agreed || (age21 && !ofAge)) return;
     trackEvent("buy_click");
     setBusy(true);
     setMessage(null);
@@ -108,6 +112,7 @@ export function TicketPicker({
           ...(phone.trim() ? { phone: phone.trim() } : {}),
           optIn: true,
           agreeTerms: true,
+          ...(age21 ? { confirmAge21: true } : {}),
           ...(via.trim() ? { via: via.trim() } : {}),
           ...(src.trim() ? { src: src.trim() } : {}),
         }),
@@ -287,6 +292,22 @@ export function TicketPicker({
         </label>
       ) : null}
 
+      {chosen && max > 0 && age21 ? (
+        <label className="text-ink/70 mt-3 flex items-start gap-2.5 text-[0.8125rem] leading-relaxed">
+          <input
+            type="checkbox"
+            checked={ofAge}
+            disabled={busy}
+            onChange={(e) => setOfAge(e.target.checked)}
+            className="accent-ink mt-0.5 h-4 w-4 shrink-0"
+          />
+          <span>
+            This is a 21+ event. I&apos;m 21 or older and I&apos;ll have ID at
+            the door.
+          </span>
+        </label>
+      ) : null}
+
       {chosen && max > 0 ? (
         <div className="mt-5 flex items-center gap-4">
           <label className="text-ink/70 flex items-center gap-2.5 text-[0.9375rem]">
@@ -307,7 +328,7 @@ export function TicketPicker({
 
           <Button
             onClick={buy}
-            disabled={busy || !emailOk || !agreed}
+            disabled={busy || !emailOk || !agreed || (age21 && !ofAge)}
             variant="primary"
             size="lg"
           >

@@ -209,6 +209,7 @@ export default async function TicketsPage({ params, searchParams }: Params) {
                         tiers={pickerTiers}
                         via={via}
                         src={src}
+                        age21={event.age21 === true}
                       />
                     </div>
                   </>

@@ -57,6 +57,7 @@ export async function POST(request: Request) {
     phone?: unknown;
     optIn?: unknown;
     agreeTerms?: unknown;
+    confirmAge21?: unknown;
   } | null;
 
   const eventId = typeof body?.eventId === "string" ? body.eventId : "";
@@ -79,6 +80,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  const confirmAge21 = body?.confirmAge21 === true;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) {
     return NextResponse.json(
       { ok: false, message: "Enter the email your tickets should go to." },
@@ -118,6 +120,14 @@ export async function POST(request: Request) {
   if (!event || !tier || quantity === null) {
     return NextResponse.json(
       { ok: false, message: "That ticket isn't available." },
+      { status: 400 },
+    );
+  }
+
+  // A 21+ event requires the age box ticked; the consent rides the order.
+  if (event.age21 === true && !confirmAge21) {
+    return NextResponse.json(
+      { ok: false, message: "This is a 21+ event; confirm you're 21 or older." },
       { status: 400 },
     );
   }
@@ -196,6 +206,7 @@ export async function POST(request: Request) {
       ...(phone ? { phone } : {}),
       ...(optIn ? { optIn: true } : {}),
       termsVersion: LEGAL_VERSION,
+      ...(event.age21 === true ? { ageConfirmed: true } : {}),
       createdAt: now,
       updatedAt: now,
     };
