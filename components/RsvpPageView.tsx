@@ -139,9 +139,10 @@ export function RsvpPageView({
                   <dt className="label-xs text-bone/55">Next date</dt>
                   <dd className="font-display mt-2 text-xl">
                     {featured
-                      ? [featured.date?.trim(), featured.time?.trim()]
+                      ? ([featured.date?.trim(), featured.time?.trim()]
                           .filter(Boolean)
-                          .join(", ") || "Announcing soon"
+                          .join(", ") || "Announcing soon") +
+                        (featured.age21 ? " · 21+" : "")
                       : hero.date}
                   </dd>
                 </div>
