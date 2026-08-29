@@ -177,10 +177,9 @@ export default async function TicketsPage({ params, searchParams }: Params) {
                 <div className="bg-deep px-5 py-5">
                   <dt className="label-xs text-bone/55">Date</dt>
                   <dd className="font-display mt-2 text-xl">
-                    {([event.date?.trim(), event.time?.trim()]
+                    {[event.date?.trim(), event.time?.trim()]
                       .filter(Boolean)
-                      .join(", ") || "Announcing soon") +
-                      (event.age21 ? " · 21+" : "")}
+                      .join(", ") || "Announcing soon"}
                   </dd>
                 </div>
                 <div className="bg-deep px-5 py-5">
@@ -198,6 +197,11 @@ export default async function TicketsPage({ params, searchParams }: Params) {
                   <>
                     <h2 className="text-3xl leading-tight sm:text-4xl">
                       Tickets
+                      {event.age21 ? (
+                        <span className="border-ink/25 text-ink/60 ml-3 inline-block translate-y-[-0.35rem] rounded-full border px-2.5 py-0.5 align-middle text-[0.9rem] leading-snug font-medium tracking-wide">
+                          21+
+                        </span>
+                      ) : null}
                     </h2>
                     <div className="mt-6">
                       <TicketPicker
