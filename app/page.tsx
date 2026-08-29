@@ -35,6 +35,7 @@ function StructuredData({ events }: { events: EventRecord[] }) {
     description: brand.description,
     // Search engines use this to tie the site and the profile to one entity.
     ...(contact.instagramUrl ? { sameAs: [contact.instagramUrl] } : {}),
+    logo: `${brand.domain}/apple-icon.png`,
     address: {
       "@type": "PostalAddress",
       addressLocality: "Scottsdale",

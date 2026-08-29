@@ -6,7 +6,9 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/api/", "/admin"],
+      // The wallet, door, personal stats and redirect links are real pages
+      // with nothing a search result should ever surface.
+      disallow: ["/api/", "/admin", "/door", "/t/", "/me/", "/a/", "/l/", "/unsubscribe"],
     },
     sitemap: `${brand.domain}/sitemap.xml`,
   };

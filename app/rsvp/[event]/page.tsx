@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
+import { EventJsonLd } from "@/components/EventJsonLd";
 import { RsvpPageView } from "@/components/RsvpPageView";
+import { siteUrl } from "@/lib/email";
+import { resolveImageSrc } from "@/lib/images";
 import { listPublicEvents } from "@/lib/store";
 
 export const revalidate = 60;
@@ -53,6 +56,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const title = `Join the list for ${event.name}`;
   const description = event.summary || event.tagline;
   const url = `/rsvp/${event.id}`;
+  // The event photograph beats the generic card in a feed or a DM preview.
+  const image = resolveImageSrc(event.image);
 
   return {
     title,
@@ -63,6 +68,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       description,
       url,
       type: "website",
+      ...(image ? { images: [image] } : {}),
     },
     twitter: { card: "summary_large_image", title, description },
   };
@@ -73,7 +79,17 @@ export default async function EventRsvpPage({ params, searchParams }: Params) {
     resolve(params),
     searchParams,
   ]);
-  if (event) return <RsvpPageView featured={event} via={via} />;
+  if (event) {
+    return (
+      <>
+        <EventJsonLd
+          event={event}
+          pageUrl={`${siteUrl()}/rsvp/${event.id}`}
+        />
+        <RsvpPageView featured={event} via={via} />
+      </>
+    );
+  }
   if (moved) permanentRedirect(`/rsvp/${encodeURIComponent(moved.id)}`);
   notFound();
 }

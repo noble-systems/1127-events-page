@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
+import { EventJsonLd } from "@/components/EventJsonLd";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { TicketPicker, type PickerTier } from "@/components/TicketPicker";
@@ -8,6 +9,8 @@ import { ArrowIcon, ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Section";
 import { PRESENTS } from "@/content/site";
 import { hero } from "@/content/site";
+import { siteUrl } from "@/lib/email";
+import { resolveImageSrc } from "@/lib/images";
 import { listPublicEvents } from "@/lib/store";
 import {
   formatMoney,
@@ -49,6 +52,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const title = `Tickets for ${event.name}`;
   const description = event.summary || event.tagline;
   const url = `/tickets/${event.id}`;
+  // The event photograph beats the generic card in a feed or a DM preview.
+  const image = resolveImageSrc(event.image);
 
   return {
     title,
@@ -59,6 +64,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       description,
       url,
       type: "website",
+      ...(image ? { images: [image] } : {}),
     },
     twitter: { card: "summary_large_image", title, description },
   };
@@ -116,8 +122,20 @@ export default async function TicketsPage({ params, searchParams }: Params) {
     };
   });
 
+  const takenByTier = new Map<string, number>(
+    [...inventory.entries()].map(([id, counts]) => [
+      id,
+      (counts as { taken?: number })?.taken ?? 0,
+    ]),
+  );
+
   return (
     <>
+      <EventJsonLd
+        event={event}
+        pageUrl={`${siteUrl()}/tickets/${event.id}`}
+        taken={takenByTier}
+      />
       <SiteHeader
         overlay={false}
       />
