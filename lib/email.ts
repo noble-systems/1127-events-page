@@ -1058,6 +1058,7 @@ export function renderTicketEmail(input: {
   date?: string;
   time?: string;
   location?: string;
+  age21?: boolean;
   /** The wallet page showing one QR per screen; the door-night link. */
   walletUrl?: string;
 }) {
@@ -1081,6 +1082,7 @@ export function renderTicketEmail(input: {
     input.date?.trim() ? escapeHtml(input.date.trim()) : null,
     input.time?.trim() ? escapeHtml(input.time.trim()) : null,
     input.location?.trim() ? escapeHtml(input.location.trim()) : null,
+    input.age21 ? "21+ event" : null,
   ]
     .filter(Boolean)
     .join(" &middot; ");

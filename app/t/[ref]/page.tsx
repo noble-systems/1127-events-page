@@ -78,6 +78,7 @@ export default async function TicketWalletPage({
         eventRecord.date?.trim(),
         eventRecord.time?.trim(),
         eventRecord.location?.trim(),
+        eventRecord.age21 ? "21+" : "",
       ]
         .filter(Boolean)
         .join(" · ")

@@ -110,6 +110,8 @@ export type EventRecord = {
    * events want and some don't.
    */
   showScarcity?: boolean;
+  /** 21-and-up door policy, shown wherever the event is described. */
+  age21?: boolean;
   /**
    * A wordmark shown in the hero in place of the typed name while this event
    * is featured. The name itself stays in the markup for screen readers and

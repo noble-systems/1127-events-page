@@ -60,6 +60,7 @@ export function EventJsonLd({
     startDate: schedule.startDate,
     ...(schedule.endDate ? { endDate: schedule.endDate } : {}),
     eventStatus: "https://schema.org/EventScheduled",
+    ...(event.age21 ? { typicalAgeRange: "21+" } : {}),
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     location: {
       "@type": "Place",

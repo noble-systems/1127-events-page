@@ -396,6 +396,17 @@ export function EventForm({
             />
           </Field>
 
+          <div className="sm:col-span-2">
+            <Toggle
+              id="ev-age21"
+              label="21 and up"
+              hint="Shows a 21+ note on the event card, the tickets page, the signup page and the ticket email, and tells search engines."
+              checked={values.age21}
+              disabled={busy}
+              onChange={(value) => set("age21", value)}
+            />
+          </div>
+
           <Field id="ev-location" label="Location" error={errors.location}>
             <TextInput
               id="ev-location"

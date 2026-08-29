@@ -188,6 +188,12 @@ export default async function TicketsPage({ params, searchParams }: Params) {
                     {event.location?.trim() || "Announcing soon"}
                   </dd>
                 </div>
+                {event.age21 ? (
+                  <div className="bg-deep px-5 py-5">
+                    <dt className="label-xs text-bone/55">Ages</dt>
+                    <dd className="font-display mt-2 text-xl">21+</dd>
+                  </div>
+                ) : null}
               </dl>
             </div>
 

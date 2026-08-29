@@ -155,6 +155,7 @@ export async function POST(request: Request) {
         date: eventRecord?.date,
         time: eventRecord?.time ?? undefined,
         location: eventRecord?.location,
+        age21: eventRecord?.age21 === true,
         walletUrl: `${siteUrl()}/t/${order.ref}`,
       });
 

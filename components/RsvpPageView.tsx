@@ -35,6 +35,7 @@ function eventFacts(event?: EventRecord) {
       body: "Date",
     },
     { title: event?.location?.trim() || "Old Town Scottsdale", body: "Location" },
+    ...(event?.age21 ? [{ title: "21+", body: "Ages" }] : []),
     {
       title: event?.genres?.length ? event.genres.join(", ") : "Announcing soon",
       body: "Music",

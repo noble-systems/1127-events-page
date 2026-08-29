@@ -46,6 +46,7 @@ export type EventFormValues = {
   rsvpEnabled: boolean;
   ticketsEnabled: boolean;
   showScarcity: boolean;
+  age21: boolean;
   tickets: TicketTierFormValues[];
   order: string;
   shotNote: string;
@@ -81,6 +82,7 @@ export const EMPTY_EVENT: EventFormValues = {
   // Selling money is opt-in, so this starts off.
   ticketsEnabled: false,
   showScarcity: false,
+  age21: false,
   tickets: [],
   order: "0",
   shotNote: "",
@@ -337,6 +339,7 @@ export function toEventInput(
     rsvpEnabled: Boolean(values.rsvpEnabled),
     ticketsEnabled: Boolean(values.ticketsEnabled),
     showScarcity: Boolean(values.showScarcity),
+    age21: Boolean(values.age21),
     ticketTiers: toTicketTiers(values.tickets),
     order: Number(values.order),
     shotNote: values.shotNote.trim(),
@@ -419,6 +422,7 @@ export function readEventBody(
     // Money is the opposite of signups: only an explicit true sells.
     ticketsEnabled: raw.ticketsEnabled === true || raw.ticketsEnabled === "true",
     showScarcity: raw.showScarcity === true || raw.showScarcity === "true",
+    age21: raw.age21 === true || raw.age21 === "true",
     // Both spellings, because two callers exist: the form posts `tickets`
     // (form rows), the events-list toggles resubmit the raw record, which
     // stores `ticketTiers`. Reading only one wiped the other's tiers.
@@ -463,6 +467,7 @@ export function eventToFormValues(
     rsvpEnabled?: boolean;
     ticketsEnabled?: boolean;
     showScarcity?: boolean;
+    age21?: boolean;
     ticketTiers?: Array<{
       id: string;
       name: string;
@@ -505,6 +510,7 @@ export function eventToFormValues(
     rsvpEnabled: event.rsvpEnabled !== false,
     ticketsEnabled: event.ticketsEnabled === true,
     showScarcity: event.showScarcity === true,
+    age21: event.age21 === true,
     tickets: (event.ticketTiers ?? []).map((tier) => ({
       id: tier.id,
       name: tier.name,
