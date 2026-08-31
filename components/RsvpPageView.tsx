@@ -142,33 +142,21 @@ export function RsvpPageView({
               ) : null}
 
               <dl className="border-bone/15 bg-bone/15 mt-10 grid gap-px overflow-hidden rounded-2xl border sm:grid-cols-2">
-                <div className="bg-deep px-5 py-5">
-                  <dt className="label-xs text-bone/55">Next date</dt>
-                  <dd className="font-display mt-2 text-xl">
-                    {infoEvent
-                      ? ([infoEvent.date?.trim(), infoEvent.time?.trim()]
-                          .filter(Boolean)
-                          .join(", ") || "Announcing soon") +
-                        (infoEvent.age21 ? " · 21+" : "")
-                      : hero.date}
-                  </dd>
-                </div>
-                <div className="bg-deep px-5 py-5">
-                  <dt className="label-xs text-bone/55">Location</dt>
-                  <dd className="font-display mt-2 text-xl">
-                    {infoEvent?.location ?? hero.location}
-                  </dd>
-                </div>
-                {/* Full width, so an odd cell count never leaves a pale
-                    empty slot in the grid. */}
-                <div className="bg-deep px-5 py-5 sm:col-span-2">
-                  <dt className="label-xs text-bone/55">Music</dt>
-                  <dd className="font-display mt-2 text-xl">
-                    {infoEvent?.genres?.length
-                      ? infoEvent.genres.join(", ")
-                      : "Announcing soon"}
-                  </dd>
-                </div>
+                {eventFacts(infoEvent).map((item, index, all) => (
+                  <div
+                    key={item.body}
+                    // The last cell of an odd set spans full width, so the
+                    // grid never shows a pale empty slot.
+                    className={`bg-deep px-5 py-5 ${
+                      all.length % 2 === 1 && index === all.length - 1
+                        ? "sm:col-span-2"
+                        : ""
+                    }`}
+                  >
+                    <dt className="label-xs text-bone/55">{item.body}</dt>
+                    <dd className="font-display mt-2 text-xl">{item.title}</dd>
+                  </div>
+                ))}
               </dl>
             </div>
 
@@ -234,61 +222,34 @@ export function RsvpPageView({
         {/* ---------------------------------------------------------------- */}
         {/* What to expect                                                    */}
         {/* ---------------------------------------------------------------- */}
+        {/* The facts grid lives in the hero now; this section is just the
+            words. */}
         <Section tone="bone" size="md" labelledBy="expect-title">
-          <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
-            <div className="lg:col-span-5">
-              <Reveal>
-                <Eyebrow>What to expect</Eyebrow>
-              </Reveal>
-              <Reveal delay={60}>
-                <h2
-                  id="expect-title"
-                  className="mt-5 text-[2rem] leading-[1.05] sm:text-4xl lg:text-[2.9rem]"
-                >
-                  {sunClub.title}
-                </h2>
-              </Reveal>
-              <Reveal delay={120}>
-                <p className="text-ink/70 mt-6 max-w-md text-[1.0625rem] leading-relaxed">
-                  {infoEvent?.summary?.trim() || sunClub.paragraphs[0]}
-                </p>
-              </Reveal>
-              <Reveal delay={180}>
-                <div className="mt-8">
-                  <ButtonLink href="/" variant="outline" size="md">
-                    More about 1127 Events
-                    <ArrowIcon />
-                  </ButtonLink>
-                </div>
-              </Reveal>
-            </div>
-
-            <div className="lg:col-span-7">
-              <dl className="border-ink/12 bg-ink/12 grid gap-px overflow-hidden rounded-2xl border sm:grid-cols-2">
-                {eventFacts(infoEvent).map((item, index, all) => (
-                  <Reveal
-                    key={item.title}
-                    delay={index * 70}
-                    // The last cell of an odd row set spans the full width,
-                    // so the grid never shows a pale empty slot.
-                    className={
-                      all.length % 2 === 1 && index === all.length - 1
-                        ? "sm:col-span-2"
-                        : undefined
-                    }
-                  >
-                    <div className="bg-bone h-full px-6 py-7">
-                      <dt className="font-display text-xl leading-snug">
-                        {item.title}
-                      </dt>
-                      <dd className="text-ink/65 mt-3 text-[0.9375rem] leading-relaxed">
-                        {item.body}
-                      </dd>
-                    </div>
-                  </Reveal>
-                ))}
-              </dl>
-            </div>
+          <div className="max-w-2xl">
+            <Reveal>
+              <Eyebrow>What to expect</Eyebrow>
+            </Reveal>
+            <Reveal delay={60}>
+              <h2
+                id="expect-title"
+                className="mt-5 text-[2rem] leading-[1.05] sm:text-4xl lg:text-[2.9rem]"
+              >
+                {sunClub.title}
+              </h2>
+            </Reveal>
+            <Reveal delay={120}>
+              <p className="text-ink/70 mt-6 text-[1.0625rem] leading-relaxed">
+                {infoEvent?.summary?.trim() || sunClub.paragraphs[0]}
+              </p>
+            </Reveal>
+            <Reveal delay={180}>
+              <div className="mt-8">
+                <ButtonLink href="/" variant="outline" size="md">
+                  More about 1127 Events
+                  <ArrowIcon />
+                </ButtonLink>
+              </div>
+            </Reveal>
           </div>
         </Section>
 
