@@ -77,6 +77,13 @@ export function RsvpPageView({
     ? `/tickets/${encodeURIComponent(seller.id)}`
     : null;
 
+  /**
+   * What the info panel describes. A featured event owns the page; failing
+   * that, the selling event's real details beat series placeholders, so the
+   * generic page can never say "Announcing Soon" beside a live sale.
+   */
+  const infoEvent = featured ?? seller;
+
   return (
     <>
       <SiteHeader overlay={false} ticketsHref={ticketsHref} />
@@ -110,11 +117,11 @@ export function RsvpPageView({
                 id="rsvp-title"
                 className="font-display mt-6 text-[2.75rem] leading-[0.95] font-semibold tracking-[-0.02em] uppercase sm:text-6xl lg:text-7xl"
               >
-                {featured?.name ?? hero.title}
+                {infoEvent?.name ?? hero.title}
               </h1>
 
               <p className="font-display text-bone/90 mt-6 text-[1.5rem] leading-tight sm:text-[1.9rem]">
-                {featured?.tagline ?? hero.tagline}
+                {infoEvent?.tagline ?? hero.tagline}
               </p>
 
               <p className="text-bone/75 mt-6 max-w-lg text-[1.0625rem] leading-relaxed">
@@ -138,25 +145,27 @@ export function RsvpPageView({
                 <div className="bg-deep px-5 py-5">
                   <dt className="label-xs text-bone/55">Next date</dt>
                   <dd className="font-display mt-2 text-xl">
-                    {featured
-                      ? ([featured.date?.trim(), featured.time?.trim()]
+                    {infoEvent
+                      ? ([infoEvent.date?.trim(), infoEvent.time?.trim()]
                           .filter(Boolean)
                           .join(", ") || "Announcing soon") +
-                        (featured.age21 ? " · 21+" : "")
+                        (infoEvent.age21 ? " · 21+" : "")
                       : hero.date}
                   </dd>
                 </div>
                 <div className="bg-deep px-5 py-5">
                   <dt className="label-xs text-bone/55">Location</dt>
                   <dd className="font-display mt-2 text-xl">
-                    {featured?.location ?? hero.location}
+                    {infoEvent?.location ?? hero.location}
                   </dd>
                 </div>
-                <div className="bg-deep px-5 py-5">
+                {/* Full width, so an odd cell count never leaves a pale
+                    empty slot in the grid. */}
+                <div className="bg-deep px-5 py-5 sm:col-span-2">
                   <dt className="label-xs text-bone/55">Music</dt>
                   <dd className="font-display mt-2 text-xl">
-                    {featured?.genres?.length
-                      ? featured.genres.join(", ")
+                    {infoEvent?.genres?.length
+                      ? infoEvent.genres.join(", ")
                       : "Announcing soon"}
                   </dd>
                 </div>
@@ -241,7 +250,7 @@ export function RsvpPageView({
               </Reveal>
               <Reveal delay={120}>
                 <p className="text-ink/70 mt-6 max-w-md text-[1.0625rem] leading-relaxed">
-                  {featured?.summary?.trim() || sunClub.paragraphs[0]}
+                  {infoEvent?.summary?.trim() || sunClub.paragraphs[0]}
                 </p>
               </Reveal>
               <Reveal delay={180}>
@@ -256,8 +265,18 @@ export function RsvpPageView({
 
             <div className="lg:col-span-7">
               <dl className="border-ink/12 bg-ink/12 grid gap-px overflow-hidden rounded-2xl border sm:grid-cols-2">
-                {eventFacts(featured).map((item, index) => (
-                  <Reveal key={item.title} delay={index * 70}>
+                {eventFacts(infoEvent).map((item, index, all) => (
+                  <Reveal
+                    key={item.title}
+                    delay={index * 70}
+                    // The last cell of an odd row set spans the full width,
+                    // so the grid never shows a pale empty slot.
+                    className={
+                      all.length % 2 === 1 && index === all.length - 1
+                        ? "sm:col-span-2"
+                        : undefined
+                    }
+                  >
                     <div className="bg-bone h-full px-6 py-7">
                       <dt className="font-display text-xl leading-snug">
                         {item.title}
