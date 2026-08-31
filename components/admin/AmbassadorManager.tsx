@@ -12,6 +12,17 @@ import { Button } from "@/components/ui/Button";
  * math, it only displays it and edits the roster.
  */
 
+/** The rankable columns; each sorts the roster descending. */
+const SORTS = [
+  { key: "clicks", label: "Link taps" },
+  { key: "rsvps", label: "Signups" },
+  { key: "tickets", label: "Tickets" },
+  { key: "grossCents", label: "Sales ($)" },
+  { key: "rewardsGiven", label: "Free given" },
+] as const;
+
+type SortKey = (typeof SORTS)[number]["key"];
+
 /** "Aug 26", so a row can say when without eating the table. */
 function sentDay(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -90,6 +101,11 @@ export function AmbassadorManager({
   const [subject, setSubject] = useState(welcomeSubject);
   const [emailBody, setEmailBody] = useState(welcomeBody);
   const [kit, setKit] = useState(kitImages);
+  // The leaderboard order: signups by default, any counted column on click.
+  const [sortKey, setSortKey] = useState<SortKey>("rsvps");
+  const ranked = [...stats].sort(
+    (a, b) => (b[sortKey] ?? 0) - (a[sortKey] ?? 0),
+  );
   const [uploading, setUploading] = useState(false);
 
   /** Straight-to-S3 like the event photos, then the ref list is saved. */
@@ -516,29 +532,44 @@ export function AmbassadorManager({
         </p>
       ) : (
         <div className="border-ink/12 bg-bone mt-6 overflow-x-auto rounded-2xl border p-6">
-          <table className="w-full min-w-[760px] text-left text-[0.875rem]">
+          <table className="w-full min-w-[800px] text-left text-[0.875rem]">
             <thead>
               <tr className="text-ink/55 border-ink/10 border-b">
+                <th className="py-2 pr-3 font-medium">#</th>
                 <th className="py-2 pr-4 font-medium">Ambassador</th>
                 <th className="py-2 pr-4 font-medium">Code</th>
                 <th className="py-2 pr-4 font-medium">Share link</th>
-                <th className="py-2 pr-4 font-medium">Link taps</th>
-                <th className="py-2 pr-4 font-medium">Signups</th>
-                <th className="py-2 pr-4 font-medium">Tickets</th>
-                <th className="py-2 pr-4 font-medium">Sales ($)</th>
-                <th className="py-2 pr-4 font-medium">Free given</th>
+                {SORTS.map(({ key, label }) => (
+                  <th key={key} className="py-2 pr-4 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => setSortKey(key)}
+                      className={`underline-offset-4 ${
+                        sortKey === key
+                          ? "text-ink underline"
+                          : "hover:text-ink hover:underline"
+                      }`}
+                    >
+                      {label}
+                      {sortKey === key ? " ↓" : ""}
+                    </button>
+                  </th>
+                ))}
                 <th className="py-2 pr-4 font-medium">Welcome</th>
                 <th className="py-2 font-medium"></th>
               </tr>
             </thead>
             <tbody>
-              {stats.map((row) => {
+              {ranked.map((row, index) => {
                 const link = `${siteUrl}/a/${row.code}`;
                 return (
                   <tr
                     key={row.code}
                     className={`border-ink/5 border-b ${row.active ? "" : "opacity-50"}`}
                   >
+                    <td className="text-ink/45 py-2.5 pr-3 tabular-nums">
+                      {index + 1}
+                    </td>
                     <td className="py-2.5 pr-4 font-medium">{row.name}</td>
                     <td className="py-2.5 pr-4 font-mono">{row.code}</td>
                     <td className="py-2.5 pr-4">
