@@ -205,7 +205,8 @@ export default async function TrafficPage() {
 
       <section className="border-ink/12 bg-bone mt-6 rounded-2xl border p-6">
         <h2 className="font-display text-xl">By day</h2>
-        <div className="mt-5 flex h-36 items-end gap-[3px]">
+        <div className="-mx-2 overflow-x-auto px-2">
+          <div className="mt-5 flex h-36 min-w-[560px] items-end gap-[3px]">
           {days.map((day) => {
             const views = perDay.get(day) ?? 0;
             const sales = salesPerDay.get(day) ?? 0;
@@ -231,6 +232,7 @@ export default async function TrafficPage() {
               </div>
             );
           })}
+          </div>
         </div>
         <div className="text-ink/50 mt-2 flex justify-between text-[0.75rem]">
           <span>{dayLabel(days[0])}</span>
@@ -251,25 +253,30 @@ export default async function TrafficPage() {
             const prev = index > 0 ? funnel[index - 1][1] : value;
             const widthPct = first > 0 ? Math.max(2, (value / first) * 100) : 2;
             return (
-              <div key={label} className="flex items-center gap-3">
-                <span className="text-ink/65 w-48 shrink-0 text-[0.8125rem]">
+              <div
+                key={label}
+                className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+              >
+                <span className="text-ink/65 shrink-0 text-[0.8125rem] sm:w-48">
                   {label}
                 </span>
-                <div className="h-6 flex-1">
-                  <div
-                    className="bg-cobalt/70 flex h-6 min-w-8 items-center rounded-r-md px-2"
-                    style={{ width: `${widthPct}%` }}
-                  >
-                    <span className="text-bone text-[0.75rem] tabular-nums">
-                      {value}
-                    </span>
+                <div className="flex flex-1 items-center gap-3">
+                  <div className="h-6 flex-1">
+                    <div
+                      className="bg-cobalt/70 flex h-6 min-w-8 items-center rounded-r-md px-2"
+                      style={{ width: `${widthPct}%` }}
+                    >
+                      <span className="text-bone text-[0.75rem] tabular-nums">
+                        {value}
+                      </span>
+                    </div>
                   </div>
+                  <span className="text-ink/45 w-12 shrink-0 text-right text-[0.75rem] tabular-nums">
+                    {index > 0 && prev > 0
+                      ? `${Math.round((value / prev) * 100)}%`
+                      : ""}
+                  </span>
                 </div>
-                <span className="text-ink/45 w-14 shrink-0 text-right text-[0.75rem] tabular-nums">
-                  {index > 0 && prev > 0
-                    ? `${Math.round((value / prev) * 100)}%`
-                    : ""}
-                </span>
               </div>
             );
           })}
@@ -288,7 +295,8 @@ export default async function TrafficPage() {
             Nothing recorded yet. Numbers start with the next visits.
           </p>
         ) : (
-          <table className="mt-4 w-full text-left text-[0.875rem]">
+          <div className="overflow-x-auto">
+          <table className="mt-4 w-full min-w-[420px] text-left text-[0.875rem]">
             <thead>
               <tr className="text-ink/55 border-ink/10 border-b">
                 <th className="py-2 pr-4 font-medium">Page</th>
@@ -312,6 +320,7 @@ export default async function TrafficPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
 
@@ -460,7 +469,8 @@ function HourChart({ entries }: { entries: Map<string, number> }) {
 
   return (
     <>
-      <div className="mt-5 flex h-24 items-end gap-[3px]">
+      <div className="-mx-2 overflow-x-auto px-2">
+        <div className="mt-5 flex h-24 min-w-[480px] items-end gap-[3px]">
         {hours.map((h) => {
           const n = entries.get(h) ?? 0;
           return (
@@ -485,6 +495,7 @@ function HourChart({ entries }: { entries: Map<string, number> }) {
             </div>
           );
         })}
+        </div>
       </div>
       <div className="text-ink/50 mt-1.5 flex text-[0.7rem]">
         {["12am", "6am", "12pm", "6pm"].map((label) => (

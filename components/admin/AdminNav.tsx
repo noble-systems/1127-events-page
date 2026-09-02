@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Wordmark } from "@/components/Wordmark";
 
 const LINKS = [
@@ -23,6 +23,14 @@ export function AdminNav({ email, mode }: { email: string; mode: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Navigating closes the menu; a menu that lingers over the new page reads
+  // as a bug.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMenuOpen(false);
+  }, [pathname]);
 
   const signOut = async () => {
     setSigningOut(true);
@@ -34,26 +42,23 @@ export function AdminNav({ email, mode }: { email: string; mode: string }) {
   const isActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname.startsWith(href);
 
+  const current = LINKS.find((link) => isActive(link.href, link.exact));
+
   return (
     <header className="border-ink/12 bg-bone/90 sticky top-0 z-40 border-b backdrop-blur-xl">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3.5 md:px-8">
+      <div className="mx-auto flex w-full max-w-6xl items-center gap-x-4 px-5 py-3.5 md:gap-x-6 md:px-8">
         <Link href="/admin" className="shrink-0 hover:opacity-70">
           <Wordmark />
         </Link>
 
         <span
           aria-hidden="true"
-          className="bg-ink/15 hidden h-5 w-px shrink-0 sm:block"
+          className="bg-ink/15 hidden h-5 w-px shrink-0 lg:block"
         />
 
-        {/* One row that scrolls sideways on a phone; ten labels never wrap
-            into a heap. The negative margin lets the scroll run edge to
-            edge so the last item isn't clipped mid-letter. */}
-        <nav
-          aria-label="Admin"
-          className="order-3 -mx-5 w-[calc(100%+2.5rem)] overflow-x-auto px-5 [scrollbar-width:none] sm:order-none sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0"
-        >
-          <ul className="flex w-max items-center gap-1 sm:w-auto">
+        {/* Desktop: the full row. Phone and tablet get a real menu below. */}
+        <nav aria-label="Admin" className="hidden lg:block">
+          <ul className="flex items-center gap-1">
             {LINKS.map((link) => {
               const active = isActive(link.href, link.exact);
               return (
@@ -75,18 +80,42 @@ export function AdminNav({ email, mode }: { email: string; mode: string }) {
           </ul>
         </nav>
 
+        {/* Current page + menu button, phone and tablet only. */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-expanded={menuOpen}
+          aria-controls="admin-menu"
+          className="border-ink/20 hover:border-ink/45 flex items-center gap-2 rounded-full border px-3.5 py-2 text-[0.875rem] font-medium lg:hidden"
+        >
+          {current?.label ?? "Menu"}
+          <svg
+            viewBox="0 0 12 12"
+            aria-hidden="true"
+            className={`h-3 w-3 transition-transform duration-200 ${menuOpen ? "rotate-180" : ""}`}
+          >
+            <path
+              d="m2 4 4 4 4-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+
         <div className="ml-auto flex items-center gap-3">
           {mode === "dev" ? (
-            <span className="border-terracotta/50 text-terracotta-deep rounded-full border border-dashed px-2.5 py-1 text-[0.75rem] tracking-[0.08em] uppercase">
+            <span className="border-terracotta/50 text-terracotta-deep hidden rounded-full border border-dashed px-2.5 py-1 text-[0.75rem] tracking-[0.08em] uppercase sm:inline">
               Local dev auth
             </span>
           ) : null}
-          <span className="text-ink/65 hidden text-[0.8125rem] md:inline">
+          <span className="text-ink/65 hidden text-[0.8125rem] xl:inline">
             {email}
           </span>
           <Link
             href="/"
-            className="text-ink/65 hover:text-ink text-[0.8125rem] underline-offset-4 hover:underline"
+            className="text-ink/65 hover:text-ink hidden text-[0.8125rem] underline-offset-4 hover:underline sm:inline"
           >
             View site
           </Link>
@@ -100,6 +129,45 @@ export function AdminNav({ email, mode }: { email: string; mode: string }) {
           </button>
         </div>
       </div>
+
+      {/* The dropdown menu itself: a clean two-column list, no sideways
+          anything. */}
+      {menuOpen ? (
+        <nav
+          id="admin-menu"
+          aria-label="Admin"
+          className="border-ink/12 bg-bone border-t shadow-[0_24px_40px_-24px_rgba(25,23,19,0.35)] lg:hidden"
+        >
+          <ul className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-1 px-5 py-4">
+            {LINKS.map((link) => {
+              const active = isActive(link.href, link.exact);
+              return (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`block rounded-xl px-4 py-3 text-[0.9375rem] ${
+                      active
+                        ? "bg-ink text-bone"
+                        : "text-ink/75 hover:bg-ink/[0.07] hover:text-ink"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              );
+            })}
+            <li className="col-span-2 mt-1 sm:hidden">
+              <Link
+                href="/"
+                className="text-ink/65 hover:text-ink block rounded-xl px-4 py-3 text-[0.9375rem]"
+              >
+                View site
+              </Link>
+            </li>
+          </ul>
+        </nav>
+      ) : null}
     </header>
   );
 }
