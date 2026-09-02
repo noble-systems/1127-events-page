@@ -1280,7 +1280,7 @@ export function renderReminderEmail(input: {
     preheader: `Seats for ${input.eventName} are still open.`,
     heading: "Still coming?",
     body: `
-      <p style="margin:0 0 14px;font:400 15px/1.65 Helvetica,Arial,sans-serif;color:${INK};">You started getting tickets for <strong>${escapeHtml(input.eventName)}</strong> and the checkout timer beat you to it. No harm done; seats are still open right now.</p>
+      <p style="margin:0 0 14px;font:400 15px/1.65 Helvetica,Arial,sans-serif;color:${INK};">You started getting tickets for <strong>${escapeHtml(input.eventName)}</strong> but never finished! Good news, we haven&apos;t sold out yet.</p>
       ${
         input.discountPct
           ? `<p style="margin:0 0 14px;font:400 15px/1.65 Helvetica,Arial,sans-serif;color:${INK};">Use the button below and <strong>${input.discountPct}% off</strong> applies to your order automatically.</p>`
@@ -1292,7 +1292,7 @@ export function renderReminderEmail(input: {
   });
 
   const text = [
-    `You started getting tickets for ${input.eventName} and the checkout timer beat you to it. Seats are still open.`,
+    `You started getting tickets for ${input.eventName} but never finished! Good news, we haven't sold out yet.`,
     input.discountPct
       ? `Use this link and ${input.discountPct}% off applies automatically:`
       : "Finish here:",
