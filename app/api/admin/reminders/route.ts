@@ -8,7 +8,11 @@ import {
   setReminderSettings,
 } from "@/lib/reminder";
 import { listSubmissions } from "@/lib/store";
-import { listAllOrders, markOrderReminded } from "@/lib/tickets-store";
+import {
+  listAllOrders,
+  markOrderReminded,
+  setOrderReminderRemoved,
+} from "@/lib/tickets-store";
 import { unsubscribeToken } from "@/lib/tokens";
 
 /**
@@ -30,11 +34,12 @@ export async function GET() {
     listSubmissions(),
     getReminderSettings(),
   ]);
-  const targets = computeReminderTargets(orders, submissions);
+  const { targets, removed } = computeReminderTargets(orders, submissions);
   return NextResponse.json({
     ok: true,
     settings,
     targets: targets.map((t) => ({ email: t.email, event: t.order.eventName })),
+    removed: removed.map((t) => ({ email: t.email, event: t.order.eventName })),
   });
 }
 
@@ -75,7 +80,7 @@ export async function POST(request: Request) {
     listSubmissions(),
     getReminderSettings(),
   ]);
-  const targets = computeReminderTargets(orders, submissions);
+  const { targets } = computeReminderTargets(orders, submissions);
 
   let sent = 0;
   const failures: string[] = [];
@@ -112,8 +117,9 @@ export async function POST(request: Request) {
 }
 
 /**
- * Takes one email off the list without sending anything: the same stamp a
- * sent reminder leaves, so the exclusion is permanent by the same rule.
+ * Toggles one email's by-hand strike-off: on the eligible list it gets
+ * struck off; on the removed list it gets restored. A REAL send stays
+ * permanent either way; only the hand-made stamp is reversible.
  */
 export async function DELETE(request: Request) {
   const denied = await requireAdmin();
@@ -133,16 +139,25 @@ export async function DELETE(request: Request) {
     listAllOrders(),
     listSubmissions(),
   ]);
-  const target = computeReminderTargets(orders, submissions).find(
-    (t) => t.email === email,
-  );
-  if (!target) {
-    return NextResponse.json(
-      { ok: false, message: "That email isn't on the list." },
-      { status: 404 },
-    );
+  const lists = computeReminderTargets(orders, submissions);
+  const target = lists.targets.find((t) => t.email === email);
+  if (target) {
+    await setOrderReminderRemoved(target.order.ref, true);
+    return NextResponse.json({ ok: true });
   }
 
-  await markOrderReminded(target.order.ref);
-  return NextResponse.json({ ok: true });
+  // Restore: clear the strike-off from every order carrying it.
+  const struck = lists.removed.find((t) => t.email === email);
+  if (struck) {
+    const stamped = orders.filter(
+      (o) => o.email?.toLowerCase() === email && o.reminderRemovedAt,
+    );
+    for (const o of stamped) await setOrderReminderRemoved(o.ref, false);
+    return NextResponse.json({ ok: true, restored: true });
+  }
+
+  return NextResponse.json(
+    { ok: false, message: "That email isn't on either list." },
+    { status: 404 },
+  );
 }

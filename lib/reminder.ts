@@ -28,7 +28,7 @@ export type ReminderTarget = {
 export function computeReminderTargets(
   orders: readonly TicketOrder[],
   submissions: readonly SubmissionRecord[],
-): ReminderTarget[] {
+): { targets: ReminderTarget[]; removed: ReminderTarget[] } {
   const paidEmails = new Set(
     orders
       .filter((order) => order.status === "paid" && order.email)
@@ -45,24 +45,30 @@ export function computeReminderTargets(
   );
 
   const byEmail = new Map<string, TicketOrder>();
+  const removedByEmail = new Map<string, TicketOrder>();
   for (const order of orders) {
     if (order.status !== "expired" || !order.email) continue;
     const email = order.email.toLowerCase();
     if (paidEmails.has(email) || suppressed.has(email)) continue;
-    // Already reminded once, on any of their orders: never again.
+    // Actually reminded once, on any of their orders: never again, no undo.
     const priorReminder = orders.some(
-      (row) =>
-        row.email?.toLowerCase() === email &&
-        (row as { remindedAt?: string }).remindedAt,
+      (row) => row.email?.toLowerCase() === email && row.remindedAt,
     );
     if (priorReminder) continue;
-    const held = byEmail.get(email);
-    if (!held || order.createdAt > held.createdAt) byEmail.set(email, order);
+    // Struck off by hand: parked on the removed list, restorable.
+    const struckOff = orders.some(
+      (row) => row.email?.toLowerCase() === email && row.reminderRemovedAt,
+    );
+    const bucket = struckOff ? removedByEmail : byEmail;
+    const held = bucket.get(email);
+    if (!held || order.createdAt > held.createdAt) bucket.set(email, order);
   }
 
-  return [...byEmail.entries()]
-    .map(([email, order]) => ({ email, order }))
-    .sort((a, b) => a.email.localeCompare(b.email));
+  const toList = (map: Map<string, TicketOrder>) =>
+    [...map.entries()]
+      .map(([email, order]) => ({ email, order }))
+      .sort((a, b) => a.email.localeCompare(b.email));
+  return { targets: toList(byEmail), removed: toList(removedByEmail) };
 }
 
 /* -------------------------------------------------------------------------- */

@@ -124,6 +124,8 @@ export type TicketOrder = {
   promoId?: string;
   /** When the abandoned-checkout reminder went to this order's email. */
   remindedAt?: string;
+  /** Struck off the reminder list by hand; restorable, unlike a real send. */
+  reminderRemovedAt?: string;
   /** Issued free by an admin or the reward system; never counts as a sale. */
   comp?: boolean;
   /** Issued codes, present once paid. */

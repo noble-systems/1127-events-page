@@ -298,6 +298,9 @@ function orderToItem(order: TicketOrder) {
     ...(order.promoPct ? { promoPct: { N: String(order.promoPct) } } : {}),
     ...(order.promoId ? { promoId: { S: order.promoId } } : {}),
     ...(order.remindedAt ? { remindedAt: { S: order.remindedAt } } : {}),
+    ...(order.reminderRemovedAt
+      ? { reminderRemovedAt: { S: order.reminderRemovedAt } }
+      : {}),
     ...(order.comp ? { comp: { BOOL: true } } : {}),
     ...(order.codes?.length ? { codes: { SS: order.codes } } : {}),
     createdAt: { S: order.createdAt },
@@ -328,6 +331,7 @@ function itemToOrder(
     promoPct: item.promoPct?.N ? Number(item.promoPct.N) : undefined,
     promoId: item.promoId?.S ?? undefined,
     remindedAt: item.remindedAt?.S ?? undefined,
+    reminderRemovedAt: item.reminderRemovedAt?.S ?? undefined,
     termsVersion: item.termsVersion?.S ?? undefined,
     comp: item.comp?.BOOL === true || undefined,
     codes: item.codes?.SS ?? undefined,
@@ -710,6 +714,42 @@ export async function markOrderReminded(ref: string): Promise<void> {
       ConditionExpression: "attribute_exists(pk)",
       ExpressionAttributeNames: { "#r": "remindedAt" },
       ExpressionAttributeValues: { ":now": { S: now } },
+    }),
+  );
+}
+
+/**
+ * The by-hand strike-off and its undo. A separate stamp from remindedAt on
+ * purpose: a REAL send is permanent (one reminder per email, ever), while a
+ * fat-fingered removal must be reversible.
+ */
+export async function setOrderReminderRemoved(
+  ref: string,
+  removed: boolean,
+): Promise<void> {
+  const table = TABLE();
+  const now = new Date().toISOString();
+
+  if (!table) {
+    const data = await localRead();
+    const order = data.orders[ref];
+    if (!order) return;
+    if (removed) (order as TicketOrder).reminderRemovedAt = now;
+    else delete (order as TicketOrder).reminderRemovedAt;
+    await localWrite(data);
+    return;
+  }
+
+  await db().send(
+    new UpdateItemCommand({
+      TableName: table,
+      Key: { pk: { S: `ord#${ref}` } },
+      UpdateExpression: removed ? "SET #r = :now" : "REMOVE #r",
+      ConditionExpression: "attribute_exists(pk)",
+      ExpressionAttributeNames: { "#r": "reminderRemovedAt" },
+      ...(removed
+        ? { ExpressionAttributeValues: { ":now": { S: now } } }
+        : {}),
     }),
   );
 }

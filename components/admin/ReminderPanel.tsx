@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
  */
 export function ReminderPanel() {
   const [targets, setTargets] = useState<Array<{ email: string; event: string }>>([]);
+  const [removed, setRemoved] = useState<Array<{ email: string; event: string }>>([]);
   const [enabled, setEnabled] = useState(false);
   const [pct, setPct] = useState("10");
   const [savedEnabled, setSavedEnabled] = useState(false);
@@ -25,9 +26,11 @@ export function ReminderPanel() {
       ok?: boolean;
       settings?: { enabled: boolean; pct: number };
       targets?: Array<{ email: string; event: string }>;
+      removed?: Array<{ email: string; event: string }>;
     } | null;
     if (data?.ok) {
       setTargets(data.targets ?? []);
+      setRemoved(data.removed ?? []);
       setEnabled(data.settings?.enabled ?? false);
       setPct(String(data.settings?.pct ?? 10));
       setSavedEnabled(data.settings?.enabled ?? false);
@@ -201,6 +204,37 @@ export function ReminderPanel() {
           </>
         )}
       </div>
+      {removed.length > 0 ? (
+        <div className="border-ink/10 mt-5 border-t pt-4">
+          <p className="text-ink/55 text-[0.8125rem]">
+            Removed by hand (restorable):
+          </p>
+          <ul className="text-ink/50 mt-2 space-y-1 text-[0.8125rem]">
+            {removed.map((t) => (
+              <li key={t.email} className="flex items-center gap-3">
+                <span className="font-mono line-through">{t.email}</span>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    await fetch("/api/admin/reminders", {
+                      method: "DELETE",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email: t.email }),
+                    }).catch(() => null);
+                    setBusy(false);
+                    void load();
+                  }}
+                  className="text-cobalt text-[0.75rem] underline underline-offset-2"
+                >
+                  Restore
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {message ? (
         <p role="alert" className="text-ink/70 mt-3 text-[0.875rem]">
           {message}

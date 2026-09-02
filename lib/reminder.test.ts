@@ -47,7 +47,7 @@ const sub = (email: string, status: SubmissionRecord["status"]): SubmissionRecor
 
 describe("computeReminderTargets", () => {
   test("abandoners in, buyers out, one per email, latest order wins", () => {
-    const targets = computeReminderTargets(
+    const { targets } = computeReminderTargets(
       [
         order({ email: "gone@x.co", via: "DANI", createdAt: "2026-09-01T01:00:00Z" }),
         order({ email: "gone@x.co", src: "abc123", createdAt: "2026-09-01T02:00:00Z" }),
@@ -67,7 +67,7 @@ describe("computeReminderTargets", () => {
   });
 
   test("unsubscribed, bounced and already-reminded are excluded", () => {
-    const targets = computeReminderTargets(
+    const { targets } = computeReminderTargets(
       [
         order({ email: "unsub@x.co" }),
         order({ email: "bounced@x.co" }),
@@ -80,6 +80,20 @@ describe("computeReminderTargets", () => {
       targets.map((t) => t.email),
       ["fresh@x.co"],
     );
+  });
+
+  test("a by-hand removal parks the email on the restorable list", () => {
+    const { targets, removed } = computeReminderTargets(
+      [
+        order({ email: "oops@x.co", reminderRemovedAt: "2026-09-01T05:00:00Z" }),
+        order({ email: "fresh@x.co" }),
+        // Actually reminded: on NEITHER list, there is nothing to restore.
+        order({ email: "nagged@x.co", remindedAt: "2026-09-01T05:00:00Z" }),
+      ],
+      [],
+    );
+    assert.deepEqual(targets.map((t) => t.email), ["fresh@x.co"]);
+    assert.deepEqual(removed.map((t) => t.email), ["oops@x.co"]);
   });
 });
 
