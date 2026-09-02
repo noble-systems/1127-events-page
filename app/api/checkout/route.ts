@@ -8,11 +8,7 @@ import { listPublicEvents } from "@/lib/store";
 import { normalizeAmbassadorCode } from "@/lib/ambassadors";
 import { activeAmbassadorCode } from "@/lib/ambassadors-store";
 import { getTrackLink } from "@/lib/track-links";
-import {
-  discountedUnitCents,
-  getReminderSettings,
-  readPromoToken,
-} from "@/lib/reminder";
+import { discountedUnitCents, validatePromo } from "@/lib/reminder";
 import { readQuantity, sellableTiers, type TicketOrder } from "@/lib/tickets";
 import { createOrder, releaseTickets, reserveTickets } from "@/lib/tickets-store";
 import { sweepStaleHolds } from "@/lib/ticket-sweep";
@@ -89,18 +85,12 @@ export async function POST(request: Request) {
   const confirmAge21 = body?.confirmAge21 === true;
 
   /**
-   * A signed reminder promo. The signature pins the percentage; the settings
-   * row decides whether the program is on and which percentage is honoured
-   * right now, so old links die when the toggle flips.
+   * A one-time reminder promo code. Valid only while unburned and while the
+   * program is on at that percentage; the code burns when its order is PAID,
+   * so an abandoned checkout does not waste it.
    */
-  let promoPct = 0;
-  const claimedPct = readPromoToken(
-    typeof body?.promo === "string" ? body.promo : null,
-  );
-  if (claimedPct !== null) {
-    const settings = await getReminderSettings();
-    if (settings.enabled && settings.pct === claimedPct) promoPct = claimedPct;
-  }
+  const promoId = typeof body?.promo === "string" ? body.promo : null;
+  const promoPct = (await validatePromo(promoId)) ?? 0;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) {
     return NextResponse.json(
       { ok: false, message: "Enter the email your tickets should go to." },
@@ -230,6 +220,7 @@ export async function POST(request: Request) {
         (promoPct ? discountedUnitCents(tier.priceCents, promoPct) : tier.priceCents) *
         quantity,
       ...(promoPct ? { promoPct } : {}),
+      ...(promoPct && promoId ? { promoId } : {}),
       squareOrderId,
       linkId,
       ...(via ? { via } : {}),

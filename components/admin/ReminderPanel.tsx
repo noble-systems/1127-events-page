@@ -159,8 +159,32 @@ export function ReminderPanel() {
             </p>
             <ul className="text-ink/60 mt-2 max-h-40 space-y-1 overflow-y-auto text-[0.8125rem]">
               {targets.map((t) => (
-                <li key={t.email} className="font-mono">
-                  {`${t.email} (${t.event})`}
+                <li key={t.email} className="flex items-center gap-3">
+                  <span className="font-mono">{`${t.email} (${t.event})`}</span>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      if (
+                        !window.confirm(
+                          `Remove ${t.email} from the reminder list for good?`,
+                        )
+                      ) {
+                        return;
+                      }
+                      setBusy(true);
+                      await fetch("/api/admin/reminders", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: t.email }),
+                      }).catch(() => null);
+                      setBusy(false);
+                      void load();
+                    }}
+                    className="text-terracotta-deep text-[0.75rem] underline underline-offset-2"
+                  >
+                    Remove
+                  </button>
                 </li>
               ))}
             </ul>

@@ -116,6 +116,15 @@ export async function POST(request: Request) {
 
   if (!claimed) return NextResponse.json({ ok: true, already: true });
 
+  // The one-time discount burns with the payment, never with an abandoned
+  // link. Best effort: a lost burn means one reusable code, not lost money.
+  if (order.promoId) {
+    const { markPromoUsed } = await import("@/lib/reminder");
+    await markPromoUsed(order.promoId).catch((error) =>
+      console.error("[1127] promo burn failed", order.promoId, error),
+    );
+  }
+
   try {
     await markSold(order.eventId, order.tierId, order.quantity);
 

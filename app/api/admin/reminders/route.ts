@@ -3,8 +3,8 @@ import { readJson, requireAdmin } from "@/lib/admin-api";
 import { sendReminderEmail, siteUrl } from "@/lib/email";
 import {
   computeReminderTargets,
+  createPromoCode,
   getReminderSettings,
-  promoToken,
   setReminderSettings,
 } from "@/lib/reminder";
 import { listSubmissions } from "@/lib/store";
@@ -83,7 +83,11 @@ export async function POST(request: Request) {
     const params = new URLSearchParams();
     if (target.order.via) params.set("via", target.order.via);
     if (target.order.src) params.set("src", target.order.src);
-    if (settings.enabled) params.set("promo", promoToken(settings.pct));
+    if (settings.enabled) {
+      // A one-time code minted per recipient: the link works exactly once.
+      const code = await createPromoCode(target.email, settings.pct);
+      params.set("promo", code.id);
+    }
     const query = params.toString();
     const buyUrl = `${siteUrl()}/tickets/${encodeURIComponent(target.order.eventId)}${query ? `?${query}` : ""}`;
 
@@ -105,4 +109,40 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok: true, sent, failed: failures.length });
+}
+
+/**
+ * Takes one email off the list without sending anything: the same stamp a
+ * sent reminder leaves, so the exclusion is permanent by the same rule.
+ */
+export async function DELETE(request: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
+  const body = (await readJson(request)) as { email?: unknown } | null;
+  const email =
+    typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+  if (!email) {
+    return NextResponse.json(
+      { ok: false, message: "Say which email to remove." },
+      { status: 400 },
+    );
+  }
+
+  const [orders, submissions] = await Promise.all([
+    listAllOrders(),
+    listSubmissions(),
+  ]);
+  const target = computeReminderTargets(orders, submissions).find(
+    (t) => t.email === email,
+  );
+  if (!target) {
+    return NextResponse.json(
+      { ok: false, message: "That email isn't on the list." },
+      { status: 404 },
+    );
+  }
+
+  await markOrderReminded(target.order.ref);
+  return NextResponse.json({ ok: true });
 }

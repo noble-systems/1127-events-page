@@ -3,10 +3,9 @@ import {
   GetItemCommand,
   PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { appSecret } from "./tokens.ts";
 import type { TicketOrder } from "./tickets.ts";
 import type { SubmissionRecord } from "./types.ts";
 
@@ -67,39 +66,169 @@ export function computeReminderTargets(
 }
 
 /* -------------------------------------------------------------------------- */
-/* The signed discount                                                        */
+/* One-time discount codes                                                    */
 /* -------------------------------------------------------------------------- */
 
 /**
- * ?promo=<pct>.<signature>. The signature commits to the percentage, so a
- * link cannot be edited from 10 to 90; the settings row decides whether the
- * whole program is on and which percentage is currently honoured, so old
- * links die the moment the toggle flips off or the number changes.
+ * Every reminder link carries its own unguessable code, stored as a row and
+ * burned the moment its order is PAID: one code, one purchase, ever. The
+ * settings row stays the kill switch; the whole program off, or a changed
+ * percentage, invalidates unburned codes too.
  */
-export function promoToken(pct: number): string {
-  const signature = createHmac("sha256", appSecret())
-    .update(`reminder-promo:${pct}`)
-    .digest("base64url")
-    .slice(0, 24);
-  return `${pct}.${signature}`;
+export type PromoCode = {
+  id: string;
+  email: string;
+  pct: number;
+  createdAt: string;
+  usedAt?: string;
+};
+
+const PROMO_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz";
+
+export function newPromoId(): string {
+  const bytes = randomBytes(16);
+  let id = "";
+  for (let i = 0; i < 16; i += 1) {
+    id += PROMO_ALPHABET[bytes[i] % PROMO_ALPHABET.length];
+  }
+  return id;
 }
 
-export function readPromoToken(raw: string | null | undefined): number | null {
-  if (typeof raw !== "string") return null;
-  const match = raw.match(/^(\d{1,2})\.([A-Za-z0-9_-]{24})$/);
-  if (!match) return null;
-  const pct = Number(match[1]);
-  if (pct < 1 || pct > 90) return null;
-  const expected = promoToken(pct);
-  const a = Buffer.from(raw);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  return pct;
+export function isValidPromoId(id: string): boolean {
+  return /^[23456789abcdefghjkmnpqrstuvwxyz]{16}$/.test(id);
 }
 
 /** Whole cents, always rounding in the buyer's favour. */
 export function discountedUnitCents(priceCents: number, pct: number): number {
   return Math.max(0, Math.floor((priceCents * (100 - pct)) / 100));
+}
+
+const promoPk = (id: string) => `promo#${id}`;
+const LOCAL_CODES_FILE = path.join(process.cwd(), ".data", "reminder-codes.json");
+
+async function localCodesRead(): Promise<Record<string, PromoCode>> {
+  try {
+    return JSON.parse(await readFile(LOCAL_CODES_FILE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+async function localCodesWrite(data: Record<string, PromoCode>): Promise<void> {
+  await mkdir(path.dirname(LOCAL_CODES_FILE), { recursive: true });
+  await writeFile(LOCAL_CODES_FILE, JSON.stringify(data, null, 2), "utf8");
+}
+
+export async function createPromoCode(
+  email: string,
+  pct: number,
+): Promise<PromoCode> {
+  const code: PromoCode = {
+    id: newPromoId(),
+    email: email.toLowerCase(),
+    pct,
+    createdAt: new Date().toISOString(),
+  };
+  const table = TABLE();
+
+  if (!table) {
+    const data = await localCodesRead();
+    data[code.id] = code;
+    await localCodesWrite(data);
+    return code;
+  }
+
+  await db().send(
+    new PutItemCommand({
+      TableName: table,
+      Item: {
+        pk: { S: promoPk(code.id) },
+        id: { S: code.id },
+        email: { S: code.email },
+        pct: { N: String(code.pct) },
+        createdAt: { S: code.createdAt },
+      },
+      ConditionExpression: "attribute_not_exists(pk)",
+    }),
+  );
+  return code;
+}
+
+export async function getPromoCode(id: string): Promise<PromoCode | null> {
+  if (!isValidPromoId(id)) return null;
+  const table = TABLE();
+
+  if (!table) {
+    return (await localCodesRead())[id] ?? null;
+  }
+
+  const out = await db().send(
+    new GetItemCommand({ TableName: table, Key: { pk: { S: promoPk(id) } } }),
+  );
+  if (!out.Item) return null;
+  return {
+    id: out.Item.id?.S ?? id,
+    email: out.Item.email?.S ?? "",
+    pct: Number(out.Item.pct?.N ?? 0),
+    createdAt: out.Item.createdAt?.S ?? "",
+    usedAt: out.Item.usedAt?.S ?? undefined,
+  };
+}
+
+/**
+ * Burns the code, exactly once: a conditional write that fails when it was
+ * already burned, so two racing paid webhooks cannot both claim it.
+ */
+export async function markPromoUsed(id: string): Promise<boolean> {
+  if (!isValidPromoId(id)) return false;
+  const table = TABLE();
+  const now = new Date().toISOString();
+
+  if (!table) {
+    const data = await localCodesRead();
+    const code = data[id];
+    if (!code || code.usedAt) return false;
+    code.usedAt = now;
+    await localCodesWrite(data);
+    return true;
+  }
+
+  try {
+    const { UpdateItemCommand } = await import("@aws-sdk/client-dynamodb");
+    await db().send(
+      new UpdateItemCommand({
+        TableName: table,
+        Key: { pk: { S: promoPk(id) } },
+        UpdateExpression: "SET usedAt = :now",
+        ConditionExpression: "attribute_exists(pk) AND attribute_not_exists(usedAt)",
+        ExpressionAttributeValues: { ":now": { S: now } },
+      }),
+    );
+    return true;
+  } catch (error) {
+    if ((error as { name?: string }).name === "ConditionalCheckFailedException") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/**
+ * The percentage a promo id is worth right now, or null. Valid only while
+ * unburned, the program is on, and the code's percentage is still the one
+ * the dashboard says; each rejection is a different way for a link to die.
+ */
+export async function validatePromo(
+  id: string | null | undefined,
+): Promise<number | null> {
+  if (typeof id !== "string" || !isValidPromoId(id)) return null;
+  const [code, settings] = await Promise.all([
+    getPromoCode(id),
+    getReminderSettings(),
+  ]);
+  if (!code || code.usedAt) return null;
+  if (!settings.enabled || settings.pct !== code.pct) return null;
+  return code.pct;
 }
 
 /* -------------------------------------------------------------------------- */

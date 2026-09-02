@@ -10,11 +10,7 @@ import { Eyebrow } from "@/components/ui/Section";
 import { PRESENTS } from "@/content/site";
 import { hero } from "@/content/site";
 import { siteUrl } from "@/lib/email";
-import {
-  discountedUnitCents,
-  getReminderSettings,
-  readPromoToken,
-} from "@/lib/reminder";
+import { discountedUnitCents, validatePromo } from "@/lib/reminder";
 import { resolveImageSrc } from "@/lib/images";
 import { listPublicEvents } from "@/lib/store";
 import {
@@ -86,16 +82,11 @@ export default async function TicketsPage({ params, searchParams }: Params) {
   }
 
   /**
-   * A signed reminder discount. Verified here so the page can show honest
+   * A one-time reminder discount. Verified here so the page can show honest
    * discounted prices; the checkout verifies again on its own, so the page
    * is presentation and never the enforcement.
    */
-  const claimedPct = readPromoToken(promo);
-  let promoPct = 0;
-  if (claimedPct !== null) {
-    const settings = await getReminderSettings();
-    if (settings.enabled && settings.pct === claimedPct) promoPct = claimedPct;
-  }
+  const promoPct = (await validatePromo(promo)) ?? 0;
 
   const tiers = sellableTiers(event);
   const selling = tiers.length > 0;

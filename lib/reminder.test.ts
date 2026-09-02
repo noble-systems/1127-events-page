@@ -1,11 +1,22 @@
 import assert from "node:assert/strict";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, test } from "node:test";
-import {
+
+// The promo-code store writes .data files; keep them in a scratch dir.
+process.chdir(mkdtempSync(path.join(tmpdir(), "1127-reminder-")));
+
+const {
   computeReminderTargets,
+  createPromoCode,
   discountedUnitCents,
-  promoToken,
-  readPromoToken,
-} from "./reminder.ts";
+  getPromoCode,
+  markPromoUsed,
+  newPromoId,
+  setReminderSettings,
+  validatePromo,
+} = await import("./reminder.ts");
 import type { TicketOrder } from "./tickets.ts";
 import type { SubmissionRecord } from "./types.ts";
 
@@ -72,14 +83,35 @@ describe("computeReminderTargets", () => {
   });
 });
 
-describe("the signed promo", () => {
-  test("round trips, and an edited percentage dies", () => {
-    const token = promoToken(15);
-    assert.equal(readPromoToken(token), 15);
-    assert.equal(readPromoToken(token.replace(/^15/, "90")), null);
-    assert.equal(readPromoToken("15.aaaaaaaaaaaaaaaaaaaaaaaa"), null);
-    assert.equal(readPromoToken(null), null);
-    assert.equal(readPromoToken("junk"), null);
+describe("one-time promo codes", () => {
+  test("a code works exactly once, and only while the program matches", async () => {
+    await setReminderSettings({ enabled: true, pct: 15 });
+    const code = await createPromoCode("gone@x.co", 15);
+    assert.match(code.id, /^[23456789abcdefghjkmnpqrstuvwxyz]{16}$/);
+
+    assert.equal(await validatePromo(code.id), 15);
+    assert.equal(await validatePromo("zzzzzzzzzzzzzzzz"), null, "unknown id");
+    assert.equal(await validatePromo("junk"), null);
+
+    // The percentage changing on the dashboard kills unspent codes.
+    await setReminderSettings({ enabled: true, pct: 20 });
+    assert.equal(await validatePromo(code.id), null);
+    await setReminderSettings({ enabled: false, pct: 15 });
+    assert.equal(await validatePromo(code.id), null, "toggle off kills it");
+    await setReminderSettings({ enabled: true, pct: 15 });
+    assert.equal(await validatePromo(code.id), 15, "and back on revives it");
+
+    // Burn: once, and never twice.
+    assert.equal(await markPromoUsed(code.id), true);
+    assert.equal(await markPromoUsed(code.id), false, "already burned");
+    assert.equal(await validatePromo(code.id), null, "burned codes are dead");
+    assert.equal((await getPromoCode(code.id))?.usedAt ? true : false, true);
+  });
+
+  test("ids never collide in practice and never repeat here", () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 200; i += 1) seen.add(newPromoId());
+    assert.equal(seen.size, 200);
   });
 
   test("discount math rounds in the buyer's favour", () => {
