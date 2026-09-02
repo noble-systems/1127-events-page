@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { PurchasePixel } from "@/components/PurchasePixel";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -75,13 +76,16 @@ export default async function ThanksPage({ params, searchParams }: Props) {
               </>
             ) : order ? (
               <>
+                <AutoRefresh />
                 <p className="label-xs text-ink/65">One moment</p>
                 <h1 className="mt-4 text-4xl leading-tight sm:text-5xl">
                   Payment processing
                 </h1>
                 <p className="text-ink/70 mt-5 text-[1.0625rem] leading-relaxed">
-                  The payment is going through now. Refresh this page in a few
-                  seconds; your tickets also arrive by email either way.
+                  The payment is going through now. This page updates by
+                  itself the moment it lands, usually within seconds. Your
+                  tickets also arrive by email either way; there&apos;s no
+                  need to buy again.
                 </p>
               </>
             ) : (
