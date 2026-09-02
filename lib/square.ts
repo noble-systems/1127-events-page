@@ -77,8 +77,13 @@ export async function createTicketCheckout(input: {
   /** Collected on our page; prefills Square so nobody types it twice. */
   buyerEmail?: string;
   buyerPhone?: string;
+  /** Overrides the tier price (a signed promo discount); cents per ticket. */
+  unitPriceCents?: number;
+  /** Shown on the Square line so the receipt explains its own number. */
+  discountNote?: string;
 }): Promise<{ url: string; squareOrderId: string; linkId: string }> {
   const { event, tier, quantity, ref, siteUrl, buyerEmail } = input;
+  const unitPrice = input.unitPriceCents ?? tier.priceCents;
   const digits = (input.buyerPhone ?? "").replace(/[^0-9+]/g, "");
   const buyerPhone =
     /^\+[0-9]{11,15}$/.test(digits)
@@ -98,9 +103,9 @@ export async function createTicketCheckout(input: {
       reference_id: ref,
       line_items: [
         {
-          name: `${event.name}: ${tier.name}`,
+          name: `${event.name}: ${tier.name}${input.discountNote ? ` ${input.discountNote}` : ""}`,
           quantity: String(quantity),
-          base_price_money: { amount: tier.priceCents, currency: "USD" },
+          base_price_money: { amount: unitPrice, currency: "USD" },
         },
       ],
     },

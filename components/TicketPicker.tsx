@@ -36,6 +36,7 @@ export function TicketPicker({
   via: viaFromLink,
   src: srcFromLink,
   age21,
+  promo,
 }: {
   eventId: string;
   tiers: PickerTier[];
@@ -45,6 +46,8 @@ export function TicketPicker({
   src?: string;
   /** The event is 21-and-up; buyers confirm before the button unlocks. */
   age21?: boolean;
+  /** Signed reminder discount token, passed through to checkout untouched. */
+  promo?: string;
 }) {
   const router = useRouter();
   const firstOpen = tiers.find((tier) => !tier.externalUrl && tier.max > 0);
@@ -115,6 +118,7 @@ export function TicketPicker({
           optIn: true,
           agreeTerms: true,
           ...(age21 ? { confirmAge21: true } : {}),
+          ...(promo ? { promo } : {}),
           ...(via.trim() ? { via: via.trim() } : {}),
           ...(src.trim() ? { src: src.trim() } : {}),
         }),

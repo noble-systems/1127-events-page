@@ -1259,6 +1259,60 @@ export async function sendAmbassadorWelcomeEmail(
   await sendDirect({ to: [to], subject, html, text });
 }
 
+/**
+ * The abandoned-checkout reminder: one nudge, ever, to somebody who opened
+ * the payment page and walked away. Their ambassador code and tracking link
+ * ride inside buyUrl, and the optional discount is stated plainly. Carries
+ * an unsubscribe link because unlike a receipt this is us asking, not
+ * answering.
+ */
+export function renderReminderEmail(input: {
+  eventName: string;
+  buyUrl: string;
+  unsubUrl: string;
+  discountPct?: number;
+}) {
+  const subject = input.discountPct
+    ? `Your ${input.eventName} tickets are still waiting (${input.discountPct}% off)`
+    : `Your ${input.eventName} tickets are still waiting`;
+
+  const html = receiptShell({
+    preheader: `Seats for ${input.eventName} are still open.`,
+    heading: "Still coming?",
+    body: `
+      <p style="margin:0 0 14px;font:400 15px/1.65 Helvetica,Arial,sans-serif;color:${INK};">You started getting tickets for <strong>${escapeHtml(input.eventName)}</strong> and the checkout timer beat you to it. No harm done; seats are still open right now.</p>
+      ${
+        input.discountPct
+          ? `<p style="margin:0 0 14px;font:400 15px/1.65 Helvetica,Arial,sans-serif;color:${INK};">Use the button below and <strong>${input.discountPct}% off</strong> applies to your order automatically.</p>`
+          : ""
+      }
+      <p style="margin:18px 0 0;"><a href="${input.buyUrl}" style="display:inline-block;background:${DEEP};color:${BONE};font:600 15px/1 Helvetica,Arial,sans-serif;padding:14px 26px;border-radius:999px;text-decoration:none;">Finish getting tickets</a></p>
+      <p style="margin:14px 0 0;font:400 13px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">If you already have tickets under another email, ignore this; nothing else follows it.</p>`,
+    footer: `${escapeHtml(postalLine())}<br/>One reminder, that's the lot. <a href="${input.unsubUrl}" style="color:${MUTED};">Unsubscribe</a> and not even this arrives again.`,
+  });
+
+  const text = [
+    `You started getting tickets for ${input.eventName} and the checkout timer beat you to it. Seats are still open.`,
+    input.discountPct
+      ? `Use this link and ${input.discountPct}% off applies automatically:`
+      : "Finish here:",
+    input.buyUrl,
+    "",
+    postalLine(),
+    `Unsubscribe: ${input.unsubUrl}`,
+  ].join("\n");
+
+  return { subject, html, text };
+}
+
+export async function sendReminderEmail(
+  to: string,
+  input: Parameters<typeof renderReminderEmail>[0],
+): Promise<void> {
+  const { subject, html, text } = renderReminderEmail(input);
+  await sendDirect({ to: [to], subject, html, text });
+}
+
 export async function sendScheduleChangeEmail(
   to: string,
   input: Parameters<typeof renderScheduleChangeEmail>[0],

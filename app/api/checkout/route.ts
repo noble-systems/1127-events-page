@@ -8,6 +8,11 @@ import { listPublicEvents } from "@/lib/store";
 import { normalizeAmbassadorCode } from "@/lib/ambassadors";
 import { activeAmbassadorCode } from "@/lib/ambassadors-store";
 import { getTrackLink } from "@/lib/track-links";
+import {
+  discountedUnitCents,
+  getReminderSettings,
+  readPromoToken,
+} from "@/lib/reminder";
 import { readQuantity, sellableTiers, type TicketOrder } from "@/lib/tickets";
 import { createOrder, releaseTickets, reserveTickets } from "@/lib/tickets-store";
 import { sweepStaleHolds } from "@/lib/ticket-sweep";
@@ -58,6 +63,7 @@ export async function POST(request: Request) {
     optIn?: unknown;
     agreeTerms?: unknown;
     confirmAge21?: unknown;
+    promo?: unknown;
   } | null;
 
   const eventId = typeof body?.eventId === "string" ? body.eventId : "";
@@ -81,6 +87,20 @@ export async function POST(request: Request) {
     );
   }
   const confirmAge21 = body?.confirmAge21 === true;
+
+  /**
+   * A signed reminder promo. The signature pins the percentage; the settings
+   * row decides whether the program is on and which percentage is honoured
+   * right now, so old links die when the toggle flips.
+   */
+  let promoPct = 0;
+  const claimedPct = readPromoToken(
+    typeof body?.promo === "string" ? body.promo : null,
+  );
+  if (claimedPct !== null) {
+    const settings = await getReminderSettings();
+    if (settings.enabled && settings.pct === claimedPct) promoPct = claimedPct;
+  }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) {
     return NextResponse.json(
       { ok: false, message: "Enter the email your tickets should go to." },
@@ -178,6 +198,9 @@ export async function POST(request: Request) {
   const ref = randomUUID();
 
   try {
+    const unitPrice = promoPct
+      ? discountedUnitCents(tier.priceCents, promoPct)
+      : tier.priceCents;
     const { url, squareOrderId, linkId } = await createTicketCheckout({
       event,
       tier,
@@ -186,6 +209,12 @@ export async function POST(request: Request) {
       siteUrl: siteUrl(),
       buyerEmail: email,
       ...(phone ? { buyerPhone: phone } : {}),
+      ...(promoPct
+        ? {
+            unitPriceCents: unitPrice,
+            discountNote: `(${promoPct}% off)`,
+          }
+        : {}),
     });
 
     const now = new Date().toISOString();
@@ -197,7 +226,10 @@ export async function POST(request: Request) {
       eventName: event.name,
       tierName: tier.name,
       quantity,
-      amountCents: tier.priceCents * quantity,
+      amountCents:
+        (promoPct ? discountedUnitCents(tier.priceCents, promoPct) : tier.priceCents) *
+        quantity,
+      ...(promoPct ? { promoPct } : {}),
       squareOrderId,
       linkId,
       ...(via ? { via } : {}),

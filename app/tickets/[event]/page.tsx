@@ -10,6 +10,11 @@ import { Eyebrow } from "@/components/ui/Section";
 import { PRESENTS } from "@/content/site";
 import { hero } from "@/content/site";
 import { siteUrl } from "@/lib/email";
+import {
+  discountedUnitCents,
+  getReminderSettings,
+  readPromoToken,
+} from "@/lib/reminder";
 import { resolveImageSrc } from "@/lib/images";
 import { listPublicEvents } from "@/lib/store";
 import {
@@ -29,7 +34,7 @@ export const dynamic = "force-dynamic";
 
 type Params = {
   params: Promise<{ event: string }>;
-  searchParams: Promise<{ via?: string; src?: string }>;
+  searchParams: Promise<{ via?: string; src?: string; promo?: string }>;
 };
 
 async function resolve(params: Params["params"]) {
@@ -71,13 +76,25 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function TicketsPage({ params, searchParams }: Params) {
-  const [{ event, moved }, { via, src }] = await Promise.all([
+  const [{ event, moved }, { via, src, promo }] = await Promise.all([
     resolve(params),
     searchParams,
   ]);
   if (!event) {
     if (moved) permanentRedirect(`/tickets/${encodeURIComponent(moved.id)}`);
     notFound();
+  }
+
+  /**
+   * A signed reminder discount. Verified here so the page can show honest
+   * discounted prices; the checkout verifies again on its own, so the page
+   * is presentation and never the enforcement.
+   */
+  const claimedPct = readPromoToken(promo);
+  let promoPct = 0;
+  if (claimedPct !== null) {
+    const settings = await getReminderSettings();
+    if (settings.enabled && settings.pct === claimedPct) promoPct = claimedPct;
   }
 
   const tiers = sellableTiers(event);
@@ -113,7 +130,11 @@ export default async function TicketsPage({ params, searchParams }: Params) {
     return {
       id: tier.id,
       name: tier.name,
-      priceLabel: formatMoney(tier.priceCents),
+      priceLabel: formatMoney(
+        promoPct
+          ? discountedUnitCents(tier.priceCents, promoPct)
+          : tier.priceCents,
+      ),
       max: Math.min(remaining, MAX_TICKETS_PER_ORDER),
       scarce:
         event.showScarcity === true && remaining > 0 && remaining < 10
@@ -204,12 +225,18 @@ export default async function TicketsPage({ params, searchParams }: Params) {
                       ) : null}
                     </h2>
                     <div className="mt-6">
+                      {promoPct ? (
+                        <p className="border-sun/50 bg-sun/10 mb-4 rounded-xl border px-4 py-3 text-[0.875rem]">
+                          {`Your ${promoPct}% off is applied; the prices below already include it.`}
+                        </p>
+                      ) : null}
                       <TicketPicker
                         eventId={event.id}
                         tiers={pickerTiers}
                         via={via}
                         src={src}
                         age21={event.age21 === true}
+                        promo={promoPct ? promo : undefined}
                       />
                     </div>
                   </>

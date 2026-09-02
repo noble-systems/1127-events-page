@@ -118,6 +118,10 @@ export type TicketOrder = {
   termsVersion?: string;
   /** Ticked the "I'm 21 or older" box on a 21+ event. */
   ageConfirmed?: boolean;
+  /** Percent off applied via a signed reminder promo link. */
+  promoPct?: number;
+  /** When the abandoned-checkout reminder went to this order's email. */
+  remindedAt?: string;
   /** Issued free by an admin or the reward system; never counts as a sale. */
   comp?: boolean;
   /** Issued codes, present once paid. */

@@ -295,6 +295,8 @@ function orderToItem(order: TicketOrder) {
     ...(order.optIn ? { optIn: { BOOL: true } } : {}),
     ...(order.termsVersion ? { termsVersion: { S: order.termsVersion } } : {}),
     ...(order.ageConfirmed ? { ageConfirmed: { BOOL: true } } : {}),
+    ...(order.promoPct ? { promoPct: { N: String(order.promoPct) } } : {}),
+    ...(order.remindedAt ? { remindedAt: { S: order.remindedAt } } : {}),
     ...(order.comp ? { comp: { BOOL: true } } : {}),
     ...(order.codes?.length ? { codes: { SS: order.codes } } : {}),
     createdAt: { S: order.createdAt },
@@ -322,6 +324,8 @@ function itemToOrder(
     phone: item.phone?.S ?? null,
     optIn: item.optIn?.BOOL === true,
     ageConfirmed: item.ageConfirmed?.BOOL === true || undefined,
+    promoPct: item.promoPct?.N ? Number(item.promoPct.N) : undefined,
+    remindedAt: item.remindedAt?.S ?? undefined,
     termsVersion: item.termsVersion?.S ?? undefined,
     comp: item.comp?.BOOL === true || undefined,
     codes: item.codes?.SS ?? undefined,
@@ -677,6 +681,35 @@ export async function checkInTicket(
     }
     throw error;
   }
+}
+
+/**
+ * Stamps the reminder time on one order, so its email can never be
+ * reminded twice. #aliased like every update expression here.
+ */
+export async function markOrderReminded(ref: string): Promise<void> {
+  const table = TABLE();
+  const now = new Date().toISOString();
+
+  if (!table) {
+    const data = await localRead();
+    const order = data.orders[ref];
+    if (!order) return;
+    (order as TicketOrder).remindedAt = now;
+    await localWrite(data);
+    return;
+  }
+
+  await db().send(
+    new UpdateItemCommand({
+      TableName: table,
+      Key: { pk: { S: `ord#${ref}` } },
+      UpdateExpression: "SET #r = :now",
+      ConditionExpression: "attribute_exists(pk)",
+      ExpressionAttributeNames: { "#r": "remindedAt" },
+      ExpressionAttributeValues: { ":now": { S: now } },
+    }),
+  );
 }
 
 /**

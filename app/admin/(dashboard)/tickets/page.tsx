@@ -3,6 +3,7 @@ import { listAllEvents } from "@/lib/store";
 import { squareConfigured } from "@/lib/square";
 import { formatMoney, remainingFor } from "@/lib/tickets";
 import { MintTickets } from "@/components/admin/MintTickets";
+import { ReminderPanel } from "@/components/admin/ReminderPanel";
 import { RevokeCompCode } from "@/components/admin/RevokeCompCode";
 import { sweepStaleHolds } from "@/lib/ticket-sweep";
 import { listOrders, listTicketsForEvents, readInventory } from "@/lib/tickets-store";
@@ -168,6 +169,8 @@ export default async function AdminTicketsPage() {
           page, under Tickets.
         </p>
       ) : null}
+
+      <ReminderPanel />
 
       {sections.map(({ event, rows, orders, byCode, checkedIn }) => (
         <section
