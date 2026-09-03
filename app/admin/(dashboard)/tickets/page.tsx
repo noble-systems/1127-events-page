@@ -376,6 +376,8 @@ export default async function AdminTicketsPage() {
                               {(
                                 [
                                   ["Our order ref", order.ref],
+                                  ["Square receipt #", order.receiptNumber ?? ""],
+                                  ["Square payment id", order.paymentId ?? ""],
                                   ["Square order id", order.squareOrderId ?? "none"],
                                   ["Event id", order.eventId],
                                   ["Ticket type id", order.tierId],
@@ -420,9 +422,9 @@ export default async function AdminTicketsPage() {
                                 ))}
                             </dl>
                             <p className="text-ink/50 mt-1.5 w-72 text-[0.7rem] leading-relaxed">
-                              In Square, search Transactions for the last 4 of
-                              their card or this exact amount; the receipt
-                              carries this Square order id.
+                              The receipt # is what Square&apos;s dashboard and
+                              the buyer&apos;s receipt show. Orders paid before
+                              it was captured match by amount or card last 4.
                             </p>
                           </details>
                         </td>

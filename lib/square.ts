@@ -147,12 +147,16 @@ export async function refundOrderPayment(
   squareOrderId: string,
   amountCents: number,
   ref: string,
+  /** Skips the order lookup when the settle already captured the payment. */
+  knownPaymentId?: string,
 ): Promise<{ refundId: string; status: string }> {
-  const order = await call<{
-    order?: { tenders?: Array<{ id?: string }> };
-  }>("GET", `/v2/orders/${encodeURIComponent(squareOrderId)}`);
-
-  const paymentId = order.order?.tenders?.[0]?.id;
+  let paymentId = knownPaymentId;
+  if (!paymentId) {
+    const order = await call<{
+      order?: { tenders?: Array<{ id?: string }> };
+    }>("GET", `/v2/orders/${encodeURIComponent(squareOrderId)}`);
+    paymentId = order.order?.tenders?.[0]?.id;
+  }
   if (!paymentId) {
     throw new Error("No payment found on that Square order.");
   }

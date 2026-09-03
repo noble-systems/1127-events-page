@@ -47,8 +47,10 @@ export async function POST(request: Request) {
         data?: {
           object?: {
             payment?: {
+              id?: string;
               status?: string;
               order_id?: string;
+              receipt_number?: string;
               buyer_email_address?: string | null;
             };
           };
@@ -87,7 +89,11 @@ export async function POST(request: Request) {
   const email = order.email ?? payment.buyer_email_address ?? null;
   const codes = Array.from({ length: order.quantity }, () => newTicketCode());
 
-  let claimed = await settleOrder(ref, "paid", { email, codes });
+  const squareRefs = {
+    ...(payment.id ? { paymentId: payment.id } : {}),
+    ...(payment.receipt_number ? { receiptNumber: payment.receipt_number } : {}),
+  };
+  let claimed = await settleOrder(ref, "paid", { email, codes, ...squareRefs });
 
   if (!claimed && order.status === "expired") {
     /**
@@ -103,7 +109,7 @@ export async function POST(request: Request) {
       : false;
 
     if (reheld) {
-      claimed = await settleOrder(ref, "paid", { email, codes }, "expired");
+      claimed = await settleOrder(ref, "paid", { email, codes, ...squareRefs }, "expired");
     } else {
       await settleOrder(ref, "attention", { email }, "expired");
       console.error(

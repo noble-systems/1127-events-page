@@ -53,7 +53,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    await refundOrderPayment(order.squareOrderId, order.amountCents, order.ref);
+    await refundOrderPayment(
+      order.squareOrderId,
+      order.amountCents,
+      order.ref,
+      order.paymentId,
+    );
   } catch (error) {
     console.error("[1127] refund failed", ref, error);
     return NextResponse.json(
