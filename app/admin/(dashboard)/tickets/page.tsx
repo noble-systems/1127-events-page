@@ -300,7 +300,8 @@ export default async function AdminTicketsPage() {
                       <th className="py-2 pr-4 font-medium">Phone</th>
                       <th className="py-2 pr-4 font-medium">Via</th>
                       <th className="py-2 pr-4 font-medium">Status</th>
-                      <th className="py-2 font-medium">Codes</th>
+                      <th className="py-2 pr-4 font-medium">Codes</th>
+                      <th className="py-2 font-medium">Info</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -348,7 +349,7 @@ export default async function AdminTicketsPage() {
                             />
                           ) : null}
                         </td>
-                        <td className="py-2 font-mono text-[0.75rem]">
+                        <td className="py-2 pr-4 font-mono text-[0.75rem]">
                           {(order.codes ?? []).map((code) => (
                             <span key={code} className="mr-1 inline-block">
                               <CodeChip code={code} ticket={byCode.get(code)} />
@@ -365,6 +366,65 @@ export default async function AdminTicketsPage() {
                               ) : null}
                             </span>
                           ))}
+                        </td>
+                        <td className="py-2 align-top">
+                          <details>
+                            <summary className="text-cobalt cursor-pointer text-[0.8125rem] underline underline-offset-2">
+                              Details
+                            </summary>
+                            <dl className="bg-bone-soft border-ink/10 mt-2 w-72 space-y-1.5 rounded-lg border p-3 text-[0.75rem]">
+                              {(
+                                [
+                                  ["Our order ref", order.ref],
+                                  ["Square order id", order.squareOrderId ?? "none"],
+                                  ["Event id", order.eventId],
+                                  ["Ticket type id", order.tierId],
+                                  ["Ambassador code", order.via ?? ""],
+                                  ["Tracking link", order.src ?? ""],
+                                  [
+                                    "Discount",
+                                    order.promoPct
+                                      ? `${order.promoPct}% (code ${order.promoId ?? "?"})`
+                                      : "",
+                                  ],
+                                  [
+                                    "Terms accepted",
+                                    order.termsVersion ?? "",
+                                  ],
+                                  [
+                                    "Confirmed 21+",
+                                    order.ageConfirmed ? "yes" : "",
+                                  ],
+                                  [
+                                    "Email opt-in",
+                                    order.optIn ? "yes" : "no",
+                                  ],
+                                  ["Created", phoenixTime(order.createdAt)],
+                                  ["Last change", phoenixTime(order.updatedAt)],
+                                  [
+                                    "Reminder sent",
+                                    order.remindedAt
+                                      ? phoenixTime(order.remindedAt)
+                                      : "",
+                                  ],
+                                ] as Array<[string, string]>
+                              )
+                                .filter(([, value]) => value !== "")
+                                .map(([label, value]) => (
+                                  <div key={label}>
+                                    <dt className="text-ink/50">{label}</dt>
+                                    <dd className="font-mono break-all select-all">
+                                      {value}
+                                    </dd>
+                                  </div>
+                                ))}
+                            </dl>
+                            <p className="text-ink/50 mt-1.5 w-72 text-[0.7rem] leading-relaxed">
+                              In Square, search Transactions for the last 4 of
+                              their card or this exact amount; the receipt
+                              carries this Square order id.
+                            </p>
+                          </details>
                         </td>
                       </tr>
                     ))}
