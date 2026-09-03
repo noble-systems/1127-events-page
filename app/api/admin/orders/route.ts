@@ -76,6 +76,20 @@ export async function POST(request: Request) {
     }
     await markSold(order.eventId, order.tierId, -order.quantity);
     await releaseTickets(order.eventId, order.tierId, order.quantity);
+
+    // The buyer hears it from us, not just from a dead QR at the door.
+    if (order.email) {
+      const { sendRefundEmail } = await import("@/lib/email");
+      const { formatMoney } = await import("@/lib/tickets");
+      await sendRefundEmail(order.email, {
+        eventName: order.eventName,
+        tierName: order.tierName,
+        quantity: order.quantity,
+        totalLabel: formatMoney(order.amountCents),
+      }).catch((error) =>
+        console.error("[1127] refund email failed", ref, error),
+      );
+    }
   }
 
   return NextResponse.json({ ok: true });

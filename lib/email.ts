@@ -1305,6 +1305,48 @@ export function renderReminderEmail(input: {
   return { subject, html, text };
 }
 
+/**
+ * The refund receipt: money is coming back and the tickets are dead. A
+ * transactional message like the ticket email itself, so no unsubscribe
+ * machinery; someone must be told their QR stopped working.
+ */
+export function renderRefundEmail(input: {
+  eventName: string;
+  tierName: string;
+  quantity: number;
+  totalLabel: string;
+}) {
+  const subject = `Your ${input.eventName} order was refunded`;
+
+  const html = receiptShell({
+    preheader: `${input.totalLabel} is on its way back to your card.`,
+    heading: "Refund issued",
+    body: `
+      <p style="margin:0 0 14px;font:400 15px/1.65 Helvetica,Arial,sans-serif;color:${INK};">Your order of ${escapeHtml(`${input.quantity} x ${input.tierName}`)} for <strong>${escapeHtml(input.eventName)}</strong> has been refunded in full: <strong>${escapeHtml(input.totalLabel)}</strong> is on its way back to the card you paid with, usually within 5 to 10 business days.</p>
+      <p style="margin:0 0 14px;font:400 15px/1.65 Helvetica,Arial,sans-serif;color:${INK};">The tickets on this order are <strong>no longer valid</strong> and will not scan at the door. If you change your mind, tickets are still available on the site while they last.</p>
+      <p style="margin:0;font:400 13px/1.6 Helvetica,Arial,sans-serif;color:${MUTED};">Square sends its own refund receipt separately, sometimes to the email linked to your card.</p>`,
+    footer: `This is your refund confirmation for ${escapeHtml(input.totalLabel)}.`,
+  });
+
+  const text = [
+    `Your order of ${input.quantity} x ${input.tierName} for ${input.eventName} has been refunded in full.`,
+    `${input.totalLabel} is on its way back to the card you paid with, usually within 5 to 10 business days.`,
+    "",
+    "The tickets on this order are no longer valid and will not scan at the door.",
+    "If you change your mind, tickets are still available on the site while they last.",
+  ].join("\n");
+
+  return { subject, html, text };
+}
+
+export async function sendRefundEmail(
+  to: string,
+  input: Parameters<typeof renderRefundEmail>[0],
+): Promise<void> {
+  const { subject, html, text } = renderRefundEmail(input);
+  await sendDirect({ to: [to], subject, html, text });
+}
+
 export async function sendReminderEmail(
   to: string,
   input: Parameters<typeof renderReminderEmail>[0],
