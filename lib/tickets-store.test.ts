@@ -604,6 +604,48 @@ describe("schedule-change notice", () => {
   });
 });
 
+describe("refunding an order", () => {
+  beforeEach(reset);
+
+  test("paid flips to refunded once, tickets die, seats free", async () => {
+    await seedEvent();
+    await reserveTickets("mirage", "ga", 2, 100);
+    await createOrder(order("rf1", { tierId: "ga", quantity: 2 }));
+    const codes = [newTicketCode(), newTicketCode()];
+    await settleOrder("rf1", "paid", { codes });
+    await markSold("mirage", "ga", 2);
+    for (const code of codes) {
+      await createTicket({
+        code,
+        orderId: "rf1",
+        eventId: "mirage",
+        tierId: "ga",
+        email: null,
+        status: "valid",
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    // The state flip the refund route performs after Square says yes.
+    assert.equal(await settleOrder("rf1", "refunded", {}, "paid"), true);
+    assert.equal(
+      await settleOrder("rf1", "refunded", {}, "paid"),
+      false,
+      "a second flip finds nothing to flip",
+    );
+    const { setTicketRevoked } = await import("./tickets-store.ts");
+    for (const code of codes) await setTicketRevoked(code, true);
+    await markSold("mirage", "ga", -2);
+    await releaseTickets("mirage", "ga", 2);
+
+    assert.equal((await getOrder("rf1"))?.status, "refunded");
+    const inv = await readInventory("mirage", ["ga"]);
+    assert.deepEqual(inv.get("ga"), { taken: 0, sold: 0 });
+    const { checkInTicket } = await import("./tickets-store.ts");
+    assert.equal((await checkInTicket(codes[0])).ok, false, "door says no");
+  });
+});
+
 describe("voiding a comp ticket", () => {
   beforeEach(reset);
 

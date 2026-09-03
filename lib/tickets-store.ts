@@ -419,7 +419,7 @@ export async function getRefBySquareOrder(
  */
 export async function settleOrder(
   ref: string,
-  status: "paid" | "expired" | "attention",
+  status: "paid" | "expired" | "attention" | "refunded",
   patch: { email?: string | null; codes?: string[] } = {},
   from: TicketOrder["status"] = "pending",
 ): Promise<boolean> {

@@ -90,7 +90,7 @@ export function readQuantity(raw: unknown): number | null {
 export type TicketOrder = {
   /** OUR order id, minted before the processor is ever called. */
   ref: string;
-  status: "pending" | "paid" | "expired" | "attention";
+  status: "pending" | "paid" | "expired" | "attention" | "refunded";
   eventId: string;
   tierId: string;
   /** Snapshots, so the record still reads right after a rename or price change. */

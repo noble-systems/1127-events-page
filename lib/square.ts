@@ -138,6 +138,40 @@ export async function createTicketCheckout(input: {
  * the order of those two operations is what makes "the seats went back on
  * sale" and "the old link still takes money" mutually exclusive.
  */
+/**
+ * Refunds a payment in full, found through the Square order it settled.
+ * The idempotency key is derived from OUR order ref, so a double-click or
+ * a retried request can only ever produce one refund.
+ */
+export async function refundOrderPayment(
+  squareOrderId: string,
+  amountCents: number,
+  ref: string,
+): Promise<{ refundId: string; status: string }> {
+  const order = await call<{
+    order?: { tenders?: Array<{ id?: string }> };
+  }>("GET", `/v2/orders/${encodeURIComponent(squareOrderId)}`);
+
+  const paymentId = order.order?.tenders?.[0]?.id;
+  if (!paymentId) {
+    throw new Error("No payment found on that Square order.");
+  }
+
+  const data = await call<{
+    refund?: { id?: string; status?: string };
+  }>("POST", "/v2/refunds", {
+    idempotency_key: `refund-${ref}`,
+    payment_id: paymentId,
+    amount_money: { amount: amountCents, currency: "USD" },
+    reason: "Refunded from the 1127 dashboard",
+  });
+
+  if (!data.refund?.id) {
+    throw new Error("Square returned no refund.");
+  }
+  return { refundId: data.refund.id, status: data.refund.status ?? "PENDING" };
+}
+
 export async function deletePaymentLink(linkId: string): Promise<void> {
   await call(
     "DELETE",

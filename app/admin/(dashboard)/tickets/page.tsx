@@ -3,6 +3,7 @@ import { listAllEvents } from "@/lib/store";
 import { squareConfigured } from "@/lib/square";
 import { formatMoney, remainingFor } from "@/lib/tickets";
 import { MintTickets } from "@/components/admin/MintTickets";
+import { RefundOrder } from "@/components/admin/RefundOrder";
 import { ReminderPanel } from "@/components/admin/ReminderPanel";
 import { RevokeCompCode } from "@/components/admin/RevokeCompCode";
 import { sweepStaleHolds } from "@/lib/ticket-sweep";
@@ -340,6 +341,12 @@ export default async function AdminTicketsPage() {
                               ? "attention: paid, no seats. Refund in Square."
                               : order.status}
                           </span>
+                          {order.status === "paid" && order.comp !== true ? (
+                            <RefundOrder
+                              orderRef={order.ref}
+                              amountLabel={formatMoney(order.amountCents)}
+                            />
+                          ) : null}
                         </td>
                         <td className="py-2 font-mono text-[0.75rem]">
                           {(order.codes ?? []).map((code) => (
