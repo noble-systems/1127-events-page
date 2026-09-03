@@ -75,24 +75,28 @@ async function tierRows(
   event: EventRecord,
   tiers: TicketTier[],
   orders: TicketOrder[],
+  tickets: TicketRecord[],
 ) {
   const inventory = await readInventory(
     event.id,
     tiers.map((tier) => tier.id),
   );
+  // Comps are counted by their LIVING tickets, not their orders: a voided
+  // comp ticket has left the building, and refunds already reversed the
+  // counters, so every number here means tickets that can still walk in.
+  const compOrderIds = new Set(
+    orders
+      .filter((order) => order.status === "paid" && order.comp === true)
+      .map((order) => order.ref),
+  );
   return tiers.map((tier) => {
     const counts = inventory.get(tier.id) ?? { taken: 0, sold: 0 };
-    // Comped seats, minted or rewarded, live inside the same sold counter
-    // that guards the pool. Split them out so Sold means paying people and
-    // Gross means money that actually arrived.
-    const comped = orders
-      .filter(
-        (order) =>
-          order.status === "paid" &&
-          order.comp === true &&
-          order.tierId === tier.id,
-      )
-      .reduce((total, order) => total + order.quantity, 0);
+    const comped = tickets.filter(
+      (ticket) =>
+        ticket.tierId === tier.id &&
+        ticket.status !== "revoked" &&
+        compOrderIds.has(ticket.orderId),
+    ).length;
     const sold = Math.max(0, counts.sold - comped);
     return {
       tier,
@@ -118,7 +122,7 @@ export default async function AdminTicketsPage() {
       const orders = await listOrders(ids);
       return {
         event,
-        rows: await tierRows(event, event.ticketTiers ?? [], orders),
+        rows: await tierRows(event, event.ticketTiers ?? [], orders, tickets),
         orders,
         // code -> ticket, so each code in the orders table can wear its
         // check-in state without a lookup per code.

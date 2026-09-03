@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { readJson, requireAdmin } from "@/lib/admin-api";
 import { extractTicketCode } from "@/lib/tickets";
-import { getOrder, getTicket, setTicketRevoked } from "@/lib/tickets-store";
+import {
+  getOrder,
+  getTicket,
+  markSold,
+  releaseTickets,
+  reserveTickets,
+  setTicketRevoked,
+} from "@/lib/tickets-store";
 
 /**
  * Ticket administration: voiding a comp and putting it back.
@@ -48,8 +55,40 @@ export async function PATCH(request: Request) {
     );
   }
 
+  /**
+   * Restoring needs its seat back BEFORE the ticket revives: a full pool
+   * refuses the restore rather than quietly overselling the tier.
+   */
+  if (!body.revoke) {
+    const { getEvent } = await import("@/lib/store");
+    const event = await getEvent(ticket.eventId).catch(() => null);
+    const tier = event?.ticketTiers?.find((row) => row.id === ticket.tierId);
+    if (!tier) {
+      return NextResponse.json(
+        { ok: false, message: "The event or ticket type no longer exists." },
+        { status: 409 },
+      );
+    }
+    const held = await reserveTickets(
+      ticket.eventId,
+      ticket.tierId,
+      1,
+      tier.capacity,
+    );
+    if (!held) {
+      return NextResponse.json(
+        { ok: false, message: "No seats left to restore this ticket into." },
+        { status: 409 },
+      );
+    }
+  }
+
   const result = await setTicketRevoked(code, body.revoke);
   if (!result.ok) {
+    // The restore's freshly-taken seat goes straight back.
+    if (!body.revoke) {
+      await releaseTickets(ticket.eventId, ticket.tierId, 1);
+    }
     const state = result.ticket?.status ?? "missing";
     return NextResponse.json(
       {
@@ -61,6 +100,18 @@ export async function PATCH(request: Request) {
       },
       { status: 409 },
     );
+  }
+
+  /**
+   * The seat follows the ticket: a void returns it to the pool and takes it
+   * off the sold count, a restore puts both back, so the board's totals and
+   * the public page's availability always mean living tickets.
+   */
+  if (body.revoke) {
+    await markSold(ticket.eventId, ticket.tierId, -1);
+    await releaseTickets(ticket.eventId, ticket.tierId, 1);
+  } else {
+    await markSold(ticket.eventId, ticket.tierId, 1);
   }
 
   return NextResponse.json({ ok: true, status: result.ticket?.status });
